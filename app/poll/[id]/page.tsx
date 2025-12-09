@@ -1,22 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
-import { vote } from "./actions";
-
-export async function generateStaticParams() {
-  // Pega todos os IDs de pesquisa da tabela
-  const { data: polls, error } = await supabase
-    .from("polls")
-    .select("id");
-
-  if (error || !polls) {
-    console.error("Erro ao buscar as polls:", error);
-    return [];
-  }
-
-  return polls.map((poll) => ({
-    id: poll.id,
-  }));
-}
+import { vote } from "../actions";  // Importando a função 'vote' do arquivo actions.ts
 
 export default async function PollPage({ params }: { params: { id: string } }) {
   const { data: poll } = await supabase
@@ -34,8 +18,12 @@ export default async function PollPage({ params }: { params: { id: string } }) {
     .eq("poll_id", params.id);
 
   async function handleVote(option_id: string) {
-    "use server"
-    await vote(id, option_id, allow_multiple);
+    const result = await vote(id, option_id, allow_multiple);  // Chamando a função vote
+    if (result.error) {
+      alert(result.error);  // Exibe um erro caso o voto não seja aceito
+    } else {
+      alert("Voto registrado com sucesso!");
+    }
   }
 
   return (
@@ -47,7 +35,7 @@ export default async function PollPage({ params }: { params: { id: string } }) {
         {options?.map(o => (
           <button
             key={o.id}
-            onClick={() => handleVote(o.id)}
+            onClick={() => handleVote(o.id)} 
             className="block w-full p-3 border rounded-lg hover:bg-gray-100"
           >
             {o.option_text}
