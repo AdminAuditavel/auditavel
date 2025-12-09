@@ -1,32 +1,30 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 
-export default async function PollPage({ params }: { params: { id: string } }) {
-  console.log("📌 ID recebido:", params.id);
+export default async function PollPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
-  const { data: poll, error } = await supabase
+  const { data: poll } = await supabase
     .from("polls")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
-
-  console.log("📌 Resultado da query:", poll, "Erro:", error);
 
   if (!poll) return notFound();
 
   const { data: options } = await supabase
     .from("poll_options")
-    .select("id, label")
-    .eq("poll_id", params.id);
+    .select("id, option_text")
+    .eq("poll_id", id);
 
   return (
     <main className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2">{poll.title}</h1>
+      <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
       <div className="space-y-3">
         {options?.map(o => (
           <button key={o.id} className="block w-full p-3 border rounded-lg hover:bg-gray-100">
-            {o.label}
+            {o.option_text}
           </button>
         ))}
       </div>
