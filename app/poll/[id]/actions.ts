@@ -1,29 +1,27 @@
-"use server"
-
 import { supabase } from "@/lib/supabase";
 
-/**
- * Registra um voto
- * @param poll_id ID da pesquisa
- * @param option_id ID da opção escolhida
- * @param allow_multiple Se a poll permite múltiplos votos
- */
 export async function vote(poll_id: string, option_id: string, allow_multiple: boolean) {
-  // Se NÃO pode múltiplos votos, apagamos o voto anterior deste usuário
-  if (!allow_multiple) {
-    await supabase
-      .from("votes")
-      .delete()
-      .eq("poll_id", poll_id)
-      .eq("user_id", "DEV_USER"); // ← depois trocaremos por cookie/conta real
+  // Verifica se o usuário já votou
+  const { data: existingVote } = await supabase
+    .from("votes")
+    .select("*")
+    .eq("poll_id", poll_id)
+    .eq("option_id", option_id)
+    .single();
+
+  // Se o voto já existir e "permitir múltiplos votos" for falso, retorna
+  if (existingVote && !allow_multiple) {
+    return { error: "Você já votou nesta opção." };
   }
 
-  // Insere novo voto
-  const { error } = await supabase
+  // Se tudo certo, insere o voto
+  const { data, error } = await supabase
     .from("votes")
-    .insert({ poll_id, option_id, user_id: "DEV_USER" });
+    .insert([{ poll_id: poll_id, option_id: option_id }]);
 
-  if (error) throw error;
+  if (error) {
+    return { error: error.message };
+  }
 
-  return { success: true };
+  return { data };
 }
