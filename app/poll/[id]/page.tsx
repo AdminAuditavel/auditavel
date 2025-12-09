@@ -10,6 +10,7 @@ export default async function PollPage({ params }: { params: { id: string } }) {
     .single();
 
   if (!poll) return notFound();
+const { id, title, description, allow_multiple } = poll;
 
   const { data: options } = await supabase
     .from("poll_options")
@@ -18,7 +19,7 @@ export default async function PollPage({ params }: { params: { id: string } }) {
 
   async function handleVote(option_id: string) {
     "use server"
-    await vote(poll.id, option_id, poll.allow_multiple);
+    await vote(id, option_id, allow_multiple);
   }
 
   return (
