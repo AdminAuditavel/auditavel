@@ -2,6 +2,17 @@ import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { vote } from "./actions";
 
+export async function generateStaticParams() {
+  // Pega todos os IDs de pesquisa da tabela
+  const { data: polls } = await supabase
+    .from("polls")
+    .select("id");
+
+  return polls.map(poll => ({
+    id: poll.id,
+  }));
+}
+
 export default async function PollPage({ params }: { params: { id: string } }) {
   const { data: poll } = await supabase
     .from("polls")
