@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
-import { vote } from "../../actions";  // Corrigido para o caminho correto
+import { vote } from "../../../actions";  // Corrigido para o caminho correto
 
 export default async function PollPage({ params }: { params: { id: string } }) {
   const { data: poll } = await supabase
