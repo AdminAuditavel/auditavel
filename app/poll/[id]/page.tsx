@@ -31,7 +31,7 @@ export default async function PollPage({ params }: { params: { id: string } }) {
         {options?.map(o => (
           <button
             key={o.id}
-            onClick={() => handleVote(o.id)}  {/* Removido o comentário */}
+            onClick={() => handleVote(o.id)}
             className="block w-full p-3 border rounded-lg hover:bg-gray-100"
           >
             {o.option_text}
