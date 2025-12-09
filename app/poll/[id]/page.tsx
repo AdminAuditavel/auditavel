@@ -4,11 +4,16 @@ import { vote } from "./actions";
 
 export async function generateStaticParams() {
   // Pega todos os IDs de pesquisa da tabela
-  const { data: polls } = await supabase
+  const { data: polls, error } = await supabase
     .from("polls")
     .select("id");
 
-  return polls.map(poll => ({
+  if (error || !polls) {
+    console.error("Erro ao buscar as polls:", error);
+    return [];
+  }
+
+  return polls.map((poll) => ({
     id: poll.id,
   }));
 }
