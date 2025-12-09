@@ -1,0 +1,16 @@
+.env.local
+
+# dependências
+node_modules/
+.next/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# variáveis privadas
+.env*
+!.env.example
+
+# build
+dist/
+out/
