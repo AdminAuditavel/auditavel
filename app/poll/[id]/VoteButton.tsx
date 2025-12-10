@@ -41,20 +41,24 @@ export default function VoteButton({
         localStorage.setItem('auditavel_uid', uid);
       }
 
+      const voteData = {
+        poll_id: pollId,
+        option_id: optionId,
+        user_hash: uid,
+      };
+
+      // Se permitir múltiplos votos, insere uma nova linha de voto
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          poll_id: pollId,
-          option_id: optionId,
-          user_hash: uid,
-        }),
+        body: JSON.stringify(voteData),
       });
 
       setLoading(false);
 
       if (res.ok) {
         if (!allowMultiple) {
+          // Se não permitir múltiplos votos, marca que já votou
           localStorage.setItem(`voted_poll_${pollId}`, 'true');
         }
 
@@ -81,9 +85,23 @@ export default function VoteButton({
   }
 
   function handleVoteClick() {
-    // Com esta versão: mesmo que o usuário já tenha votado, vota direto (sem modal)
-    // Se preferires manter a confirmação para alteração, diz e eu troco para a opção 2.
-    vote();
+    // Se permitir múltiplos votos, vota diretamente
+    if (allowMultiple) {
+      vote();
+      return;
+    }
+
+    // Se for voto único, verifica se já votou
+    const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
+    if (alreadyVoted) {
+      setMessage({
+        text: 'Você já votou nesta pesquisa. Deseja alterar seu voto?',
+        type: 'error',
+      });
+      return;
+    }
+
+    vote(); // Registra o voto na primeira vez
   }
 
   return (
