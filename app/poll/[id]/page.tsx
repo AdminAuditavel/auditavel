@@ -15,7 +15,6 @@ export default function PollPage() {
   const [options, setOptions] = useState<any[]>([]);
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showConfirmation, setShowConfirmation] = useState(false); // Controle da exibição da confirmação
 
   useEffect(() => {
     if (!id) return;
@@ -32,7 +31,6 @@ export default function PollPage() {
         if (!mounted) return;
 
         if (error || !pollData) {
-          // Não podemos usar notFound() num Client Component -> redirecionamos para 404
           router.replace('/404');
           return;
         }
@@ -40,7 +38,7 @@ export default function PollPage() {
         setPoll(pollData);
         setAllowMultiple(Boolean(pollData.allow_multiple));
 
-        const { data: optionsData, error: optionsError } = await supabase
+        const { data: optionsData } = await supabase
           .from('poll_options')
           .select('id, option_text')
           .eq('poll_id', id);
@@ -72,13 +70,6 @@ export default function PollPage() {
 
         if (!mounted) return;
         setUserHasVoted(!!voteData);
-
-        // Exibe a confirmação apenas se o usuário já votou
-        if (voteData) {
-          setShowConfirmation(false); // Já votou, então não exibe a confirmação novamente
-        } else {
-          setShowConfirmation(true); // Exibe a confirmação antes de votar
-        }
       } catch (err) {
         console.error('Erro ao verificar voto do usuário:', err);
         if (mounted) setUserHasVoted(false);
@@ -97,20 +88,17 @@ export default function PollPage() {
     return <main className="p-6 max-w-xl mx-auto">Carregando...</main>;
   }
 
-  // Se chegamos aqui sem poll, já tentámos redirecionar para 404
   if (!poll) return null;
 
   return (
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
-      {/* Exibir a mensagem de confirmação para pesquisa de voto único (allow_multiple=false) */}
-      {allowMultiple === false && userHasVoted && !showConfirmation && (
-        <p className="text-red-500 mb-4">Você já votou nesta pesquisa, mas pode alterar seu voto?</p>
+      {allowMultiple === false && userHasVoted && (
+        <p className="text-red-500 mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
       )}
 
-      {/* Exibir a mensagem de confirmação para pesquisa de múltiplos votos (allow_multiple=true) */}
-      {allowMultiple === true && userHasVoted && !showConfirmation && (
+      {allowMultiple === true && userHasVoted && (
         <p className="text-green-500 mb-4">
           Você já votou nesta pesquisa, mas pode votar novamente! Seu voto será somado ao total.
         </p>
@@ -125,7 +113,6 @@ export default function PollPage() {
             text={o.option_text}
             allowMultiple={allowMultiple}
             userHasVoted={userHasVoted}
-            setShowConfirmation={setShowConfirmation} // Passa o controle para VoteButton
           />
         ))}
       </div>
