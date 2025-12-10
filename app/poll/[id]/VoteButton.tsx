@@ -1,57 +1,101 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 
-function VoteButton({
+export default function VoteButton({
   pollId,
   optionId,
   text,
-  allowMultiple,
+  allowMultiple
 }: {
   pollId: string;
   optionId: string;
   text: string;
-  allowMultiple: boolean;
+  allowMultiple: boolean;   // <--- adicionamos isso
 }) {
   const [loading, setLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const handleVote = async () => {
+  async function vote() {
     setLoading(true);
 
-    const userHash = localStorage.getItem("user_hash") || `anon_${Math.random().toString(36).substring(2)}`;
-    localStorage.setItem("user_hash", userHash);
+    let uid = localStorage.getItem("auditavel_uid");
+    if (!uid) {
+      uid = crypto.randomUUID();
+      localStorage.setItem("auditavel_uid", uid);
+    }
 
-    try {
-      if (allowMultiple) {
-        // Permite múltiplos votos
-        await supabase
-          .from("votes")
-          .upsert([{ poll_id: pollId, option_id: optionId, user_hash: userHash }]); // Upsert para somar votos
-      } else {
-        // Permite um único voto
-        await supabase
-          .from("votes")
-          .upsert([{ poll_id: pollId, option_id: optionId, user_hash: userHash }]);
+    const res = await fetch("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        poll_id: pollId,
+        option_id: optionId,
+        user_hash: uid
+      }),
+    });
+
+    setLoading(false);
+
+    if (res.ok) {
+      // Só registra no storage se for voto único
+      if (!allowMultiple) {
+        localStorage.setItem(`voted_poll_${pollId}`, "true");
       }
 
-      setLoading(false);
       alert("Voto registrado com sucesso!");
-    } catch (error) {
-      setLoading(false);
+      setTimeout(() => window.location.href = `/results/${pollId}`, 800);
+    } else {
       alert("Erro ao registrar voto.");
     }
-  };
+  }
+
+  function handleVoteClick() {
+    // Se é múltiplo → sempre votar direto, sem alerta
+    if (allowMultiple) return vote();
+
+    // Se é voto único verificamos se já votou
+    const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
+
+    if (alreadyVoted) {
+      setShowConfirmDialog(true); // mensagem só no segundo voto
+      return;
+    }
+
+    vote(); // primeiro voto
+  }
 
   return (
-    <button
-      onClick={handleVote}
-      disabled={loading}
-      className="block w-full p-3 border rounded-lg hover:bg-gray-100"
-    >
-      {text}
-    </button>
+    <div>
+      <button
+        onClick={handleVoteClick}
+        disabled={loading}
+        className="block w-full p-3 border rounded-lg hover:bg-gray-100"
+      >
+        {loading ? "Registrando..." : text}
+      </button>
+
+      {showConfirmDialog && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50">
+          <div className="bg-white p-4 rounded shadow text-center">
+            <p className="mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
+
+            <button
+              onClick={() => { setShowConfirmDialog(false); vote(); }}
+              className="mr-2 p-2 bg-green-600 text-white rounded"
+            >
+              Sim, alterar
+            </button>
+
+            <button
+              onClick={() => setShowConfirmDialog(false)}
+              className="p-2 bg-gray-300 rounded"
+            >
+              Não
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
-
-export default VoteButton;
