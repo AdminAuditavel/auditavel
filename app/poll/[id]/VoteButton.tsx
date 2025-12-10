@@ -12,26 +12,11 @@ export default function VoteButton({
   text: string;
 }) {
   const [loading, setLoading] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);  // Exibe o aviso de confirmação
-  const [hasVoted, setHasVoted] = useState<boolean>(false);  // Verifica se já votou
-  const [voteInProgress, setVoteInProgress] = useState<boolean>(false);  // Controla se o voto está em andamento
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  // Função para verificar se o usuário já votou
-  const checkIfVoted = () => {
-    const voted = localStorage.getItem(`voted_poll_${pollId}`);
-    if (voted) {
-      setHasVoted(true); // Atualiza o estado para true se o usuário já votou
-    } else {
-      setHasVoted(false); // Atualiza para false caso contrário
-    }
-  };
-
-  // Função que envia o voto
   async function vote() {
-    setVoteInProgress(true);
     setLoading(true);
 
-    // Identificador persistente no navegador
     let uid = localStorage.getItem("auditavel_uid");
     if (!uid) {
       uid = crypto.randomUUID();
@@ -49,60 +34,54 @@ export default function VoteButton({
     });
 
     setLoading(false);
-    setVoteInProgress(false);
 
     if (res.ok) {
-      localStorage.setItem(`voted_poll_${pollId}`, "true");  // Marca como votado
+      localStorage.setItem(`voted_poll_${pollId}`, "true");
       alert("Voto registrado com sucesso!");
-      setTimeout(() => {
-        window.location.href = `/results/${pollId}`;
-      }, 800);
+      setTimeout(() => window.location.href = `/results/${pollId}`, 800);
     } else {
       alert("Erro ao registrar voto.");
     }
   }
 
-  // Função de clique no botão
-  const handleVoteClick = () => {
-    checkIfVoted(); // Verifica se o usuário já votou
-    if (hasVoted) {
-      setShowConfirmDialog(true); // Exibe a confirmação se já votou
-    } else {
-      vote();  // Se ainda não tiver votado, faz o voto diretamente
+  function handleVoteClick() {
+    const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
+
+    if (alreadyVoted) {
+      setShowConfirmDialog(true);      // agora ativa imediatamente
+      return;
     }
-  };
 
-  // Função de confirmação de alteração de voto
-  const confirmVoteChange = () => {
-    vote();
-    setShowConfirmDialog(false);  // Fecha a confirmação
-  };
-
-  // Função de cancelamento de alteração de voto
-  const cancelVoteChange = () => {
-    setShowConfirmDialog(false);  // Fecha a confirmação
-  };
+    vote();                             // primeira vez → vota direto
+  }
 
   return (
     <div>
       <button
         onClick={handleVoteClick}
-        disabled={loading || voteInProgress}
+        disabled={loading}
         className="block w-full p-3 border rounded-lg hover:bg-gray-100"
       >
-        {loading || voteInProgress ? "Registrando..." : text}
+        {loading ? "Registrando..." : text}
       </button>
 
-      {/* Aviso de confirmação */}
       {showConfirmDialog && (
-        <div className="confirmation-dialog">
-          <p>Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
-          <div>
-            <button onClick={confirmVoteChange} className="confirm-btn">
-              Sim
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50">
+          <div className="bg-white p-4 rounded shadow text-center">
+            <p className="mb-3">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
+
+            <button
+              onClick={() => { setShowConfirmDialog(false); vote(); }}
+              className="mr-2 p-2 bg-green-600 text-white rounded"
+            >
+              Sim, alterar voto
             </button>
-            <button onClick={cancelVoteChange} className="cancel-btn">
-              Não
+
+            <button
+              onClick={() => setShowConfirmDialog(false)}
+              className="p-2 bg-gray-300 rounded"
+            >
+              Cancelar
             </button>
           </div>
         </div>
