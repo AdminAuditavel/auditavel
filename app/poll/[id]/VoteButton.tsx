@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface VoteButtonProps {
@@ -40,31 +40,36 @@ export default function VoteButton({
         user_hash: uid,
       };
 
-      if (allowMultiple) {
-        // Se permitir múltiplos votos, insere uma nova linha de voto para cada voto
-        const res = await fetch('/api/vote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(voteData),
-        });
+      // Para permitir múltiplos votos, usamos INSERT para adicionar uma nova linha de voto para cada voto
+      const res = await fetch('/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(voteData),
+      });
 
-        if (!res.ok) throw new Error('Erro ao registrar o voto');
+      setLoading(false);
+
+      if (res.ok) {
+        // Se permitir múltiplos votos, não marca como já votado
+        if (!allowMultiple) {
+          localStorage.setItem(`voted_poll_${pollId}`, 'true');
+        }
+
+        setMessage({ text: 'Voto registrado com sucesso!', type: 'success' });
+
+        setTimeout(() => {
+          router.push(`/results/${pollId}`);
+        }, 700);
       } else {
-        // Se for um único voto, usa upsert para garantir que o voto seja substituído
-        const res = await fetch('/api/vote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(voteData),
-        });
-
-        if (!res.ok) throw new Error('Erro ao registrar o voto');
+        let errorText = 'Erro ao registrar voto.';
+        try {
+          const json = await res.json();
+          if (json?.error) errorText = json.error;
+        } catch {
+          /* ignore */
+        }
+        setMessage({ text: errorText, type: 'error' });
       }
-
-      setMessage({ text: 'Voto registrado com sucesso!', type: 'success' });
-
-      setTimeout(() => {
-        router.push(`/results/${pollId}`);
-      }, 700);
     } catch (err) {
       console.error('Erro ao registrar voto:', err);
       setLoading(false);
