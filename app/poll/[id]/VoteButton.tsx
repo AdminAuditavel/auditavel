@@ -25,7 +25,10 @@ export default function VoteButton({
     setLoading(false);
 
     if (res.ok) {
-      window.location.href = `/results/${pollId}`;
+      alert("Voto registrado com sucesso!");
+      setTimeout(() => {
+        window.location.href = `/results/${pollId}`;
+      }, 800); // 0.8s para o usuário visualizar a mensagem
     } else {
       alert("Erro ao registrar voto.");
     }
