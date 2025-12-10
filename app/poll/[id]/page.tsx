@@ -1,16 +1,18 @@
+"use client";  // Marcar como Client Component
+
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import VoteButton from "./VoteButton";
-import { useState, useEffect } from "react";
 
-export default async function PollPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;  // Esperando o id da pesquisa
+
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [allowMultiple, setAllowMultiple] = useState(false);
 
-  // Verificar se o usuário já votou nesta pesquisa
   useEffect(() => {
     const checkUserVote = async () => {
       const userHash = localStorage.getItem("auditavel_uid");
@@ -31,7 +33,6 @@ export default async function PollPage({ params }: { params: Promise<{ id: strin
     checkUserVote();
   }, [id]);
 
-  // Buscar dados da pesquisa
   useEffect(() => {
     const fetchPoll = async () => {
       const { data: pollData, error } = await supabase
