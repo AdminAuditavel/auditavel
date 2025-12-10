@@ -1,36 +1,33 @@
 import { supabase } from "@/lib/supabase";
+import { notFound } from "next/navigation";
 
-export default async function PollPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default async function PollPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
-  const { data: poll, error } = await supabase
+  const { data: poll } = await supabase
     .from("polls")
     .select("*")
     .eq("id", id)
     .single();
 
+  if (!poll) return notFound();
+
+  const { data: options } = await supabase
+    .from("poll_options")
+    .select("id, option_text")
+    .eq("poll_id", id);
+
   return (
-    <main className="p-6 max-w-xl mx-auto space-y-4">
-      <h2 className="text-lg font-bold">DEBUG TEMPORÁRIO</h2>
+    <main className="p-6 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
-      <p><b>ID recebido:</b> {id}</p>
-
-      <p><b>Resultado poll:</b> {poll ? "Encontrou" : "NÃO encontrou"}</p>
-
-      {error && (
-        <pre className="text-red-500">
-          {JSON.stringify(error, null, 2)}
-        </pre>
-      )}
-
-      <hr />
-
-      {poll && (
-        <>
-          <h1 className="text-2xl font-bold">{poll.title}</h1>
-          <p>{poll.description}</p>
-        </>
-      )}
+      <div className="space-y-3">
+        {options?.map(o => (
+          <button key={o.id} className="block w-full p-3 border rounded-lg hover:bg-gray-100">
+            {o.option_text}
+          </button>
+        ))}
+      </div>
     </main>
   );
 }
