@@ -9,15 +9,15 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
     .select("id, option_text")
     .eq("poll_id", id);
 
-  // Buscar votos e agrupar
+  // Buscar votos
   const { data: votes } = await supabase
     .from("votes")
-    .select("option_id, votes_count");
+    .select("option_id");
 
-  // Montar contagem
+  // Contar por opção
   const count: Record<string, number> = {};
   votes?.forEach(v => {
-    count[v.option_id] = (count[v.option_id] || 0) + (v.votes_count || 1);
+    count[v.option_id] = (count[v.option_id] || 0) + 1;
   });
 
   return (
