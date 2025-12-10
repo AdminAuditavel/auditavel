@@ -20,7 +20,6 @@ export default function VoteButton({
 }: VoteButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -82,19 +81,8 @@ export default function VoteButton({
   }
 
   function handleVoteClick() {
-    // voto múltiplo: vota direto
-    if (allowMultiple) {
-      vote();
-      return;
-    }
-
-    // se já votou, abrir confirmação local (interno ao VoteButton)
-    if (userHasVoted) {
-      setShowConfirmDialog(true);
-      return;
-    }
-
-    // caso contrário, vota direto
+    // Com esta versão: mesmo que o usuário já tenha votado, vota direto (sem modal)
+    // Se preferires manter a confirmação para alteração, diz e eu troco para a opção 2.
     vote();
   }
 
@@ -116,35 +104,6 @@ export default function VoteButton({
         >
           {message.text}
         </p>
-      )}
-
-      {showConfirmDialog && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" role="dialog" aria-modal="true">
-          <div className="bg-white p-4 rounded shadow max-w-sm w-full mx-4">
-            <p className="mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
-
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => {
-                  setShowConfirmDialog(false);
-                  vote();
-                }}
-                className="px-4 py-2 bg-green-600 text-white rounded"
-              >
-                Sim, alterar
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowConfirmDialog(false);
-                }}
-                className="px-4 py-2 bg-gray-200 rounded"
-              >
-                Não
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
