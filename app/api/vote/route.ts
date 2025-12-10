@@ -4,41 +4,75 @@ import { randomUUID } from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { poll_id, option_id, user_hash } = body;
-
-    console.log("Body recebido em /api/vote:", body);
+    const { poll_id, option_id, user_hash } = await req.json();
 
     if (!poll_id || !option_id || !user_hash) {
-      console.log("Erro: dados ausentes", { poll_id, option_id, user_hash });
-      return NextResponse.json(
-        { error: "poll_id, option_id e user_hash são obrigatórios" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "missing data" }, { status: 400 });
     }
 
+    // Busca configuração da pesquisa
+    const { data: poll } = await supabase
+      .from("polls")
+      .select("allow_multiple")
+      .eq("id", poll_id)
+      .single();
+
+    if (!poll) return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
+
+    // MODO A — apenas 1 voto por usuário (atualizável)
+    if (!poll.allow_multiple) {
+      // verifica se já existe voto desse user
+      const { data: existing } = await supabase
+        .from("votes")
+        .select("id")
+        .eq("poll_id", poll_id)
+        .eq("user_hash", user_hash)
+        .maybeSingle();
+
+      if (existing) {
+        // atualiza o voto
+        const { error } = await supabase
+          .from("votes")
+          .update({
+            option_id,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existing.id);
+
+        if (error) return NextResponse.json({ error }, { status: 500 });
+
+        return NextResponse.json({ success: true, updated: true });
+      }
+
+      // se não existe, cria novo
+      const { error } = await supabase.from("votes").insert({
+        id: randomUUID(),
+        poll_id,
+        option_id,
+        user_hash,
+        votes_count: 1,
+      });
+
+      if (error) return NextResponse.json({ error }, { status: 500 });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // MODO B — múltiplos votos permitidos
     const { error } = await supabase.from("votes").insert({
       id: randomUUID(),
       poll_id,
       option_id,
-      user_hash,      // <-- AGORA usa exatamente o que veio do front
+      user_hash,
       votes_count: 1,
     });
 
-    if (error) {
-      console.log("Erro Supabase INSERT:", error);
-      return NextResponse.json(
-        { error: "Erro ao registrar voto" },
-        { status: 500 }
-      );
-    }
+    if (error) return NextResponse.json({ error }, { status: 500 });
 
     return NextResponse.json({ success: true });
+
   } catch (e) {
-    console.log("Erro interno /api/vote:", e);
-    return NextResponse.json(
-      { error: "Erro inesperado ao processar o voto" },
-      { status: 500 }
-    );
+    console.log("Erro interno:", e);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
