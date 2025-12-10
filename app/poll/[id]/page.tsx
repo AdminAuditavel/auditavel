@@ -1,25 +1,25 @@
-"use client"; // Marcar o arquivo como Client Component
+"use client"; // Marcar como Client Component
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router"; // Importando useRouter
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import VoteButton from "./VoteButton";
 
-export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
+export default function PollPage() {
+  const router = useRouter();
+  const { id } = router.query; // Captura o ID diretamente da URL
+
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [allowMultiple, setAllowMultiple] = useState(false);
-  const [id, setId] = useState<string>("");
 
-  // Buscar dados da pesquisa
   useEffect(() => {
+    if (!id) return; // Aguarde até que o ID esteja disponível
+
+    // Buscar dados da pesquisa
     const fetchPollData = async () => {
-      const { id } = await params; // Espera o parâmetro da URL
-
-      setId(id); // Armazena o ID para uso posterior
-
-      // Buscar pesquisa
       const { data: pollData, error } = await supabase
         .from("polls")
         .select("*")
@@ -31,7 +31,6 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
         setAllowMultiple(pollData.allow_multiple);
       }
 
-      // Buscar opções
       const { data: optionsData, error: optionsError } = await supabase
         .from("poll_options")
         .select("id, option_text")
@@ -40,10 +39,12 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
     };
 
     fetchPollData();
-  }, [params]); // O hook depende do parâmetro 'id'
+  }, [id]); // Atualiza sempre que o id mudar
 
   // Verificar se o usuário já votou nesta pesquisa
   useEffect(() => {
+    if (!id) return; // Não faz sentido verificar se não há ID
+
     const checkUserVote = async () => {
       const userHash = localStorage.getItem("user_hash");
       const { data: voteData, error } = await supabase
@@ -60,8 +61,8 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
       }
     };
 
-    if (id) checkUserVote();
-  }, [id]); // Verifique novamente quando o ID for alterado
+    checkUserVote();
+  }, [id]); // Verifique sempre que o id mudar
 
   if (!poll) return notFound();
 
