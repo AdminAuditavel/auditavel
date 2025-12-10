@@ -23,8 +23,14 @@ export default async function PollPage({ params }: { params: Promise<{ id: strin
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
       <div className="space-y-3">
-        {options?.map(o => (
-          <VoteButton key={o.id} pollId={id} optionId={o.id} text={o.option_text} />
+        {options?.map((o) => (
+          <VoteButton
+            key={o.id}
+            pollId={id}
+            optionId={o.id}
+            text={o.option_text}
+            allowMultiple={poll.allow_multiple} // <<< aqui passamos o tipo de enquete
+          />
         ))}
       </div>
     </main>
