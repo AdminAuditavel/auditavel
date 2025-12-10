@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface VoteButtonProps {
@@ -21,13 +21,6 @@ export default function VoteButton({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (redirectTimer.current) clearTimeout(redirectTimer.current);
-    };
-  }, []);
 
   async function vote() {
     if (loading) return;
@@ -47,61 +40,54 @@ export default function VoteButton({
         user_hash: uid,
       };
 
-      // Se permitir múltiplos votos, insere uma nova linha de voto
-      const res = await fetch('/api/vote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(voteData),
-      });
+      if (allowMultiple) {
+        // Se permitir múltiplos votos, insere uma nova linha de voto para cada voto
+        const res = await fetch('/api/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(voteData),
+        });
 
-      setLoading(false);
-
-      if (res.ok) {
-        if (!allowMultiple) {
-          // Se não permitir múltiplos votos, marca que já votou
-          localStorage.setItem(`voted_poll_${pollId}`, 'true');
-        }
-
-        setMessage({ text: 'Voto registrado com sucesso!', type: 'success' });
-
-        redirectTimer.current = setTimeout(() => {
-          router.push(`/results/${pollId}`);
-        }, 700);
+        if (!res.ok) throw new Error('Erro ao registrar o voto');
       } else {
-        let errorText = 'Erro ao registrar voto.';
-        try {
-          const json = await res.json();
-          if (json?.error) errorText = json.error;
-        } catch {
-          /* ignore */
-        }
-        setMessage({ text: errorText, type: 'error' });
+        // Se for um único voto, usa upsert para garantir que o voto seja substituído
+        const res = await fetch('/api/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(voteData),
+        });
+
+        if (!res.ok) throw new Error('Erro ao registrar o voto');
       }
+
+      setMessage({ text: 'Voto registrado com sucesso!', type: 'success' });
+
+      setTimeout(() => {
+        router.push(`/results/${pollId}`);
+      }, 700);
     } catch (err) {
-      console.error('Erro ao enviar voto:', err);
+      console.error('Erro ao registrar voto:', err);
       setLoading(false);
       setMessage({ text: 'Erro ao registrar voto.', type: 'error' });
     }
   }
 
   function handleVoteClick() {
-    // Se permitir múltiplos votos, vota diretamente
     if (allowMultiple) {
+      // Se permitir múltiplos votos, vota diretamente
       vote();
-      return;
+    } else {
+      // Se for voto único, verifica se já votou
+      const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
+      if (alreadyVoted) {
+        setMessage({
+          text: 'Você já votou nesta pesquisa. Deseja alterar seu voto?',
+          type: 'error',
+        });
+      } else {
+        vote();
+      }
     }
-
-    // Se for voto único, verifica se já votou
-    const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
-    if (alreadyVoted) {
-      setMessage({
-        text: 'Você já votou nesta pesquisa. Deseja alterar seu voto?',
-        type: 'error',
-      });
-      return;
-    }
-
-    vote(); // Registra o voto na primeira vez
   }
 
   return (
