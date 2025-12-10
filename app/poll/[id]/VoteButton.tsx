@@ -24,13 +24,13 @@ function VoteButton({
     const checkUserVote = async () => {
       const { data, error } = await supabase
         .from("votes")
-        .select("user_hash")
+        .select("option_id")  // Acessando o campo correto
         .eq("poll_id", pollId)
         .eq("user_hash", localStorage.getItem("user_hash"))
-        .single();
+        .single();  // Garantir que retorne apenas uma linha
       if (data) {
         setHasVoted(true);
-        setCurrentVote(data.option_id);
+        setCurrentVote(data.option_id);  // Usar o campo correto
       } else {
         setHasVoted(false);
       }
