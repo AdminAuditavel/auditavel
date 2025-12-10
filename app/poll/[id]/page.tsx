@@ -1,84 +1,105 @@
-"use client"; // Marcar como Client Component
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router"; // Importando useRouter
-import { supabase } from "@/lib/supabase";
-import { notFound } from "next/navigation";
-import VoteButton from "./VoteButton";
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import VoteButton from './VoteButton';
 
 export default function PollPage() {
+  const params = useParams();
   const router = useRouter();
-  const [id, setId] = useState<string | undefined>(undefined); // Definimos id como estado para garantir que será usado no cliente
+  const id = params?.id as string | undefined;
+
   const [userHasVoted, setUserHasVoted] = useState(false);
-  const [poll, setPoll] = useState<any>(null);
+  const [poll, setPoll] = useState<any | null>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Apenas acessamos o id do router.query quando o componente é montado no cliente
-    if (router.query.id) {
-      setId(router.query.id as string); // Atribuindo o id do parâmetro da URL ao estado
-    }
-  }, [router.query]); // O useEffect vai rodar sempre que o router.query mudar
+    if (!id) return;
+    let mounted = true;
 
-  useEffect(() => {
-    if (!id) return; // Se o id ainda não foi definido, não faz nada
-
-    // Buscar dados da pesquisa
     const fetchPollData = async () => {
-      const { data: pollData, error } = await supabase
-        .from("polls")
-        .select("*")
-        .eq("id", id)
-        .single();
+      try {
+        const { data: pollData, error } = await supabase
+          .from('polls')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-      if (pollData) {
+        if (!mounted) return;
+
+        if (error || !pollData) {
+          // Não podemos usar notFound() num Client Component -> redirecionamos para 404
+          router.replace('/404');
+          return;
+        }
+
         setPoll(pollData);
-        setAllowMultiple(pollData.allow_multiple);
+        setAllowMultiple(Boolean(pollData.allow_multiple));
+
+        const { data: optionsData, error: optionsError } = await supabase
+          .from('poll_options')
+          .select('id, option_text')
+          .eq('poll_id', id);
+
+        if (!mounted) return;
+        setOptions(optionsData ?? []);
+      } catch (err) {
+        console.error('Erro ao buscar a poll:', err);
+        if (mounted) router.replace('/404');
+      } finally {
+        if (mounted) setLoading(false);
       }
+    };
 
-      const { data: optionsData, error: optionsError } = await supabase
-        .from("poll_options")
-        .select("id, option_text")
-        .eq("poll_id", id);
+    const checkUserVote = async () => {
+      try {
+        const userHash = localStorage.getItem('auditavel_uid');
+        if (!userHash) {
+          setUserHasVoted(false);
+          return;
+        }
 
-      setOptions(optionsData || []);
+        const { data: voteData } = await supabase
+          .from('votes')
+          .select('option_id')
+          .eq('poll_id', id)
+          .eq('user_hash', userHash)
+          .single();
+
+        if (!mounted) return;
+        setUserHasVoted(!!voteData);
+      } catch (err) {
+        console.error('Erro ao verificar voto do usuário:', err);
+        if (mounted) setUserHasVoted(false);
+      }
     };
 
     fetchPollData();
-
-    // Verificar se o usuário já votou nesta pesquisa
-    const checkUserVote = async () => {
-      const userHash = localStorage.getItem("auditavel_uid");
-      const { data: voteData, error } = await supabase
-        .from("votes")
-        .select("option_id")
-        .eq("poll_id", id)
-        .eq("user_hash", userHash)
-        .single();
-
-      if (voteData) {
-        setUserHasVoted(true);
-      } else {
-        setUserHasVoted(false);
-      }
-    };
-
     checkUserVote();
-  }, [id]); // O useEffect agora depende do parâmetro 'id'
 
-  if (!poll) return notFound();
+    return () => {
+      mounted = false;
+    };
+  }, [id, router]);
+
+  if (loading) {
+    return <main className="p-6 max-w-xl mx-auto">Carregando...</main>;
+  }
+
+  // Se chegamos aqui sem poll, já tentámos redirecionar para 404
+  if (!poll) return null;
 
   return (
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
-      {/* Exibir a mensagem de confirmação para pesquisa de voto único (allow_multiple=false) */}
       {allowMultiple === false && userHasVoted && (
         <p className="text-red-500 mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
       )}
 
-      {/* Exibir a mensagem de confirmação para pesquisa de múltiplos votos (allow_multiple=true) */}
       {allowMultiple === true && userHasVoted && (
         <p className="text-green-500 mb-4">
           Você já votou nesta pesquisa, mas pode votar novamente! Seu voto será somado ao total.
@@ -89,7 +110,7 @@ export default function PollPage() {
         {options.map((o) => (
           <VoteButton
             key={o.id}
-            pollId={id as string}  // Garantindo que 'id' seja tratado como string
+            pollId={id as string}
             optionId={o.id}
             text={o.option_text}
             allowMultiple={allowMultiple}
