@@ -1,34 +1,57 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
-import { randomUUID } from "crypto";
+"use client";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { poll_id, option_id, user_hash } = await req.json();
+import { useState } from "react";
 
-    console.log("Recebido:", { poll_id, option_id, user_hash });
+export default function VoteButton({
+  pollId,
+  optionId,
+  text
+}: {
+  pollId: string;
+  optionId: string;
+  text: string;
+}) {
+  const [loading, setLoading] = useState(false);
 
-    if (!poll_id || !option_id || !user_hash) {
-      return NextResponse.json({ error: "missing data" }, { status: 400 });
+  async function vote() {
+    setLoading(true);
+
+    // Identificador persistente no navegador
+    let uid = localStorage.getItem("auditavel_uid");
+    if (!uid) {
+      uid = crypto.randomUUID();
+      localStorage.setItem("auditavel_uid", uid);
     }
 
-    const { error } = await supabase.from("votes").insert({
-      id: randomUUID(),
-      poll_id,
-      option_id,
-      user_hash,
-      votes_count: 1,
+    const res = await fetch("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        poll_id: pollId,
+        option_id: optionId,
+        user_hash: uid
+      }),
     });
 
-    if (error) {
-      console.log("Erro Supabase:", error);
-      return NextResponse.json({ error }, { status: 500 });
+    setLoading(false);
+
+    if (res.ok) {
+      alert("Voto registrado com sucesso!");
+      setTimeout(() => {
+        window.location.href = `/results/${pollId}`;
+      }, 800);
+    } else {
+      alert("Erro ao registrar voto.");
     }
-
-    return NextResponse.json({ success: true });
-
-  } catch (e) {
-    console.log("Erro interno:", e);
-    return NextResponse.json({ error: "internal error" }, { status: 500 });
   }
+
+  return (
+    <button
+      onClick={vote}
+      disabled={loading}
+      className="block w-full p-3 border rounded-lg hover:bg-gray-100"
+    >
+      {loading ? "Registrando..." : text}
+    </button>
+  );
 }
