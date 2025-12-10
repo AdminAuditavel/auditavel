@@ -1,26 +1,36 @@
 import { supabase } from "@/lib/supabase";
-import VoteClient from "./VoteClient";
 
 export default async function PollPage({ params }: { params: { id: string } }) {
-  const id = params.id; // <-- agora funciona corretamente
+  const id = params.id;
 
-  const { data: poll } = await supabase
+  const { data: poll, error } = await supabase
     .from("polls")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (!poll) return <p>Pesquisa não encontrada.</p>;
-
-  const { data: options } = await supabase
-    .from("poll_options")
-    .select("id, option_text")
-    .eq("poll_id", id);
-
   return (
-    <main className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
-      <VoteClient pollId={id} options={options || []} />
+    <main className="p-6 max-w-xl mx-auto space-y-4">
+      <h2 className="text-lg font-bold">DEBUG TEMPORÁRIO</h2>
+
+      <p><b>ID recebido:</b> {id}</p>
+
+      <p><b>Resultado poll:</b> {poll ? "Encontrou" : "NÃO encontrou"}</p>
+
+      {error && (
+        <pre className="text-red-500">
+          {JSON.stringify(error, null, 2)}
+        </pre>
+      )}
+
+      <hr />
+
+      {poll && (
+        <>
+          <h1 className="text-2xl font-bold">{poll.title}</h1>
+          <p>{poll.description}</p>
+        </>
+      )}
     </main>
   );
 }
