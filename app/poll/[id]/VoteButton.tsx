@@ -13,7 +13,15 @@ export default function VoteButton({
 }) {
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);  // Novo estado para confirmação
+  const [hasVoted, setHasVoted] = useState<boolean>(false);  // Estado para verificar se o usuário já votou
 
+  // Função para verificar se o usuário já votou
+  const checkIfVoted = () => {
+    const voted = localStorage.getItem(`voted_poll_${pollId}`);
+    setHasVoted(!!voted);  // Se já houver um voto, define hasVoted como true
+  };
+
+  // Função que envia o voto
   async function vote() {
     setLoading(true);
 
@@ -37,6 +45,7 @@ export default function VoteButton({
     setLoading(false);
 
     if (res.ok) {
+      localStorage.setItem(`voted_poll_${pollId}`, "true");  // Marca como votado
       alert("Voto registrado com sucesso!");
       setTimeout(() => {
         window.location.href = `/results/${pollId}`;
@@ -46,23 +55,25 @@ export default function VoteButton({
     }
   }
 
+  // Função para lidar com o clique do botão
   const handleVoteClick = () => {
-    let hasVoted = localStorage.getItem("auditavel_voted"); // Verifica se já votou
+    checkIfVoted(); // Verifica se o usuário já votou
     if (hasVoted) {
-      setShowConfirmDialog(true); // Mostra a confirmação se já votou
+      setShowConfirmDialog(true); // Exibe confirmação se já tiver votado
     } else {
-      vote(); // Se ainda não tiver votado, vota diretamente
-      localStorage.setItem("auditavel_voted", "true");
+      vote();  // Se não tiver votado, registra o voto diretamente
     }
   };
 
+  // Função de confirmação de alteração de voto
   const confirmVoteChange = () => {
     vote();
-    setShowConfirmDialog(false);
+    setShowConfirmDialog(false);  // Fecha a confirmação
   };
 
+  // Função de cancelamento de alteração de voto
   const cancelVoteChange = () => {
-    setShowConfirmDialog(false);
+    setShowConfirmDialog(false);  // Fecha a confirmação
   };
 
   return (
@@ -78,8 +89,14 @@ export default function VoteButton({
       {showConfirmDialog && (
         <div className="confirmation-dialog">
           <p>Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
-          <button onClick={confirmVoteChange}>Sim</button>
-          <button onClick={cancelVoteChange}>Não</button>
+          <div>
+            <button onClick={confirmVoteChange} className="confirm-btn">
+              Sim
+            </button>
+            <button onClick={cancelVoteChange} className="cancel-btn">
+              Não
+            </button>
+          </div>
         </div>
       )}
     </div>
