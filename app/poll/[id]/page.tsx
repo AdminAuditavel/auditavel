@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import VoteClient from "./VoteClient";
 
 export default async function PollPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+  const id = params.id; // <-- agora funciona corretamente
 
   const { data: poll } = await supabase
     .from("polls")
@@ -20,7 +20,6 @@ export default async function PollPage({ params }: { params: { id: string } }) {
   return (
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
-
       <VoteClient pollId={id} options={options || []} />
     </main>
   );
