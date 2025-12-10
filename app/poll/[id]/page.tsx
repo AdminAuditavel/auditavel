@@ -7,13 +7,13 @@ import { notFound } from "next/navigation";
 import VoteButton from "./VoteButton";
 
 export default function PollPage() {
-  const [isClient, setIsClient] = useState(false);  // Estado para verificar se estamos no lado do cliente
   const router = useRouter();
-  const { id } = router.query;  // Captura o parâmetro 'id' da URL
+  const [isMounted, setIsMounted] = useState(false); // Controle de montagem do cliente
+  const { id } = router.query; // Captura o parâmetro 'id' da URL
 
-  // Verifica se estamos no lado do cliente (apenas após o componente ser montado)
+  // Verifica se o componente foi montado
   useEffect(() => {
-    setIsClient(true);  // Marca como cliente quando o componente é montado
+    setIsMounted(true); // Marca como montado após o componente ser renderizado
   }, []);
 
   const [userHasVoted, setUserHasVoted] = useState(false);
@@ -22,7 +22,7 @@ export default function PollPage() {
   const [allowMultiple, setAllowMultiple] = useState(false);
 
   useEffect(() => {
-    if (!id || !isClient) return;  // Aguarda até o cliente estar disponível
+    if (!id || !isMounted) return;  // Verifica se o ID está disponível e se estamos no cliente
 
     // Buscar dados da pesquisa
     const fetchPollData = async () => {
@@ -65,7 +65,7 @@ export default function PollPage() {
     };
 
     checkUserVote();
-  }, [id, isClient]);  // A dependência de 'isClient' garante que o código seja executado no cliente
+  }, [id, isMounted]);  // Atualiza quando o id ou o estado de montagem mudar
 
   if (!poll) return notFound();
 
