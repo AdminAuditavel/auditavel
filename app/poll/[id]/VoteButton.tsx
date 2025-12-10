@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface VoteButtonProps {
@@ -9,6 +9,8 @@ interface VoteButtonProps {
   text: string;
   allowMultiple: boolean;
   userHasVoted: boolean;
+  // Prop opcional para permitir que o pai controle a abertura/fecho da confirmação
+  setShowConfirmation?: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function VoteButton({
@@ -17,16 +19,17 @@ export default function VoteButton({
   text,
   allowMultiple,
   userHasVoted,
+  setShowConfirmation,
 }: VoteButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  // estado interno só usado se o pai NÃO fornecer setShowConfirmation
+  const [internalShowConfirm, setInternalShowConfirm] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
-      // limpar timeout se o componente desmontar
       if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
   }, []);
@@ -62,12 +65,10 @@ export default function VoteButton({
 
         setMessage({ text: 'Voto registrado com sucesso!', type: 'success' });
 
-        // navegar para os resultados após uma pequena pausa (SPA navigation)
         redirectTimer.current = setTimeout(() => {
           router.push(`/results/${pollId}`);
         }, 700);
       } else {
-        // ler corpo da resposta opcionalmente para detalhes
         let errorText = 'Erro ao registrar voto.';
         try {
           const json = await res.json();
@@ -84,6 +85,22 @@ export default function VoteButton({
     }
   }
 
+  function openConfirmation() {
+    if (setShowConfirmation) {
+      setShowConfirmation(true);
+    } else {
+      setInternalShowConfirm(true);
+    }
+  }
+
+  function closeConfirmation() {
+    if (setShowConfirmation) {
+      setShowConfirmation(false);
+    } else {
+      setInternalShowConfirm(false);
+    }
+  }
+
   function handleVoteClick() {
     // voto múltiplo: vota direto
     if (allowMultiple) {
@@ -91,15 +108,18 @@ export default function VoteButton({
       return;
     }
 
-    // se já votou, abrir confirmação para alterar
+    // se já votou, abrir confirmação (delegada ao pai se prop fornecida)
     if (userHasVoted) {
-      setShowConfirmDialog(true);
+      openConfirmation();
       return;
     }
 
     // caso contrário, vota direto
     vote();
   }
+
+  // decidir qual estado de confirmação usar (pai ou interno)
+  const showConfirmDialog = setShowConfirmation ? undefined : internalShowConfirm;
 
   return (
     <div>
@@ -112,7 +132,6 @@ export default function VoteButton({
         {loading ? 'Registrando...' : text}
       </button>
 
-      {/* Mensagem inline (sucesso / erro) */}
       {message && (
         <p
           className={`mt-2 text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
@@ -122,7 +141,7 @@ export default function VoteButton({
         </p>
       )}
 
-      {/* Modal de confirmação quando o usuário já votou */}
+      {/* Se o pai não controlar a confirmação, renderiza o modal local */}
       {showConfirmDialog && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
@@ -135,7 +154,7 @@ export default function VoteButton({
             <div className="flex justify-center gap-3">
               <button
                 onClick={() => {
-                  setShowConfirmDialog(false);
+                  closeConfirmation();
                   vote();
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded"
@@ -145,7 +164,7 @@ export default function VoteButton({
 
               <button
                 onClick={() => {
-                  setShowConfirmDialog(false);
+                  closeConfirmation();
                 }}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
