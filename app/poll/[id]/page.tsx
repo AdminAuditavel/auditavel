@@ -7,8 +7,14 @@ import { notFound } from "next/navigation";
 import VoteButton from "./VoteButton";
 
 export default function PollPage() {
+  const [isClient, setIsClient] = useState(false);  // Estado para verificar se estamos no lado do cliente
   const router = useRouter();
   const { id } = router.query;  // Captura o parâmetro 'id' da URL
+
+  // Verifica se estamos no lado do cliente (apenas após o componente ser montado)
+  useEffect(() => {
+    setIsClient(true);  // Marca como cliente quando o componente é montado
+  }, []);
 
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any>(null);
@@ -16,7 +22,7 @@ export default function PollPage() {
   const [allowMultiple, setAllowMultiple] = useState(false);
 
   useEffect(() => {
-    if (!id) return;  // Verifica se o ID está disponível
+    if (!id || !isClient) return;  // Aguarda até o cliente estar disponível
 
     // Buscar dados da pesquisa
     const fetchPollData = async () => {
@@ -59,7 +65,7 @@ export default function PollPage() {
     };
 
     checkUserVote();
-  }, [id]); // O useEffect agora depende do parâmetro 'id'
+  }, [id, isClient]);  // A dependência de 'isClient' garante que o código seja executado no cliente
 
   if (!poll) return notFound();
 
@@ -67,12 +73,12 @@ export default function PollPage() {
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
-      {/* Mensagem para pesquisa de voto único (allow_multiple=false) */}
+      {/* Exibir a mensagem de confirmação para pesquisa de voto único (allow_multiple=false) */}
       {allowMultiple === false && userHasVoted && (
         <p className="text-red-500 mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
       )}
 
-      {/* Mensagem para pesquisa de múltiplos votos (allow_multiple=true) */}
+      {/* Exibir a mensagem de confirmação para pesquisa de múltiplos votos (allow_multiple=true) */}
       {allowMultiple === true && userHasVoted && (
         <p className="text-green-500 mb-4">
           Você já votou nesta pesquisa, mas pode votar novamente! Seu voto será somado ao total.
