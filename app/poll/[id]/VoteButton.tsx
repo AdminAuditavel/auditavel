@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface VoteButtonProps {
@@ -9,8 +9,6 @@ interface VoteButtonProps {
   text: string;
   allowMultiple: boolean;
   userHasVoted: boolean;
-  // Prop opcional para permitir que o pai controle a abertura/fecho da confirmação
-  setShowConfirmation?: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function VoteButton({
@@ -19,12 +17,10 @@ export default function VoteButton({
   text,
   allowMultiple,
   userHasVoted,
-  setShowConfirmation,
 }: VoteButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  // estado interno só usado se o pai NÃO fornecer setShowConfirmation
-  const [internalShowConfirm, setInternalShowConfirm] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,22 +81,6 @@ export default function VoteButton({
     }
   }
 
-  function openConfirmation() {
-    if (setShowConfirmation) {
-      setShowConfirmation(true);
-    } else {
-      setInternalShowConfirm(true);
-    }
-  }
-
-  function closeConfirmation() {
-    if (setShowConfirmation) {
-      setShowConfirmation(false);
-    } else {
-      setInternalShowConfirm(false);
-    }
-  }
-
   function handleVoteClick() {
     // voto múltiplo: vota direto
     if (allowMultiple) {
@@ -108,18 +88,15 @@ export default function VoteButton({
       return;
     }
 
-    // se já votou, abrir confirmação (delegada ao pai se prop fornecida)
+    // se já votou, abrir confirmação local (interno ao VoteButton)
     if (userHasVoted) {
-      openConfirmation();
+      setShowConfirmDialog(true);
       return;
     }
 
     // caso contrário, vota direto
     vote();
   }
-
-  // decidir qual estado de confirmação usar (pai ou interno)
-  const showConfirmDialog = setShowConfirmation ? undefined : internalShowConfirm;
 
   return (
     <div>
@@ -141,20 +118,15 @@ export default function VoteButton({
         </p>
       )}
 
-      {/* Se o pai não controlar a confirmação, renderiza o modal local */}
       {showConfirmDialog && (
-        <div
-          className="fixed inset-0 flex items-center justify-center bg-black/50 z-50"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" role="dialog" aria-modal="true">
           <div className="bg-white p-4 rounded shadow max-w-sm w-full mx-4">
             <p className="mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
 
             <div className="flex justify-center gap-3">
               <button
                 onClick={() => {
-                  closeConfirmation();
+                  setShowConfirmDialog(false);
                   vote();
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded"
@@ -164,7 +136,7 @@ export default function VoteButton({
 
               <button
                 onClick={() => {
-                  closeConfirmation();
+                  setShowConfirmDialog(false);
                 }}
                 className="px-4 py-2 bg-gray-200 rounded"
               >
