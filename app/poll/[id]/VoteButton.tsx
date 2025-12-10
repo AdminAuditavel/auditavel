@@ -12,8 +12,9 @@ export default function VoteButton({
   text: string;
 }) {
   const [loading, setLoading] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);  // Novo estado para confirmação
-  const [hasVoted, setHasVoted] = useState<boolean>(false);  // Estado para verificar se o usuário já votou
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);  // Exibe o aviso de confirmação
+  const [hasVoted, setHasVoted] = useState<boolean>(false);  // Verifica se já votou
+  const [voteInProgress, setVoteInProgress] = useState<boolean>(false);  // Controla se o voto está em andamento
 
   // Função para verificar se o usuário já votou
   const checkIfVoted = () => {
@@ -23,6 +24,7 @@ export default function VoteButton({
 
   // Função que envia o voto
   async function vote() {
+    setVoteInProgress(true);
     setLoading(true);
 
     // Identificador persistente no navegador
@@ -43,6 +45,7 @@ export default function VoteButton({
     });
 
     setLoading(false);
+    setVoteInProgress(false);
 
     if (res.ok) {
       localStorage.setItem(`voted_poll_${pollId}`, "true");  // Marca como votado
@@ -55,13 +58,13 @@ export default function VoteButton({
     }
   }
 
-  // Função para lidar com o clique do botão
+  // Função de clique no botão
   const handleVoteClick = () => {
     checkIfVoted(); // Verifica se o usuário já votou
     if (hasVoted) {
-      setShowConfirmDialog(true); // Exibe confirmação se já tiver votado
+      setShowConfirmDialog(true); // Exibe a confirmação se já votou
     } else {
-      vote();  // Se não tiver votado, registra o voto diretamente
+      vote();  // Se ainda não tiver votado, faz o voto diretamente
     }
   };
 
@@ -80,12 +83,13 @@ export default function VoteButton({
     <div>
       <button
         onClick={handleVoteClick}
-        disabled={loading}
+        disabled={loading || voteInProgress}
         className="block w-full p-3 border rounded-lg hover:bg-gray-100"
       >
-        {loading ? "Registrando..." : text}
+        {loading || voteInProgress ? "Registrando..." : text}
       </button>
 
+      {/* Aviso de confirmação */}
       {showConfirmDialog && (
         <div className="confirmation-dialog">
           <p>Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
