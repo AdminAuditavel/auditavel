@@ -6,12 +6,14 @@ export default function VoteButton({
   pollId,
   optionId,
   text,
-  allowMultiple
+  allowMultiple,
+  userHasVoted,
 }: {
   pollId: string;
   optionId: string;
   text: string;
-  allowMultiple: boolean;   // <--- adicionamos isso
+  allowMultiple: boolean;
+  userHasVoted: boolean;  // Adicionando o parâmetro para saber se o usuário já votou
 }) {
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -31,7 +33,7 @@ export default function VoteButton({
       body: JSON.stringify({
         poll_id: pollId,
         option_id: optionId,
-        user_hash: uid
+        user_hash: uid,
       }),
     });
 
@@ -51,18 +53,17 @@ export default function VoteButton({
   }
 
   function handleVoteClick() {
-    // Se é múltiplo → sempre votar direto, sem alerta
+    // Se for voto múltiplo, vota diretamente sem mostrar a mensagem
     if (allowMultiple) return vote();
 
-    // Se é voto único verificamos se já votou
-    const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
-
-    if (alreadyVoted) {
-      setShowConfirmDialog(true); // mensagem só no segundo voto
+    // Se já tiver votado, exibe a mensagem de confirmação
+    if (userHasVoted) {
+      setShowConfirmDialog(true);
       return;
     }
 
-    vote(); // primeiro voto
+    // Se não tiver votado, registra o voto normalmente
+    vote();
   }
 
   return (
