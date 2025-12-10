@@ -1,4 +1,4 @@
-"use client"; // Marcar como Client Component
+"use client"; // Marcar o arquivo como Client Component
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router"; // Importando useRouter
@@ -16,10 +16,10 @@ export default function PollPage() {
   const [allowMultiple, setAllowMultiple] = useState(false);
 
   useEffect(() => {
-    if (!id) return; // Aguarde até que o ID esteja disponível
+    if (!id || Array.isArray(id)) return; // Verifica se o id está disponível e não é um array
 
-    // Buscar dados da pesquisa
     const fetchPollData = async () => {
+      // Buscar dados da pesquisa
       const { data: pollData, error } = await supabase
         .from("polls")
         .select("*")
@@ -31,6 +31,7 @@ export default function PollPage() {
         setAllowMultiple(pollData.allow_multiple);
       }
 
+      // Buscar opções
       const { data: optionsData, error: optionsError } = await supabase
         .from("poll_options")
         .select("id, option_text")
@@ -43,7 +44,7 @@ export default function PollPage() {
 
   // Verificar se o usuário já votou nesta pesquisa
   useEffect(() => {
-    if (!id) return; // Não faz sentido verificar se não há ID
+    if (!id || Array.isArray(id)) return; // Verifica se o id está disponível e não é um array
 
     const checkUserVote = async () => {
       const userHash = localStorage.getItem("user_hash");
@@ -86,7 +87,7 @@ export default function PollPage() {
         {options.map((o) => (
           <VoteButton
             key={o.id}
-            pollId={id}
+            pollId={id as string}  {/* Garantindo que o id seja tratado como string */}
             optionId={o.id}
             text={o.option_text}
             allowMultiple={allowMultiple}
