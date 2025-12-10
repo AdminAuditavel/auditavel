@@ -22,20 +22,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
 
-    // Busca se já existe voto desse user nessa pesquisa
-    const { data: existing, error: existingError } = await supabase
-      .from("votes")
-      .select("id")
-      .eq("poll_id", poll_id)
-      .eq("user_hash", user_hash)
-      .maybeSingle();
-
-    if (existingError) {
-      console.log("Erro ao buscar voto existente:", existingError);
-    }
-
     // MODO A — allow_multiple = false → 1 voto por usuário, atualizável
     if (!poll.allow_multiple) {
+      // Buscar se já existe voto desse user nessa pesquisa
+      const { data: existing, error: existingError } = await supabase
+        .from("votes")
+        .select("id")
+        .eq("poll_id", poll_id)
+        .eq("user_hash", user_hash)
+        .maybeSingle();
+
+      if (existingError) {
+        console.log("Erro ao buscar voto existente (modo A):", existingError);
+      }
+
       if (existing) {
         const { error } = await supabase
           .from("votes")
@@ -70,26 +70,30 @@ export async function POST(req: NextRequest) {
     }
 
     // MODO B — allow_multiple = true
-    // Agora: permite MUDAR o voto sem erro.
-    // Se já tiver voto desse usuário, vamos atualizar em vez de quebrar.
-    if (existing) {
-      const { error } = await supabase
-        .from("votes")
-        .update({
-          option_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id);
+    // Para permitir múltiplos votos por usuário nesta pesquisa, sempre INSERIR
+    // (não atualizar o voto existente). Opcional: evitar inserir duplicata
+    // exata (mesmo poll_id + user_hash + option_id) — a seguir checamos isso.
 
-      if (error) {
-        console.log("Erro ao atualizar voto (modo B):", error);
-        return NextResponse.json({ error }, { status: 500 });
-      }
+    // Verifica se já existe exatamente o mesmo voto (mesma opção)
+    const { data: duplicate, error: dupError } = await supabase
+      .from("votes")
+      .select("id")
+      .eq("poll_id", poll_id)
+      .eq("user_hash", user_hash)
+      .eq("option_id", option_id)
+      .maybeSingle();
 
-      return NextResponse.json({ success: true, updated: true });
+    if (dupError) {
+      console.log("Erro ao checar duplicata (modo B):", dupError);
+      // Não falhar por causa dessa checagem; continuar para tentar inserir
     }
 
-    // Se ainda não tem voto desse usuário nessa pesquisa → insere novo
+    if (duplicate) {
+      // Já existe o mesmo voto -> não inserir duplicata exata. Retornar sucesso idempotente.
+      return NextResponse.json({ success: true, message: "duplicate_vote_ignored" });
+    }
+
+    // Insere nova linha de voto — cada inserção representa 1 voto
     const { error } = await supabase.from("votes").insert({
       id: randomUUID(),
       poll_id,
@@ -104,7 +108,6 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-
   } catch (e) {
     console.log("Erro interno:", e);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
