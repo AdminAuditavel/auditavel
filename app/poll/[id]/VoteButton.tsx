@@ -5,11 +5,13 @@ import { useState } from "react";
 export default function VoteButton({
   pollId,
   optionId,
-  text
+  text,
+  allowMultiple
 }: {
   pollId: string;
   optionId: string;
   text: string;
+  allowMultiple: boolean;   // <--- adicionamos isso
 }) {
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -36,7 +38,11 @@ export default function VoteButton({
     setLoading(false);
 
     if (res.ok) {
-      localStorage.setItem(`voted_poll_${pollId}`, "true");
+      // Só registra no storage se for voto único
+      if (!allowMultiple) {
+        localStorage.setItem(`voted_poll_${pollId}`, "true");
+      }
+
       alert("Voto registrado com sucesso!");
       setTimeout(() => window.location.href = `/results/${pollId}`, 800);
     } else {
@@ -45,14 +51,18 @@ export default function VoteButton({
   }
 
   function handleVoteClick() {
+    // Se é múltiplo → sempre votar direto, sem alerta
+    if (allowMultiple) return vote();
+
+    // Se é voto único verificamos se já votou
     const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
 
     if (alreadyVoted) {
-      setShowConfirmDialog(true);      // agora ativa imediatamente
+      setShowConfirmDialog(true); // mensagem só no segundo voto
       return;
     }
 
-    vote();                             // primeira vez → vota direto
+    vote(); // primeiro voto
   }
 
   return (
@@ -68,20 +78,20 @@ export default function VoteButton({
       {showConfirmDialog && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50">
           <div className="bg-white p-4 rounded shadow text-center">
-            <p className="mb-3">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
+            <p className="mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
 
             <button
               onClick={() => { setShowConfirmDialog(false); vote(); }}
               className="mr-2 p-2 bg-green-600 text-white rounded"
             >
-              Sim, alterar voto
+              Sim, alterar
             </button>
 
             <button
               onClick={() => setShowConfirmDialog(false)}
               className="p-2 bg-gray-300 rounded"
             >
-              Cancelar
+              Não
             </button>
           </div>
         </div>
