@@ -1,8 +1,8 @@
 import { supabase } from "@/lib/supabase";
-import { notFound } from "next/navigation";
+import VoteClient from "./VoteClient";
 
-export default async function PollPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PollPage({ params }: { params: { id: string } }) {
+  const id = params.id;
 
   const { data: poll } = await supabase
     .from("polls")
@@ -10,7 +10,7 @@ export default async function PollPage({ params }: { params: Promise<{ id: strin
     .eq("id", id)
     .single();
 
-  if (!poll) return notFound();
+  if (!poll) return <p>Pesquisa não encontrada.</p>;
 
   const { data: options } = await supabase
     .from("poll_options")
@@ -21,13 +21,7 @@ export default async function PollPage({ params }: { params: Promise<{ id: strin
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
-      <div className="space-y-3">
-        {options?.map(o => (
-          <button key={o.id} className="block w-full p-3 border rounded-lg hover:bg-gray-100">
-            {o.option_text}
-          </button>
-        ))}
-      </div>
+      <VoteClient pollId={id} options={options || []} />
     </main>
   );
 }
