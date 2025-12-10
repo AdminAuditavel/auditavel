@@ -1,12 +1,14 @@
-"use client";  // Marcar como Client Component
+"use client"; // Marcar o arquivo como Client Component
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router"; // Importando useRouter
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import VoteButton from "./VoteButton";
 
-export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;  // Esperando o id da pesquisa
+export default function PollPage() {
+  const router = useRouter();
+  const { id } = router.query;  // Captura o parâmetro 'id' da URL
 
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any>(null);
@@ -14,27 +16,10 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
   const [allowMultiple, setAllowMultiple] = useState(false);
 
   useEffect(() => {
-    const checkUserVote = async () => {
-      const userHash = localStorage.getItem("auditavel_uid");
-      const { data: voteData, error } = await supabase
-        .from("votes")
-        .select("option_id")
-        .eq("poll_id", id)
-        .eq("user_hash", userHash)
-        .single();
+    if (!id) return;  // Verifica se o ID está disponível
 
-      if (voteData) {
-        setUserHasVoted(true);
-      } else {
-        setUserHasVoted(false);
-      }
-    };
-
-    checkUserVote();
-  }, [id]);
-
-  useEffect(() => {
-    const fetchPoll = async () => {
+    // Buscar dados da pesquisa
+    const fetchPollData = async () => {
       const { data: pollData, error } = await supabase
         .from("polls")
         .select("*")
@@ -54,8 +39,27 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
       setOptions(optionsData || []);
     };
 
-    fetchPoll();
-  }, [id]);
+    fetchPollData();
+
+    // Verificar se o usuário já votou nesta pesquisa
+    const checkUserVote = async () => {
+      const userHash = localStorage.getItem("auditavel_uid");
+      const { data: voteData, error } = await supabase
+        .from("votes")
+        .select("option_id")
+        .eq("poll_id", id)
+        .eq("user_hash", userHash)
+        .single();
+
+      if (voteData) {
+        setUserHasVoted(true);
+      } else {
+        setUserHasVoted(false);
+      }
+    };
+
+    checkUserVote();
+  }, [id]); // O useEffect agora depende do parâmetro 'id'
 
   if (!poll) return notFound();
 
@@ -63,12 +67,12 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
-      {/* Exibir a mensagem de confirmação para pesquisa de voto único (allow_multiple=false) */}
+      {/* Mensagem para pesquisa de voto único (allow_multiple=false) */}
       {allowMultiple === false && userHasVoted && (
         <p className="text-red-500 mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
       )}
 
-      {/* Exibir a mensagem de confirmação para pesquisa de múltiplos votos (allow_multiple=true) */}
+      {/* Mensagem para pesquisa de múltiplos votos (allow_multiple=true) */}
       {allowMultiple === true && userHasVoted && (
         <p className="text-green-500 mb-4">
           Você já votou nesta pesquisa, mas pode votar novamente! Seu voto será somado ao total.
@@ -79,11 +83,11 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
         {options.map((o) => (
           <VoteButton
             key={o.id}
-            pollId={id}
+            pollId={id as string}  // Garantindo que 'id' seja tratado como string
             optionId={o.id}
             text={o.option_text}
             allowMultiple={allowMultiple}
-            userHasVoted={userHasVoted}  // Passando a informação se o usuário já votou
+            userHasVoted={userHasVoted}
           />
         ))}
       </div>
