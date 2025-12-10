@@ -1,9 +1,11 @@
+"use client";  // Marcar como Client Component
+
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import VoteButton from "./VoteButton";
 import { useState, useEffect } from "react";
 
-export default async function PollPage({ params }: { params: Promise<{ id: string }> }) {
+export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any>(null);
