@@ -1,4 +1,4 @@
-"use client"; // Marcar o arquivo como Client Component
+"use client"; // Marcar como Client Component
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router"; // Importando useRouter
@@ -8,21 +8,21 @@ import VoteButton from "./VoteButton";
 
 export default function PollPage() {
   const router = useRouter();
-  const [isMounted, setIsMounted] = useState(false); // Controle de montagem do cliente
-  const { id } = router.query; // Captura o parâmetro 'id' da URL
-
-  // Verifica se o componente foi montado
-  useEffect(() => {
-    setIsMounted(true); // Marca como montado após o componente ser renderizado
-  }, []);
-
+  const [id, setId] = useState<string | undefined>(undefined); // Definimos id como estado para garantir que será usado no cliente
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [allowMultiple, setAllowMultiple] = useState(false);
 
   useEffect(() => {
-    if (!id || !isMounted) return;  // Verifica se o ID está disponível e se estamos no cliente
+    // Apenas acessamos o id do router.query quando o componente é montado no cliente
+    if (router.query.id) {
+      setId(router.query.id as string); // Atribuindo o id do parâmetro da URL ao estado
+    }
+  }, [router.query]); // O useEffect vai rodar sempre que o router.query mudar
+
+  useEffect(() => {
+    if (!id) return; // Se o id ainda não foi definido, não faz nada
 
     // Buscar dados da pesquisa
     const fetchPollData = async () => {
@@ -65,7 +65,7 @@ export default function PollPage() {
     };
 
     checkUserVote();
-  }, [id, isMounted]);  // Atualiza quando o id ou o estado de montagem mudar
+  }, [id]); // O useEffect agora depende do parâmetro 'id'
 
   if (!poll) return notFound();
 
