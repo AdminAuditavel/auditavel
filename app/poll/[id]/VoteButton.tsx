@@ -19,7 +19,11 @@ export default function VoteButton({
   // Função para verificar se o usuário já votou
   const checkIfVoted = () => {
     const voted = localStorage.getItem(`voted_poll_${pollId}`);
-    setHasVoted(!!voted);  // Se já houver um voto, define hasVoted como true
+    if (voted) {
+      setHasVoted(true); // Atualiza o estado para true se o usuário já votou
+    } else {
+      setHasVoted(false); // Atualiza para false caso contrário
+    }
   };
 
   // Função que envia o voto
