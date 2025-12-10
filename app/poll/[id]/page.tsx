@@ -1,16 +1,46 @@
-"use client";  // Marcar como Client Component
+"use client"; // Marcar o arquivo como Client Component
 
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import VoteButton from "./VoteButton";
-import { useState, useEffect } from "react";
 
 export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  const [id, setId] = useState<string>("");
+
+  // Buscar dados da pesquisa
+  useEffect(() => {
+    const fetchPollData = async () => {
+      const { id } = await params; // Espera o parâmetro da URL
+
+      setId(id); // Armazena o ID para uso posterior
+
+      // Buscar pesquisa
+      const { data: pollData, error } = await supabase
+        .from("polls")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (pollData) {
+        setPoll(pollData);
+        setAllowMultiple(pollData.allow_multiple);
+      }
+
+      // Buscar opções
+      const { data: optionsData, error: optionsError } = await supabase
+        .from("poll_options")
+        .select("id, option_text")
+        .eq("poll_id", id);
+      setOptions(optionsData || []);
+    };
+
+    fetchPollData();
+  }, [params]); // O hook depende do parâmetro 'id'
 
   // Verificar se o usuário já votou nesta pesquisa
   useEffect(() => {
@@ -30,31 +60,8 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
       }
     };
 
-    checkUserVote();
-  }, [id]);
-
-  // Buscar dados da pesquisa
-  useEffect(() => {
-    const fetchPoll = async () => {
-      const { data: pollData, error } = await supabase
-        .from("polls")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (pollData) {
-        setPoll(pollData);
-        setAllowMultiple(pollData.allow_multiple);
-      }
-
-      const { data: optionsData, error: optionsError } = await supabase
-        .from("poll_options")
-        .select("id, option_text")
-        .eq("poll_id", id);
-      setOptions(optionsData || []);
-    };
-
-    fetchPoll();
-  }, [id]);
+    if (id) checkUserVote();
+  }, [id]); // Verifique novamente quando o ID for alterado
 
   if (!poll) return notFound();
 
