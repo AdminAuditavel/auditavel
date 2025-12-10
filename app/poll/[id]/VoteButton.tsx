@@ -16,10 +16,21 @@ export default function VoteButton({
   async function vote() {
     setLoading(true);
 
+    // Identificador persistente por navegador (MVP de unicidade)
+    let uid = localStorage.getItem("auditavel_uid");
+    if (!uid) {
+      uid = crypto.randomUUID();
+      localStorage.setItem("auditavel_uid", uid);
+    }
+
     const res = await fetch("/api/vote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ poll_id: pollId, option_id: optionId }),
+      body: JSON.stringify({
+        poll_id: pollId,
+        option_id: optionId,
+        user_hash: uid
+      }),
     });
 
     setLoading(false);
@@ -28,7 +39,7 @@ export default function VoteButton({
       alert("Voto registrado com sucesso!");
       setTimeout(() => {
         window.location.href = `/results/${pollId}`;
-      }, 800); // 0.8s para o usuário visualizar a mensagem
+      }, 800); // tempo para o usuário ver a mensagem
     } else {
       alert("Erro ao registrar voto.");
     }
