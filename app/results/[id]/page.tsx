@@ -1,15 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   const { id } = params;
 
-  // Criar client do lado do servidor (Next.js server component)
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  // Buscar dados da poll
+  // Buscar dados da poll (inclui voting_type)
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
     .select("voting_type")
@@ -17,9 +11,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     .single();
 
   if (pollError || !pollData) {
-    console.error("ERRO AO BUSCAR A POLL:", pollError);
-    console.error("ID RECEBIDO:", id);
-  
+    console.error("Erro ao buscar poll:", pollError);
     return (
       <main className="p-6 max-w-xl mx-auto">
         Erro ao carregar a enquete.
@@ -29,9 +21,9 @@ export default async function ResultsPage({ params }: { params: { id: string } }
 
   const votingType = pollData.voting_type;
 
-  // =========================================
-  // MODO 1 — VOTO ÚNICO
-  // =========================================
+  // =====================================================================
+  // RESULTADO — VOTO ÚNICO
+  // =====================================================================
   if (votingType === "single") {
     const { data: options } = await supabase
       .from("poll_options")
@@ -55,7 +47,10 @@ export default async function ResultsPage({ params }: { params: { id: string } }
         <h1 className="text-2xl font-bold mb-4">Resultados (Voto Único)</h1>
 
         {options?.map(o => (
-          <div key={o.id} className="p-3 border rounded flex justify-between">
+          <div
+            key={o.id}
+            className="p-3 border rounded flex justify-between"
+          >
             <span>{o.option_text}</span>
             <b>{count[o.id] || 0} votos</b>
           </div>
@@ -64,15 +59,27 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     );
   }
 
-  // =========================================
-  // MODO 2 — RANKING (BORDA)
-  // =========================================
+  // =====================================================================
+  // RESULTADO — RANKING (BORDA)
+  // =====================================================================
 
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  // Construção automática da URL BASE (sem depender de variável externa)
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
 
   const res = await fetch(`${baseUrl}/api/results/${id}`, {
-    cache: "no-store"
+    cache: "no-store",
   });
+
+  if (!res.ok) {
+    console.error("Erro ao buscar resultado (API):", await res.text());
+    return (
+      <main className="p-6 max-w-xl mx-auto">
+        Erro ao carregar resultados da pesquisa.
+      </main>
+    );
+  }
 
   const json = await res.json();
 
