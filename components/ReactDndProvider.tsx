@@ -4,6 +4,12 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 export default function ReactDndProvider({ children }: { children: React.ReactNode }) {
-  console.log('[ReactDndProvider] mounted'); // <-- passo único: verifica se o provider existe no DOM
-  return <DndProvider backend={HTML5Backend}>{children}</DndProvider>;
+  // marcador DOM para verificar se o provider cliente está sendo montado
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div data-react-dnd-provider="true" style={{ display: 'none' }}>
+        {children}
+      </div>
+    </DndProvider>
+  );
 }
