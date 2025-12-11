@@ -7,13 +7,16 @@ export async function POST(req: NextRequest) {
     const { poll_id, option_id, user_hash } = await req.json();
 
     if (!poll_id || !option_id || !user_hash) {
-      return NextResponse.json({ error: "missing_data" }, { status: 400 });
+      return NextResponse.json(
+        { error: "missing_data" },
+        { status: 400 }
+      );
     }
 
     // Buscar configuração da pesquisa
     const { data: poll, error: pollError } = await supabase
       .from("polls")
-      .select("allow_multiple")
+      .select("allow_multiple, vote_cooldown_seconds")
       .eq("id", poll_id)
       .single();
 
@@ -25,11 +28,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ================================================================
+    const allowMultiple = Boolean(poll.allow_multiple);
+    const cooldownSeconds = poll.vote_cooldown_seconds ?? 0;
+
+    // =========================================================================
     // MODO A — VOTO ÚNICO (allow_multiple = false)
-    // ================================================================
-    if (!poll.allow_multiple) {
-      // Verificar se já existe voto desse usuário
+    // =========================================================================
+    if (!allowMultiple) {
       const { data: existing, error: existingError } = await supabase
         .from("votes")
         .select("id")
@@ -41,7 +46,7 @@ export async function POST(req: NextRequest) {
         console.error("Erro ao buscar voto existente (modo A):", existingError);
       }
 
-      // Se já existe, atualiza a opção votada
+      // Já existe -> atualizar
       if (existing) {
         const { error } = await supabase
           .from("votes")
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, updated: true });
       }
 
-      // Se não existe, insere novo voto
+      // Não existe -> inserir
       const { error } = await supabase.from("votes").insert({
         id: randomUUID(),
         poll_id,
@@ -82,10 +87,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // ================================================================
+    // =========================================================================
     // MODO B — VOTO MÚLTIPLO (allow_multiple = true)
-    // ================================================================
+    // com COOLDOWN configurável
+    // =========================================================================
 
+    // Se houver cooldown configurado, verificar o último voto do usuário
+    if (cooldownSeconds > 0) {
+      const { data: lastVote, error: lastVoteError } = await supabase
+        .from("votes")
+        .select("created_at")
+        .eq("poll_id", poll_id)
+        .eq("user_hash", user_hash)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastVoteError) {
+        console.error("Erro ao verificar cooldown:", lastVoteError);
+      }
+
+      if (lastVote) {
+        const lastTime = new Date(lastVote.created_at).getTime();
+        const now = Date.now();
+        const cooldownEnd = lastTime + cooldownSeconds * 1000;
+
+        if (now < cooldownEnd) {
+          const remainingSeconds = Math.ceil((cooldownEnd - now) / 1000);
+
+          return NextResponse.json(
+            {
+              error: "cooldown_active",
+              message: `Você deve esperar ${remainingSeconds} segundos antes de votar novamente.`,
+              remaining_seconds: remainingSeconds
+            },
+            { status: 429 }
+          );
+        }
+      }
+    }
+
+    // Inserir voto (sempre insere, mesmo repetido)
     const { error: insertError } = await supabase.from("votes").insert({
       id: randomUUID(),
       poll_id,
