@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import VoteButton from './VoteButton';
+import RankingOption from './RankingOption';
 
 export default function PollPage() {
   const params = useParams();
@@ -95,7 +96,9 @@ export default function PollPage() {
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
       {allowMultiple === false && userHasVoted && (
-        <p className="text-red-500 mb-4">Você já votou nesta pesquisa mas pode alterar seu voto?</p>
+        <p className="text-red-500 mb-4">
+          Você já votou nesta pesquisa mas pode alterar seu voto?
+        </p>
       )}
 
       {allowMultiple === true && userHasVoted && (
@@ -104,18 +107,89 @@ export default function PollPage() {
         </p>
       )}
 
-      <div className="space-y-3">
-        {options.map((o) => (
-          <VoteButton
-            key={o.id}
-            pollId={id as string}
-            optionId={o.id}
-            text={o.option_text}
-            allowMultiple={allowMultiple}
-            userHasVoted={userHasVoted}
-          />
-        ))}
-      </div>
+      {/* ================================
+          MODO RANKING (allow_multiple = true)
+         ================================ */}
+      {allowMultiple === true ? (
+        <>
+          <p className="mb-3 text-sm text-gray-600">
+            Reorganize as opções na ordem desejada e clique em Enviar classificação.
+          </p>
+
+          <div className="space-y-2 mb-4">
+            {options.map((opt, index) => (
+              <RankingOption
+                key={opt.id}
+                text={opt.option_text}
+                index={index}
+                moveUp={() => {
+                  if (index === 0) return;
+                  const reordered = [...options];
+                  [reordered[index - 1], reordered[index]] =
+                    [reordered[index], reordered[index - 1]];
+                  setOptions(reordered);
+                }}
+                moveDown={() => {
+                  if (index === options.length - 1) return;
+                  const reordered = [...options];
+                  [reordered[index], reordered[index + 1]] =
+                    [reordered[index + 1], reordered[index]];
+                  setOptions(reordered);
+                }}
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={async () => {
+              const userHash = localStorage.getItem('auditavel_uid');
+              if (!userHash) {
+                alert("Usuário não identificado");
+                return;
+              }
+
+              const orderedIds = options.map(o => o.id);
+
+              const res = await fetch('/api/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  poll_id: id,
+                  option_ids: orderedIds,
+                  user_hash: userHash,
+                }),
+              });
+
+              const data = await res.json();
+
+              if (!res.ok) {
+                alert('Erro ao enviar classificação: ' + (data.message ?? ''));
+              } else {
+                alert('Classificação enviada com sucesso!');
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            Enviar classificação
+          </button>
+        </>
+      ) : (
+        /* ================================
+            MODO VOTO ÚNICO (unchanged)
+           ================================ */
+        <div className="space-y-3">
+          {options.map((o) => (
+            <VoteButton
+              key={o.id}
+              pollId={id as string}
+              optionId={o.id}
+              text={o.option_text}
+              allowMultiple={allowMultiple}
+              userHasVoted={userHasVoted}
+            />
+          ))}
+        </div>
+      )}
     </main>
   );
 }
