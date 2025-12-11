@@ -39,7 +39,7 @@ export default function PollPage() {
 
         setPoll(pollData);
         setAllowMultiple(Boolean(pollData.allow_multiple));
-        setVotingType(pollData.voting_type); // <-- AQUI ESTÁ A CORREÇÃO
+        setVotingType(pollData.voting_type);
 
         const { data: optionsData } = await supabase
           .from('poll_options')
@@ -109,9 +109,9 @@ export default function PollPage() {
         </p>
       )}
 
-      {/* =====================================================================
+      {/* =======================================================
           MODO RANKING (voting_type = "ranking")
-         ===================================================================== */}
+      ======================================================= */}
       {votingType === "ranking" ? (
         <>
           <p className="mb-3 text-sm text-gray-600">
@@ -168,11 +168,9 @@ export default function PollPage() {
                 alert('Erro ao enviar classificação: ' + (data.message ?? data.error ?? 'Erro desconhecido'));
                 return;
               }
-              
-              // Redirecionamento automático
-              window.location.href = `/results/${id}`;
-              return;
 
+              // redirecionamento automático
+              window.location.href = `/results/${id}`;
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded"
           >
@@ -180,9 +178,9 @@ export default function PollPage() {
           </button>
         </>
       ) : (
-        /* =====================================================================
+        /* =======================================================
             MODO VOTO ÚNICO (voting_type = "single")
-           ===================================================================== */
+        ======================================================= */
         <div className="space-y-3">
           {options.map((o) => (
             <VoteButton
