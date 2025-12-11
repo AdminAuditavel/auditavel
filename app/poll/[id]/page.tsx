@@ -165,10 +165,14 @@ export default function PollPage() {
               const data = await res.json();
 
               if (!res.ok) {
-                alert('Erro ao enviar classificação: ' + (data.message ?? ''));
-              } else {
-                alert('Classificação enviada com sucesso!');
+                alert('Erro ao enviar classificação: ' + (data.message ?? data.error ?? 'Erro desconhecido'));
+                return;
               }
+              
+              // Redirecionamento automático
+              window.location.href = `/results/${id}`;
+              return;
+
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded"
           >
