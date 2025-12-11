@@ -6,13 +6,31 @@ import { supabase } from '@/lib/supabase';
 import VoteButton from './VoteButton';
 import RankingVote from '../../../components/RankingVote';
 
+interface Poll {
+  id: string;
+  title: string;
+  voting_type: string;
+  allow_multiple?: boolean;
+}
+
+interface PollOptionRow {
+  id: string;
+  option_text: string;
+  // outros campos do row, se existirem
+}
+
+interface Option {
+  id: string;
+  text: string;
+}
+
 export default function PollPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
 
-  const [poll, setPoll] = useState<any | null>(null);
-  const [options, setOptions] = useState<any[]>([]);
+  const [poll, setPoll] = useState<Poll | null>(null);
+  const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,16 +53,24 @@ export default function PollPage() {
 
       if (!mounted) return;
 
-      setPoll(pollData);
+      setPoll(pollData as Poll);
 
       // Carrega opções da pesquisa
       const { data: optionsData } = await supabase
         .from('poll_options')
         .select('*')
-        .eq('poll_id', id);
+        .eq('poll_id', id)
+        .order('created_at', { ascending: true });
 
       if (mounted) {
-        setOptions(optionsData ?? []);
+        // Mapeia os rows para o formato que RankingVote espera: { id, text }
+        const mapped: Option[] = (optionsData as PollOptionRow[] | null)
+          ? (optionsData as PollOptionRow[]).map((row) => ({
+              id: row.id,
+              text: row.option_text,
+            }))
+          : [];
+        setOptions(mapped);
         setLoading(false);
       }
     };
@@ -64,18 +90,20 @@ export default function PollPage() {
 
       {/* Se for votação de RANKING */}
       {poll.voting_type === 'ranking' && (
-        <RankingVote pollId={id} options={options} />
+        <RankingVote pollId={id!} options={options} />
       )}
 
       {/* Se for votação NORMAL (single ou multiple) */}
       {poll.voting_type === 'single' && (
         <div className="space-y-3">
           {options.map(o => (
+            // para votação single, usamos o.option_text original no VoteButton;
+            // aqui a variável o tem a forma { id, text }, então passamos text.
             <VoteButton
               key={o.id}
-              pollId={id}
+              pollId={id!}
               optionId={o.id}
-              text={o.option_text}
+              text={o.text}
               allowMultiple={poll.allow_multiple}
               userHasVoted={false}
             />
