@@ -40,31 +40,50 @@ export default function VoteButton({
         user_hash: uid,
       };
 
-      // Para permitir múltiplos votos, usamos INSERT para adicionar uma nova linha de voto
-      if (allowMultiple) {
-        const res = await fetch('/api/vote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(voteData),
-        });
+      const res = await fetch('/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(voteData),
+      });
 
-        if (!res.ok) throw new Error('Erro ao registrar o voto');
-      } else {
-        // Se for voto único, usamos UPsert para garantir que o voto anterior seja substituído
-        const res = await fetch('/api/vote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(voteData),
-        });
+      // ------------------------------------------------------
+      // TRATAMENTO ESPECÍFICO PARA COOLDOWN
+      // ------------------------------------------------------
+      if (!res.ok) {
+        let errorText = "Erro ao registrar voto.";
 
-        if (!res.ok) throw new Error('Erro ao registrar o voto');
+        try {
+          const json = await res.json();
+
+          // Cooldown detectado
+          if (json.error === "cooldown_active") {
+            const secs = json.remaining_seconds ?? 0;
+            errorText = `Você deve esperar ${secs} segundo${secs > 1 ? "s" : ""} antes de votar novamente.`;
+          }
+          else if (json.message) {
+            errorText = json.message;
+          }
+          else if (json.error) {
+            errorText = json.error;
+          }
+        } catch {
+          // JSON inválido — mantemos erro genérico
+        }
+
+        setLoading(false);
+        setMessage({ text: errorText, type: "error" });
+        return;
       }
 
+      // ------------------------------------------------------
+      // SUCESSO
+      // ------------------------------------------------------
       setMessage({ text: 'Voto registrado com sucesso!', type: 'success' });
 
       setTimeout(() => {
         router.push(`/results/${pollId}`);
       }, 700);
+
     } catch (err) {
       console.error('Erro ao registrar voto:', err);
       setLoading(false);
@@ -74,10 +93,8 @@ export default function VoteButton({
 
   function handleVoteClick() {
     if (allowMultiple) {
-      // Se permitir múltiplos votos, vota diretamente
       vote();
     } else {
-      // Se for voto único, verifica se já votou
       const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
       if (alreadyVoted) {
         setMessage({
