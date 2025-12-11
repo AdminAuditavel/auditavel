@@ -58,7 +58,11 @@ export default async function ResultsPage({ params }: { params: { id: string } }
   // =========================================
   // MODO 2 — RANKING (BORDA)
   // =========================================
-  const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/results/${id}`, {
+
+  // Garante que não existe barra final e que não é undefined
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+
+  const res = await fetch(`${baseUrl}/api/results/${id}`, {
     cache: "no-store"
   });
 
