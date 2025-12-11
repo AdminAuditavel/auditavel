@@ -1,3 +1,4 @@
+// app/api/vote/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
@@ -19,10 +20,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Buscar configuração da pesquisa
+    // Buscar configuração da pesquisa (agora incluindo voting_type)
     const { data: poll, error: pollError } = await supabase
       .from("polls")
-      .select("allow_multiple, vote_cooldown_seconds")
+      .select("allow_multiple, vote_cooldown_seconds, voting_type")
       .eq("id", poll_id)
       .single();
 
@@ -36,9 +37,20 @@ export async function POST(req: NextRequest) {
 
     const allowMultiple = Boolean(poll.allow_multiple);
     const cooldownSeconds = poll.vote_cooldown_seconds ?? 0;
+    const votingType = (poll.voting_type ?? "single") as string;
 
-    // If client sent a ranking (option_ids array) -> treat as ranking vote
+    // =========================
+    // RANKING (option_ids array)
+    // =========================
     if (Array.isArray(option_ids)) {
+      // Ensure poll expects ranking
+      if (votingType !== "ranking") {
+        return NextResponse.json(
+          { error: "ranking_not_allowed", message: "This poll is not configured for ranking votes" },
+          { status: 400 }
+        );
+      }
+
       if (option_ids.length === 0) {
         return NextResponse.json(
           { error: "invalid_data", message: "option_ids must contain at least one id" },
@@ -46,14 +58,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (!allowMultiple) {
-        return NextResponse.json(
-          { error: "ranking_not_allowed", message: "This poll does not allow multiple/ranking votes" },
-          { status: 400 }
-        );
-      }
-
-      // Cooldown check (same as MODO B)
+      // Cooldown check
       if (cooldownSeconds > 0) {
         const { data: lastVote, error: lastVoteError } = await supabase
           .from("votes")
@@ -88,31 +93,102 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Borda-style scoring: first gets N points, second N-1, ... last gets 1
-      const n = option_ids.length;
-      const rows = option_ids.map((optId: string, idx: number) => ({
-        id: randomUUID(),
+      // Se allow_multiple = false -> remover votos anteriores desse usuário (ranking e vote pai)
+      if (!allowMultiple) {
+        try {
+          // buscar votes anteriores (ids)
+          const { data: previousVotes, error: prevSelectErr } = await supabase
+            .from("votes")
+            .select("id")
+            .eq("poll_id", poll_id)
+            .eq("user_hash", user_hash);
+
+          if (prevSelectErr) {
+            console.error("Erro ao selecionar votos anteriores (ranking):", prevSelectErr);
+          } else if (previousVotes && previousVotes.length > 0) {
+            const prevIds = previousVotes.map((v: any) => v.id);
+
+            // deletar vote_rankings associados
+            const { error: deleteRankingsErr } = await supabase
+              .from("vote_rankings")
+              .delete()
+              .in("vote_id", prevIds);
+
+            if (deleteRankingsErr) {
+              console.error("Erro ao deletar vote_rankings anteriores:", deleteRankingsErr);
+            }
+
+            // deletar votes pai antigos
+            const { error: deleteVotesErr } = await supabase
+              .from("votes")
+              .delete()
+              .in("id", prevIds);
+
+            if (deleteVotesErr) {
+              console.error("Erro ao deletar votes anteriores:", deleteVotesErr);
+            }
+          }
+        } catch (e) {
+          console.error("Erro ao limpar votos anteriores (ranking):", e);
+        }
+      }
+
+      // 1) Criar vote pai
+      const parentVoteId = randomUUID();
+      const parentPayload: any = {
+        id: parentVoteId,
         poll_id,
-        option_id: optId,
         user_hash,
-        votes_count: n - idx, // points
-      }));
+      };
 
-      const { error: insertError } = await supabase.from("votes").insert(rows);
+      // insert vote pai
+      const { data: parentVoteData, error: parentVoteError } = await supabase
+        .from("votes")
+        .insert(parentPayload)
+        .select("id")
+        .single();
 
-      if (insertError) {
-        console.error("Erro ao inserir votos (ranking):", insertError);
+      if (parentVoteError || !parentVoteData) {
+        console.error("Erro ao inserir vote pai (ranking):", parentVoteError);
         return NextResponse.json(
-          { error: "insert_failed", details: insertError.message ?? insertError },
+          { error: "parent_vote_insert_failed", details: parentVoteError?.message ?? parentVoteError },
           { status: 500 }
         );
       }
 
-      return NextResponse.json({ success: true, inserted: rows.length });
+      const voteId = parentVoteData.id ?? parentVoteId;
+
+      // 2) Inserir linhas em vote_rankings
+      const rows = option_ids.map((optId: string, idx: number) => ({
+        id: randomUUID(),
+        vote_id: voteId,
+        option_id: optId,
+        ranking: idx + 1,
+      }));
+
+      const { error: insertRankingError } = await supabase.from("vote_rankings").insert(rows);
+
+      if (insertRankingError) {
+        console.error("Erro ao inserir vote_rankings (ranking):", insertRankingError);
+        // tentativa de rollback simples: remover vote pai criado
+        try {
+          await supabase.from("vote_rankings").delete().in("vote_id", [voteId]);
+          await supabase.from("votes").delete().eq("id", voteId);
+        } catch (rollbackErr) {
+          console.error("Erro no rollback após falha ao inserir rankings:", rollbackErr);
+        }
+
+        return NextResponse.json(
+          { error: "insert_failed", details: insertRankingError.message ?? insertRankingError },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, vote_id: voteId, inserted: rows.length });
     }
 
     // =========================================================================
-    // MODO A — VOTO ÚNICO (option_id supplied)
+    // MODO A — VOTO ÚNICO (option_id supplied) — fluxo existente (sem mudança)
     // =========================================================================
     if (!option_id) {
       return NextResponse.json(
