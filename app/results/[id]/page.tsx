@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   const { id } = params;
