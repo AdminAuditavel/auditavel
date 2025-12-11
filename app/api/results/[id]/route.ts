@@ -1,12 +1,13 @@
-// app/api/results/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } | Promise<{ id: string }> }
 ) {
-  const poll_id = params.id;
+  // Compatibilidade: params pode ser um objeto ou uma Promise<{ id: string }>
+  const { params } = context;
+  const { id: poll_id } = (await params) as { id: string };
 
   // 1) contar opções da poll
   const { data: optionsList, error: optionsErr } = await supabase
@@ -16,12 +17,18 @@ export async function GET(
 
   if (optionsErr) {
     console.error("Erro ao obter opções:", optionsErr);
-    return NextResponse.json({ error: "options_fetch_error", details: optionsErr.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "options_fetch_error", details: optionsErr.message },
+      { status: 500 }
+    );
   }
 
-  const numOptions = (optionsList?.length ?? 0);
+  const numOptions = optionsList?.length ?? 0;
   if (numOptions === 0) {
-    return NextResponse.json({ error: "no_options", message: "No options found for poll" }, { status: 404 });
+    return NextResponse.json(
+      { error: "no_options", message: "No options found for poll" },
+      { status: 404 }
+    );
   }
 
   // 2) buscar vote_rankings relacionados à poll (join via poll_options)
@@ -31,24 +38,30 @@ export async function GET(
     .select("option_id, ranking, poll_options(option_text)")
     .in(
       "option_id",
-      optionsList.map((o: any) => o.id)
+      (optionsList as any[]).map((o: any) => o.id)
     );
 
   if (rankingsErr) {
     console.error("Erro ao obter vote_rankings:", rankingsErr);
-    return NextResponse.json({ error: "rankings_fetch_error", details: rankingsErr.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "rankings_fetch_error", details: rankingsErr.message },
+      { status: 500 }
+    );
   }
 
   // 3) agregar Borda
-  const scores: Record<string, {
-    option_text: string;
-    score: number;
-    counts_per_position?: Record<number, number>;
-    total_rankings: number;
-  }> = {};
+  const scores: Record<
+    string,
+    {
+      option_text: string;
+      score: number;
+      counts_per_position?: Record<number, number>;
+      total_rankings: number;
+    }
+  > = {};
 
   // initialize scores with option list to ensure options with zero votes appear
-  for (const o of optionsList) {
+  for (const o of optionsList as any[]) {
     scores[o.id] = {
       option_text: o.option_text,
       score: 0,
@@ -83,13 +96,15 @@ export async function GET(
   });
 
   // 4) prepare result array and sort
-  const result = Object.entries(scores).map(([option_id, obj]) => ({
-    option_id,
-    option_text: obj.option_text,
-    score: obj.score,
-    total_rankings: obj.total_rankings,
-    counts_per_position: obj.counts_per_position,
-  })).sort((a, b) => b.score - a.score);
+  const result = Object.entries(scores)
+    .map(([option_id, obj]) => ({
+      option_id,
+      option_text: obj.option_text,
+      score: obj.score,
+      total_rankings: obj.total_rankings,
+      counts_per_position: obj.counts_per_position,
+    }))
+    .sort((a, b) => b.score - a.score);
 
   return NextResponse.json({ poll_id, num_options: numOptions, result });
 }
