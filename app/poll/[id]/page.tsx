@@ -15,6 +15,7 @@ export default function PollPage() {
   const [poll, setPoll] = useState<any | null>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function PollPage() {
 
         setPoll(pollData);
         setAllowMultiple(Boolean(pollData.allow_multiple));
+        setVotingType(pollData.voting_type); // <-- AQUI ESTÁ A CORREÇÃO
 
         const { data: optionsData } = await supabase
           .from('poll_options')
@@ -107,10 +109,10 @@ export default function PollPage() {
         </p>
       )}
 
-      {/* ================================
-          MODO RANKING (allow_multiple = true)
-         ================================ */}
-      {allowMultiple === true ? (
+      {/* =====================================================================
+          MODO RANKING (voting_type = "ranking")
+         ===================================================================== */}
+      {votingType === "ranking" ? (
         <>
           <p className="mb-3 text-sm text-gray-600">
             Reorganize as opções na ordem desejada e clique em Enviar classificação.
@@ -174,9 +176,9 @@ export default function PollPage() {
           </button>
         </>
       ) : (
-        /* ================================
-            MODO VOTO ÚNICO (unchanged)
-           ================================ */
+        /* =====================================================================
+            MODO VOTO ÚNICO (voting_type = "single")
+           ===================================================================== */
         <div className="space-y-3">
           {options.map((o) => (
             <VoteButton
