@@ -46,9 +46,6 @@ export default function VoteButton({
         body: JSON.stringify(voteData),
       });
 
-      // ------------------------------------------------------
-      // TRATAMENTO DE ERRO / COOLDOWN
-      // ------------------------------------------------------
       if (!res.ok) {
         let errorText = "Erro ao registrar voto.";
 
@@ -65,19 +62,14 @@ export default function VoteButton({
           else if (json.error) {
             errorText = json.error;
           }
-
-        } catch {
-          // mantém erro genérico
-        }
+        } catch {}
 
         setLoading(false);
         setMessage({ text: errorText, type: "error" });
         return;
       }
 
-      // ------------------------------------------------------
-      // SUCESSO: Redirecionar imediatamente para resultados
-      // ------------------------------------------------------
+      // sucesso → redireciona
       router.push(`/results/${pollId}`);
       return;
 
@@ -91,4 +83,38 @@ export default function VoteButton({
   function handleVoteClick() {
     if (allowMultiple) {
       vote();
-    } el
+    } else {
+      const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
+      if (alreadyVoted) {
+        setMessage({
+          text: 'Você já votou nesta pesquisa. Deseja alterar seu voto?',
+          type: 'error',
+        });
+      } else {
+        vote();
+      }
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={handleVoteClick}
+        disabled={loading}
+        className="block w-full p-3 border rounded-lg hover:bg-gray-100 disabled:opacity-60"
+        aria-disabled={loading}
+      >
+        {loading ? 'Registrando...' : text}
+      </button>
+
+      {message && (
+        <p
+          className={`mt-2 text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+          role={message.type === 'error' ? 'alert' : undefined}
+        >
+          {message.text}
+        </p>
+      )}
+    </div>
+  );
+}
