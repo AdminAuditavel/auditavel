@@ -19,11 +19,17 @@ export async function POST(req: NextRequest) {
 
     if (pollError || !poll) {
       console.error("Erro ao buscar poll:", pollError);
-      return NextResponse.json({ error: "poll_not_found", details: pollError?.message ?? null }, { status: 404 });
+      return NextResponse.json(
+        { error: "poll_not_found", details: pollError?.message ?? null },
+        { status: 404 }
+      );
     }
 
-    // MODO A — voto único (atualiza ou insere)
+    // ================================================================
+    // MODO A — VOTO ÚNICO (allow_multiple = false)
+    // ================================================================
     if (!poll.allow_multiple) {
+      // Verificar se já existe voto desse usuário
       const { data: existing, error: existingError } = await supabase
         .from("votes")
         .select("id")
@@ -35,6 +41,7 @@ export async function POST(req: NextRequest) {
         console.error("Erro ao buscar voto existente (modo A):", existingError);
       }
 
+      // Se já existe, atualiza a opção votada
       if (existing) {
         const { error } = await supabase
           .from("votes")
@@ -46,12 +53,16 @@ export async function POST(req: NextRequest) {
 
         if (error) {
           console.error("Erro ao atualizar voto (modo A):", error);
-          return NextResponse.json({ error: "update_failed", details: error.message ?? error }, { status: 500 });
+          return NextResponse.json(
+            { error: "update_failed", details: error.message ?? error },
+            { status: 500 }
+          );
         }
 
         return NextResponse.json({ success: true, updated: true });
       }
 
+      // Se não existe, insere novo voto
       const { error } = await supabase.from("votes").insert({
         id: randomUUID(),
         poll_id,
@@ -62,32 +73,20 @@ export async function POST(req: NextRequest) {
 
       if (error) {
         console.error("Erro ao inserir voto (modo A):", error);
-        return NextResponse.json({ error: "insert_failed", details: error.message ?? error }, { status: 500 });
+        return NextResponse.json(
+          { error: "insert_failed", details: error.message ?? error },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({ success: true });
     }
 
-    // MODO B — allow_multiple = true (sempre inserir, ignorar duplicata exata)
-    const { data: duplicate, error: dupError } = await supabase
-      .from("votes")
-      .select("id")
-      .eq("poll_id", poll_id)
-      .eq("user_hash", user_hash)
-      .eq("option_id", option_id)
-      .maybeSingle();
+    // ================================================================
+    // MODO B — VOTO MÚLTIPLO (allow_multiple = true)
+    // ================================================================
 
-    if (dupError) {
-      console.error("Erro ao checar duplicata (modo B):", dupError);
-      // prosseguir para inserir e reportar erro se ocorrer
-    }
-
-    if (duplicate) {
-      // duplicata exata — idempotente
-      return NextResponse.json({ success: true, message: "duplicate_vote_ignored" });
-    }
-
-    const { error } = await supabase.from("votes").insert({
+    const { error: insertError } = await supabase.from("votes").insert({
       id: randomUUID(),
       poll_id,
       option_id,
@@ -95,15 +94,21 @@ export async function POST(req: NextRequest) {
       votes_count: 1,
     });
 
-    if (error) {
-      console.error("Erro ao inserir voto (modo B):", error);
-      // Retorna detalhes do erro para o cliente (temporário, para debug)
-      return NextResponse.json({ error: "insert_failed", details: error.message ?? error }, { status: 500 });
+    if (insertError) {
+      console.error("Erro ao inserir voto (modo B):", insertError);
+      return NextResponse.json(
+        { error: "insert_failed", details: insertError.message ?? insertError },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true });
+
   } catch (e) {
     console.error("Erro interno:", e);
-    return NextResponse.json({ error: "internal_error", details: String(e) }, { status: 500 });
+    return NextResponse.json(
+      { error: "internal_error", details: String(e) },
+      { status: 500 }
+    );
   }
 }
