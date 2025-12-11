@@ -1,15 +1,12 @@
-'use client';
 import React from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 
+/**
+ * Passthrough provider para evitar que a build quebre quando
+ * react-dnd-html5-backend não estiver instalado.
+ *
+ * Se quiser reativar o react-dnd no futuro, substitua este ficheiro
+ * pelo provider original que importa DndProvider + backend.
+ */
 export default function ReactDndProvider({ children }: { children: React.ReactNode }) {
-  // marcador DOM para verificar se o provider cliente está sendo montado
-  return (
-    <DndProvider backend={HTML5Backend}>
-      <div data-react-dnd-provider="true" style={{ display: 'none' }}>
-        {children}
-      </div>
-    </DndProvider>
-  );
+  return <>{children}</>;
 }
