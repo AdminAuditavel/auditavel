@@ -12,27 +12,52 @@ const ItemType = 'OPTION';  // Tipo do item para o drag and drop
 
 // Componente para cada opção
 function DraggableOption({ option, index, moveOption }: any) {
-  const [{ isDragging }, drag] = useDrag(() => ({
+  const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemType,
-    item: { index },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
+    item: { index, id: option.id },
+    collect: (monitor) => {
+      const dragging = monitor.isDragging();
+      // log a cada coleta para ver se o hook está ativo
+      console.log(`[react-dnd] collect option=${option.id} index=${index} isDragging=${dragging}`);
+      return {
+        isDragging: dragging,
+      };
+    },
+    begin: () => {
+      console.log(`[react-dnd] begin drag option=${option.id} index=${index}`);
+    },
+    end: (item, monitor) => {
+      console.log(
+        `[react-dnd] end drag option=${option.id} index=${index} dropped=${monitor.didDrop()}`,
+        'item',
+        item,
+        'dropResult',
+        monitor.getDropResult?.()
+      );
+    },
   }));
 
   const [, drop] = useDrop(() => ({
     accept: ItemType,
     hover: (item: any) => {
+      // log para verificar eventos hover e índices
+      console.log(`[react-dnd] hover targetIndex=${index} incomingIndex=${item.index}`);
       if (item.index !== index) {
         moveOption(item.index, index);
         item.index = index;
       }
     },
+    drop: (item: any, monitor) => {
+      console.log(`[react-dnd] drop on index=${index} itemIndex=${item.index}`);
+      return { droppedOn: index };
+    },
   }));
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => {
+        drag(drop(node));
+      }}
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: 'move',
@@ -41,6 +66,7 @@ function DraggableOption({ option, index, moveOption }: any) {
         borderRadius: '5px',
         marginBottom: '5px',
       }}
+      data-test-option-id={option.id}
     >
       {option.text}
     </div>
@@ -50,7 +76,10 @@ function DraggableOption({ option, index, moveOption }: any) {
 export default function RankingVote({ options, pollId }: RankingVoteProps) {
   const [ranking, setRanking] = useState(options.map((option) => option.id)); // Inicializa com a ordem original
 
+  console.log('RankingVote mounted, options:', options.map(o => o.id));
+
   const moveOption = (fromIndex: number, toIndex: number) => {
+    console.log(`moveOption from ${fromIndex} to ${toIndex}`);
     const updatedRanking = [...ranking];
     const [movedItem] = updatedRanking.splice(fromIndex, 1);
     updatedRanking.splice(toIndex, 0, movedItem);
@@ -72,7 +101,6 @@ export default function RankingVote({ options, pollId }: RankingVoteProps) {
 
       if (res.ok) {
         alert('Voto registrado com sucesso!');
-        // Redirecionar para resultados ou outra página
       } else {
         alert('Erro ao registrar voto.');
       }
