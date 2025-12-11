@@ -1,9 +1,15 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   const { id } = params;
 
-  // Buscar dados da poll (precisamos do voting_type)
+  // Criar client do lado do servidor (Next.js server component)
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  // Buscar dados da poll
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
     .select("voting_type")
@@ -21,7 +27,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
   const votingType = pollData.voting_type;
 
   // =========================================
-  // MODO 1 — RESULTADO DE VOTAÇÃO SIMPLES
+  // MODO 1 — VOTO ÚNICO
   // =========================================
   if (votingType === "single") {
     const { data: options } = await supabase
@@ -59,7 +65,6 @@ export default async function ResultsPage({ params }: { params: { id: string } }
   // MODO 2 — RANKING (BORDA)
   // =========================================
 
-  // Garante que não existe barra final e que não é undefined
   const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
 
   const res = await fetch(`${baseUrl}/api/results/${id}`, {
