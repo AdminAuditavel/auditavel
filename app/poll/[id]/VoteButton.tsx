@@ -47,7 +47,7 @@ export default function VoteButton({
       });
 
       // ------------------------------------------------------
-      // TRATAMENTO ESPECÍFICO PARA COOLDOWN
+      // TRATAMENTO DE ERRO / COOLDOWN
       // ------------------------------------------------------
       if (!res.ok) {
         let errorText = "Erro ao registrar voto.";
@@ -55,7 +55,6 @@ export default function VoteButton({
         try {
           const json = await res.json();
 
-          // Cooldown detectado
           if (json.error === "cooldown_active") {
             const secs = json.remaining_seconds ?? 0;
             errorText = `Você deve esperar ${secs} segundo${secs > 1 ? "s" : ""} antes de votar novamente.`;
@@ -66,8 +65,9 @@ export default function VoteButton({
           else if (json.error) {
             errorText = json.error;
           }
+
         } catch {
-          // JSON inválido — mantemos erro genérico
+          // mantém erro genérico
         }
 
         setLoading(false);
@@ -76,13 +76,10 @@ export default function VoteButton({
       }
 
       // ------------------------------------------------------
-      // SUCESSO
+      // SUCESSO: Redirecionar imediatamente para resultados
       // ------------------------------------------------------
-      setMessage({ text: 'Voto registrado com sucesso!', type: 'success' });
-
-      setTimeout(() => {
-        router.push(`/results/${pollId}`);
-      }, 700);
+      router.push(`/results/${pollId}`);
+      return;
 
     } catch (err) {
       console.error('Erro ao registrar voto:', err);
@@ -94,38 +91,4 @@ export default function VoteButton({
   function handleVoteClick() {
     if (allowMultiple) {
       vote();
-    } else {
-      const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
-      if (alreadyVoted) {
-        setMessage({
-          text: 'Você já votou nesta pesquisa. Deseja alterar seu voto?',
-          type: 'error',
-        });
-      } else {
-        vote();
-      }
-    }
-  }
-
-  return (
-    <div>
-      <button
-        onClick={handleVoteClick}
-        disabled={loading}
-        className="block w-full p-3 border rounded-lg hover:bg-gray-100 disabled:opacity-60"
-        aria-disabled={loading}
-      >
-        {loading ? 'Registrando...' : text}
-      </button>
-
-      {message && (
-        <p
-          className={`mt-2 text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
-          role={message.type === 'error' ? 'alert' : undefined}
-        >
-          {message.text}
-        </p>
-      )}
-    </div>
-  );
-}
+    } el
