@@ -1,269 +1,252 @@
-'use server';
-import React from 'react';
-import type { Metadata } from 'next';
-import { supabase } from '@/lib/supabase';
+// app/api/vote/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+import { randomUUID } from "crypto";
 
-interface Poll {
-  id: string;
-  title: string;
-  voting_type: string;
-  allow_multiple?: boolean;
-}
-
-interface PollOptionRow {
-  id: string;
-  option_text: string;
-  created_at?: string;
-}
-
-interface Option {
-  id: string;
-  text: string;
-}
-
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const pollId = params.id;
+export async function POST(req: NextRequest) {
   try {
-    const { data: poll } = await supabase
-      .from('polls')
-      .select('title')
-      .eq('id', pollId)
+    const body = await req.json();
+    const { poll_id, option_id, option_ids, user_hash } = body;
+
+    if (!poll_id || !user_hash || (!option_id && !Array.isArray(option_ids))) {
+      return NextResponse.json({ error: "missing_data" }, { status: 400 });
+    }
+
+    // Carrega configuração da poll
+    const { data: poll, error: pollErr } = await supabase
+      .from("polls")
+      .select("allow_multiple, voting_type, vote_cooldown_seconds, max_votes_per_user")
+      .eq("id", poll_id)
       .single();
 
-    return {
-      title: poll?.title ?? 'Poll',
-      description: `Vote on poll ${pollId}`,
-    };
-  } catch {
-    return {
-      title: 'Poll',
-      description: `Vote on poll ${pollId}`,
-    };
-  }
-}
-
-export default async function PollPage({ params }: { params: { id: string } }) {
-  const pollId = params.id;
-
-  // Buscar poll
-  const { data: pollData, error: pollErr } = await supabase
-    .from('polls')
-    .select('*')
-    .eq('id', pollId)
-    .single();
-
-  if (pollErr || !pollData) {
-    return (
-      <main className="p-6 max-w-xl mx-auto">
-        <p>Enquete não encontrada.</p>
-      </main>
-    );
-  }
-
-  // Buscar opções do poll no servidor
-  const { data: optionsData } = await supabase
-    .from('poll_options')
-    .select('id, option_text, created_at')
-    .eq('poll_id', pollId)
-    .order('created_at', { ascending: true });
-
-  const options: Option[] = (optionsData as PollOptionRow[] | null)
-    ? (optionsData as PollOptionRow[]).map((row) => ({
-        id: row.id,
-        text: row.option_text,
-      }))
-    : [];
-
-  const poll = pollData as Poll;
-
-  // Render server-side HTML + minimal client JS to manipulate the DOM and submit vote
-  return (
-    <main className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
-
-      {poll.voting_type === 'ranking' ? (
-        <>
-          <p className="mb-3 text-sm text-gray-600">Use os botões ▲/▼ para ordenar as opções e depois clique em "Submeter Classificação".</p>
-
-          <div id="ranking-container">
-            <div id="options-list" className="space-y-3" aria-label="Ranking de opções">
-              {options.map((o, idx) => (
-                <div
-                  key={o.id}
-                  data-option-id={o.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg bg-white"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                >
-                  <span style={{ width: 28, textAlign: 'center', fontWeight: 600 }}>{idx + 1}</span>
-                  <div style={{ flex: 1 }}>{o.text}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <button type="button" data-action="up" aria-label={`Mover ${o.text} para cima`} className="px-2 py-1 bg-gray-100 border rounded">
-                      ▲
-                    </button>
-                    <button type="button" data-action="down" aria-label={`Mover ${o.text} para baixo`} className="px-2 py-1 bg-gray-100 border rounded">
-                      ▼
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 16 }}>
-              <button id="submit-vote" className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Submeter Classificação</button>
-            </div>
-          </div>
-
-          {/* Inline script: minimal vanilla JS para mover itens e submeter voto */}
-          <script
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{
-              __html: `
-(function(){
-  const pollId = ${JSON.stringify(pollId)};
-  const list = document.getElementById('options-list');
-  if (!list) return;
-
-  // Atualiza os números à esquerda (1,2,3)
-  function refreshIndexes() {
-    Array.from(list.children).forEach((el, i) => {
-      const idxSpan = el.querySelector('span');
-      if (idxSpan) idxSpan.textContent = String(i + 1);
-    });
-  }
-
-  // Delegated click handler para os botões up/down
-  list.addEventListener('click', function(e) {
-    const btn = e.target.closest('button[data-action]');
-    if (!btn) return;
-    const action = btn.getAttribute('data-action');
-    const item = btn.closest('[data-option-id]');
-    if (!item) return;
-
-    if (action === 'up') {
-      const prev = item.previousElementSibling;
-      if (prev) list.insertBefore(item, prev);
-    } else if (action === 'down') {
-      const next = item.nextElementSibling;
-      if (next) list.insertBefore(next, item.nextElementSibling?.nextElementSibling || null);
+    if (pollErr || !poll) {
+      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
-    refreshIndexes();
-  });
 
-  // Gera/pega user_hash do localStorage
-  function getUserHash() {
-    try {
-      let h = localStorage.getItem('user_hash');
-      if (!h) {
-        if (window.crypto && 'randomUUID' in window.crypto) {
-          h = window.crypto.randomUUID();
-        } else {
-          h = 'uid_' + Math.random().toString(36).slice(2,10);
+    const allowMultiple: boolean = Boolean(poll.allow_multiple);
+    const votingType: string = poll.voting_type ?? "single";
+    const cooldownSeconds: number | null = poll.vote_cooldown_seconds ?? null;
+    const maxVotesPerUser: number | null = poll.max_votes_per_user ?? null;
+
+    // --- RANKING PATH ---
+    if (votingType === "ranking") {
+      // option_ids expected
+      const ids: string[] = Array.isArray(option_ids) ? option_ids : [];
+      if (ids.length === 0) {
+        return NextResponse.json({ error: "missing_option_ids" }, { status: 400 });
+      }
+
+      // cooldown check (if configured)
+      if (cooldownSeconds) {
+        // busca último voto do user nesta poll
+        const { data: lastVoteData } = await supabase
+          .from("votes")
+          .select("created_at")
+          .eq("poll_id", poll_id)
+          .eq("user_hash", user_hash)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (lastVoteData?.created_at) {
+          const lastTs = new Date(lastVoteData.created_at).getTime();
+          const now = Date.now();
+          const diffSec = Math.floor((now - lastTs) / 1000);
+          if (diffSec < cooldownSeconds) {
+            return NextResponse.json({
+              error: "cooldown_active",
+              remaining_seconds: cooldownSeconds - diffSec,
+              message: `Você deve esperar ${cooldownSeconds - diffSec} segundo(s) antes de votar novamente.`
+            }, { status: 429 });
+          }
         }
-        localStorage.setItem('user_hash', h);
-      }
-      return h;
-    } catch (err) {
-      return '';
-    }
-  }
-
-  // Serializa ordem atual
-  function getOrder() {
-    return Array.from(list.querySelectorAll('[data-option-id]')).map(el => el.getAttribute('data-option-id'));
-  }
-
-  // Submeter via fetch para /api/vote (mesma API que usam)
-  const submitBtn = document.getElementById('submit-vote');
-  if (submitBtn) {
-    submitBtn.addEventListener('click', async function(e) {
-      e.preventDefault();
-      const optionIds = getOrder();
-      const user_hash = getUserHash();
-      if (!user_hash) {
-        alert('Não foi possível identificar o usuário. Tente novamente.');
-        return;
       }
 
-      const payload = {
-        poll_id: pollId,
-        option_ids: optionIds,
-        user_hash: user_hash
-      };
+      // if allowMultiple === false => upsert (single ranking per user)
+      if (!allowMultiple) {
+        // check existing vote by (poll_id, user_hash)
+        const { data: existing, error: existingErr } = await supabase
+          .from("votes")
+          .select("id")
+          .eq("poll_id", poll_id)
+          .eq("user_hash", user_hash)
+          .maybeSingle();
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Enviando...';
-
-      try {
-        const res = await fetch('/api/vote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          alert('Voto registrado com sucesso!');
-          // opcional: recarregar para ver resultados / bloquear novo voto
-          window.location.reload();
-        } else {
-          const data = await res.json().catch(()=>null);
-          alert(data?.error ? ('Erro: ' + data.error) : 'Erro ao registrar voto.');
+        if (existingErr) {
+          console.error("Erro buscando voto existente (ranking/upsert):", existingErr);
         }
-      } catch (err) {
-        console.error(err);
-        alert('Erro ao registrar voto.');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submeter Classificação';
+
+        if (existing && existing.id) {
+          // update vote row (option_id = first item for legacy compatibility)
+          const { error: updateErr } = await supabase
+            .from("votes")
+            .update({
+              option_id: ids[0] ?? null,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", existing.id);
+
+          if (updateErr) {
+            console.error("Erro ao atualizar vote (ranking):", updateErr);
+            return NextResponse.json({ error: "update_failed" }, { status: 500 });
+          }
+
+          // delete previous rankings for this vote_id and reinsert new rankings
+          const { error: delErr } = await supabase
+            .from("vote_rankings")
+            .delete()
+            .eq("vote_id", existing.id);
+
+          if (delErr) {
+            console.error("Erro ao deletar antigos rankings:", delErr);
+            // continue anyway
+          }
+
+          const rankings = ids.map((optId: string, idx: number) => ({
+            id: randomUUID(),
+            vote_id: existing.id,
+            option_id: optId,
+            ranking: idx + 1
+          }));
+
+          const { error: insertRankErr } = await supabase
+            .from("vote_rankings")
+            .insert(rankings);
+
+          if (insertRankErr) {
+            console.error("Erro ao inserir vote_rankings (update):", insertRankErr);
+            return NextResponse.json({ error: "rankings_insert_failed" }, { status: 500 });
+          }
+
+          return NextResponse.json({ success: true, updated: true });
+        }
+
+        // no existing -> insert new vote + rankings
+        const newVoteId = randomUUID();
+        const { error: voteInsErr } = await supabase
+          .from("votes")
+          .insert({
+            id: newVoteId,
+            poll_id,
+            option_id: ids[0] ?? null,
+            user_hash,
+            votes_count: 1
+          });
+
+        if (voteInsErr) {
+          console.error("Erro ao inserir vote (ranking):", voteInsErr);
+          return NextResponse.json({ error: "insert_failed" }, { status: 500 });
+        }
+
+        const rankings = ids.map((optId: string, idx: number) => ({
+          id: randomUUID(),
+          vote_id: newVoteId,
+          option_id: optId,
+          ranking: idx + 1
+        }));
+
+        const { error: insertRankErr } = await supabase
+          .from("vote_rankings")
+          .insert(rankings);
+
+        if (insertRankErr) {
+          console.error("Erro ao inserir vote_rankings:", insertRankErr);
+          return NextResponse.json({ error: "rankings_insert_failed" }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
       }
-    });
-  }
 
-  // Ajudinha: permitir mover via teclado quando um item tiver foco
-  list.addEventListener('keydown', function(e) {
-    const el = document.activeElement;
-    if (!el || !el.closest) return;
-    const item = el.closest('[data-option-id]');
-    if (!item) return;
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prev = item.previousElementSibling;
-      if (prev) list.insertBefore(item, prev);
-      refreshIndexes();
-      item.focus();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const next = item.nextElementSibling;
-      if (next) list.insertBefore(next, item.nextElementSibling?.nextElementSibling || null);
-      refreshIndexes();
-      item.focus();
+      // if allowMultiple === true => insert new vote per submission (respect max_votes_per_user)
+      if (allowMultiple) {
+        if (maxVotesPerUser) {
+          // count existing votes by this user for this poll
+          const { data: existingVotesCount } = await supabase
+            .from("votes")
+            .select("id", { count: "exact", head: true })
+            .eq("poll_id", poll_id)
+            .eq("user_hash", user_hash);
+
+          const count = (existingVotesCount?.count ?? 0) as number;
+          if (count >= maxVotesPerUser) {
+            return NextResponse.json({ error: "max_votes_exceeded", message: "Número máximo de submissões atingido." }, { status: 403 });
+          }
+        }
+
+        // insert new vote
+        const newVoteId = randomUUID();
+        const { error: voteInsErr } = await supabase
+          .from("votes")
+          .insert({
+            id: newVoteId,
+            poll_id,
+            option_id: ids[0] ?? null,
+            user_hash,
+            votes_count: 1
+          });
+
+        if (voteInsErr) {
+          console.error("Erro ao inserir vote (ranking/multiple):", voteInsErr);
+          return NextResponse.json({ error: "insert_failed" }, { status: 500 });
+        }
+
+        const rankings = ids.map((optId: string, idx: number) => ({
+          id: randomUUID(),
+          vote_id: newVoteId,
+          option_id: optId,
+          ranking: idx + 1
+        }));
+
+        const { error: insertRankErr } = await supabase
+          .from("vote_rankings")
+          .insert(rankings);
+
+        if (insertRankErr) {
+          console.error("Erro ao inserir vote_rankings (multiple):", insertRankErr);
+          return NextResponse.json({ error: "rankings_insert_failed" }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, created: true });
+      }
+    } // fim ranking
+
+    // --- NON-RANKING PATH (existing behaviour) ---
+    // maintain current behaviour for option_id single/multiple votes
+    // NOTE: you already have this implemented; keep it (insert or upsert depending on allowMultiple)
+    // For safety, handle a basic fallback:
+    if (option_id) {
+      // (replicate your prior logic here or call existing function)
+      // Very simple fallback insert (no cooldown/max checks implemented here)
+      const { data: duplicate, error: dupError } = await supabase
+        .from("votes")
+        .select("id")
+        .eq("poll_id", poll_id)
+        .eq("user_hash", user_hash)
+        .eq("option_id", option_id)
+        .maybeSingle();
+
+      if (dupError) console.error("dup check error:", dupError);
+      if (duplicate) {
+        return NextResponse.json({ success: true, message: "duplicate_vote_ignored" });
+      }
+      const { error } = await supabase.from("votes").insert({
+        id: randomUUID(),
+        poll_id,
+        option_id,
+        user_hash,
+        votes_count: 1
+      });
+
+      if (error) {
+        console.error("Erro ao inserir voto (fallback):", error);
+        return NextResponse.json({ error: "insert_failed" }, { status: 500 });
+      }
+      return NextResponse.json({ success: true });
     }
-  });
 
-  // Tornar cada item focável para suporte a teclado
-  Array.from(list.querySelectorAll('[data-option-id]')).forEach(el => {
-    el.setAttribute('tabindex', '0');
-  });
-
-  // inicializa índices
-  refreshIndexes();
-})();
-`,
-            }}
-          />
-        </>
-      ) : (
-        // voting_type !== 'ranking', fallback para single/multiple
-        <div className="space-y-3">
-          {options.map((o) => (
-            <form key={o.id} action="/api/vote" method="post">
-              {/* Este é um fallback simples: cada botão submete um voto único */}
-              <input type="hidden" name="poll_id" value={pollId} />
-              <input type="hidden" name="option_ids[]" value={o.id} />
-              <button className="block w-full p-3 border rounded-lg hover:bg-gray-100">{o.text}</button>
-            </form>
-          ))}
-        </div>
-      )}
-    </main>
-  );
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  } catch (e) {
+    console.error("Erro interno:", e);
+    return NextResponse.json({ error: "internal_error", details: String(e) }, { status: 500 });
+  }
 }
