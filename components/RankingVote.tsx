@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useDrag, useDrop, DragSourceMonitor, DropTargetMonitor } from 'react-dnd';
+import React, { useEffect, useState } from 'react';
 
 interface Option {
   id: string;
@@ -13,97 +12,15 @@ interface RankingVoteProps {
   pollId: string;
 }
 
-const ItemType = 'OPTION';
-
-function DraggableOption({
-  option,
-  index,
-  moveOption,
-}: {
-  option: Option;
-  index: number;
-  moveOption: (from: number, to: number) => void;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  const [, drop] = useDrop({
-    accept: ItemType,
-    hover(item: { index: number }, monitor: DropTargetMonitor) {
-      if (!ref.current) return;
-      const dragIndex = item.index;
-      const hoverIndex = index;
-      if (dragIndex === hoverIndex) return;
-
-      // Optional: use pointer position to decide more precisely
-      const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) return;
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-      // Only perform the move when the cursor has crossed half of the item's height
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
-
-      moveOption(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-    drop: () => ({ droppedOn: index }),
-  });
-
-  const [{ isDragging }, drag] = useDrag({
-    type: ItemType,
-    item: { id: option.id, index },
-    collect: (monitor: DragSourceMonitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  drag(drop(ref));
-
-  return (
-    <div
-      ref={ref}
-      role="listitem"
-      aria-roledescription="draggable option"
-      data-option-id={option.id}
-      style={{
-        opacity: isDragging ? 0.5 : 1,
-        cursor: 'move',
-        padding: '10px',
-        border: '1px solid #e2e8f0',
-        borderRadius: 6,
-        marginBottom: 8,
-        background: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-      }}
-    >
-      <span style={{ fontWeight: 600, width: 28, textAlign: 'center' }}>{index + 1}</span>
-      <span>{option.text}</span>
-    </div>
-  );
-}
-
 export default function RankingVote({ options, pollId }: RankingVoteProps) {
   const [order, setOrder] = useState<string[]>(() => options.map((o) => o.id));
 
   useEffect(() => {
-    // keep order in sync if options prop changes
+    // Sincroniza se as options mudarem externamente
     setOrder(options.map((o) => o.id));
   }, [options]);
 
-  const moveOption = (fromIndex: number, toIndex: number) => {
-    setOrder((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  };
-
-  // Ensure user_hash exists in localStorage (client-only)
+  // Gera um user_hash simples e persistente no browser
   useEffect(() => {
     try {
       if (typeof window !== 'undefined' && !localStorage.getItem('user_hash')) {
@@ -114,7 +31,7 @@ export default function RankingVote({ options, pollId }: RankingVoteProps) {
         localStorage.setItem('user_hash', uid);
       }
     } catch {
-      // ignore storage errors
+      // ignore
     }
   }, []);
 
@@ -123,6 +40,25 @@ export default function RankingVote({ options, pollId }: RankingVoteProps) {
       return typeof window !== 'undefined' ? localStorage.getItem('user_hash') ?? '' : '';
     } catch {
       return '';
+    }
+  };
+
+  const move = (from: number, to: number) => {
+    setOrder((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (index > 0) move(index, index - 1);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (index < order.length - 1) move(index, index + 1);
     }
   };
 
@@ -161,7 +97,6 @@ export default function RankingVote({ options, pollId }: RankingVoteProps) {
     }
   };
 
-  // build a quick map for option text rendering in current order
   const optionsById = new Map(options.map((o) => [o.id, o]));
 
   return (
@@ -173,23 +108,76 @@ export default function RankingVote({ options, pollId }: RankingVoteProps) {
           const option = optionsById.get(id);
           if (!option) return null;
           return (
-            <DraggableOption
+            <div
               key={id}
-              option={option}
-              index={idx}
-              moveOption={moveOption}
-            />
+              role="listitem"
+              tabIndex={0}
+              onKeyDown={(e) => handleKeyDown(e, idx)}
+              aria-roledescription="draggable via buttons or arrows"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: 10,
+                border: '1px solid #e2e8f0',
+                borderRadius: 6,
+                marginBottom: 8,
+                background: '#fff',
+              }}
+              data-option-id={id}
+            >
+              <span style={{ width: 28, textAlign: 'center', fontWeight: 600 }}>{idx + 1}</span>
+
+              <div style={{ flex: 1 }}>{option.text}</div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button
+                  onClick={() => idx > 0 && move(idx, idx - 1)}
+                  disabled={idx === 0}
+                  aria-label={`Mover ${option.text} para cima`}
+                  style={{
+                    padding: '6px 8px',
+                    cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 4,
+                  }}
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => idx < order.length - 1 && move(idx, idx + 1)}
+                  disabled={idx === order.length - 1}
+                  aria-label={`Mover ${option.text} para baixo`}
+                  style={{
+                    padding: '6px 8px',
+                    cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer',
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 4,
+                  }}
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      <button
-        onClick={submitVote}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
-        aria-label="Submeter classificação"
-      >
-        Submeter Classificação
-      </button>
+      <div>
+        <button
+          onClick={submitVote}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+          aria-label="Submeter classificação"
+        >
+          Submeter Classificação
+        </button>
+      </div>
+
+      <p style={{ marginTop: 12, color: '#6b7280', fontSize: 13 }}>
+        Dica: use as setas do teclado quando um item estiver focado para mover rapidamente.
+      </p>
     </section>
   );
 }
