@@ -95,12 +95,12 @@ export default function PollPage() {
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
 
       {allowMultiple === false && userHasVoted && (
-        <p className="text-red-500 mb-4">Você já votou nesta pesquisa. Deseja alterar seu voto?</p>
+        <p className="text-red-500 mb-4">Você já votou nesta pesquisa mas pode alterar seu voto?</p>
       )}
 
       {allowMultiple === true && userHasVoted && (
         <p className="text-green-500 mb-4">
-          Você já votou nesta pesquisa, mas pode votar novamente! Seu voto será somado ao total.
+          Você já votou nesta pesquisa, mas pode votar novamente! Um novo voto será somado ao total.
         </p>
       )}
 
