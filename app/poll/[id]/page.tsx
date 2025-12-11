@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import VoteButton from './VoteButton';
-import RankingVote from './RankingVote'; // <<< vamos criar depois
+import RankingVote from '@/components/RankingVote';
 
 export default function PollPage() {
   const params = useParams();
