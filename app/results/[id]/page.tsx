@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
-export default async function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function ResultsPage({ params }: { params: { id: string } }) {
+  const { id } = params;
 
   // Buscar dados da poll (precisamos do voting_type)
   const { data: pollData, error: pollError } = await supabase
@@ -34,7 +34,6 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       .select("option_id")
       .eq("poll_id", id);
 
-    // contagem
     const count: Record<string, number> = {};
     votes?.forEach(v => {
       if (v.option_id) {
@@ -57,7 +56,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   }
 
   // =========================================
-  // MODO 2 — RESULTADO DE RANKING (BORDA)
+  // MODO 2 — RANKING (BORDA)
   // =========================================
   const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/results/${id}`, {
     cache: "no-store"
