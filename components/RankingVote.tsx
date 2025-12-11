@@ -1,132 +1,195 @@
 'use client';
 
-import { useState } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
+import React, { useEffect, useRef, useState } from 'react';
+import { useDrag, useDrop, DragSourceMonitor, DropTargetMonitor } from 'react-dnd';
+
+interface Option {
+  id: string;
+  text: string;
+}
 
 interface RankingVoteProps {
-  options: { id: string; text: string }[];
+  options: Option[];
   pollId: string;
 }
 
-const ItemType = 'OPTION';  // Tipo do item para o drag and drop
+const ItemType = 'OPTION';
 
-// Componente para cada opção
-function DraggableOption({ option, index, moveOption }: any) {
-  const [{ isDragging }, drag, preview] = useDrag(() => ({
-    type: ItemType,
-    item: { index, id: option.id },
-    collect: (monitor) => {
-      const dragging = monitor.isDragging();
-      // log a cada coleta para ver se o hook está ativo
-      console.log(`[react-dnd] collect option=${option.id} index=${index} isDragging=${dragging}`);
-      return {
-        isDragging: dragging,
-      };
-    },
-    begin: () => {
-      console.log(`[react-dnd] begin drag option=${option.id} index=${index}`);
-    },
-    end: (item, monitor) => {
-      console.log(
-        `[react-dnd] end drag option=${option.id} index=${index} dropped=${monitor.didDrop()}`,
-        'item',
-        item,
-        'dropResult',
-        monitor.getDropResult?.()
-      );
-    },
-  }));
+function DraggableOption({
+  option,
+  index,
+  moveOption,
+}: {
+  option: Option;
+  index: number;
+  moveOption: (from: number, to: number) => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
 
-  const [, drop] = useDrop(() => ({
+  const [, drop] = useDrop({
     accept: ItemType,
-    hover: (item: any) => {
-      // log para verificar eventos hover e índices
-      console.log(`[react-dnd] hover targetIndex=${index} incomingIndex=${item.index}`);
-      if (item.index !== index) {
-        moveOption(item.index, index);
-        item.index = index;
-      }
+    hover(item: { index: number }, monitor: DropTargetMonitor) {
+      if (!ref.current) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+
+      // Optional: use pointer position to decide more precisely
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+
+      // Only perform the move when the cursor has crossed half of the item's height
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+
+      moveOption(dragIndex, hoverIndex);
+      item.index = hoverIndex;
     },
-    drop: (item: any, monitor) => {
-      console.log(`[react-dnd] drop on index=${index} itemIndex=${item.index}`);
-      return { droppedOn: index };
-    },
-  }));
+    drop: () => ({ droppedOn: index }),
+  });
+
+  const [{ isDragging }, drag] = useDrag({
+    type: ItemType,
+    item: { id: option.id, index },
+    collect: (monitor: DragSourceMonitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  drag(drop(ref));
 
   return (
     <div
-      ref={(node) => {
-        drag(drop(node));
-      }}
+      ref={ref}
+      role="listitem"
+      aria-roledescription="draggable option"
+      data-option-id={option.id}
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: 'move',
         padding: '10px',
-        border: '1px solid #ccc',
-        borderRadius: '5px',
-        marginBottom: '5px',
+        border: '1px solid #e2e8f0',
+        borderRadius: 6,
+        marginBottom: 8,
+        background: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
       }}
-      data-test-option-id={option.id}
     >
-      {option.text}
+      <span style={{ fontWeight: 600, width: 28, textAlign: 'center' }}>{index + 1}</span>
+      <span>{option.text}</span>
     </div>
   );
 }
 
 export default function RankingVote({ options, pollId }: RankingVoteProps) {
-  const [ranking, setRanking] = useState(options.map((option) => option.id)); // Inicializa com a ordem original
+  const [order, setOrder] = useState<string[]>(() => options.map((o) => o.id));
 
-  console.log('RankingVote mounted, options:', options.map(o => o.id));
+  useEffect(() => {
+    // keep order in sync if options prop changes
+    setOrder(options.map((o) => o.id));
+  }, [options]);
 
   const moveOption = (fromIndex: number, toIndex: number) => {
-    console.log(`moveOption from ${fromIndex} to ${toIndex}`);
-    const updatedRanking = [...ranking];
-    const [movedItem] = updatedRanking.splice(fromIndex, 1);
-    updatedRanking.splice(toIndex, 0, movedItem);
-    setRanking(updatedRanking);
+    setOrder((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
+  // Ensure user_hash exists in localStorage (client-only)
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && !localStorage.getItem('user_hash')) {
+        const uid =
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? (crypto as any).randomUUID()
+            : `uid_${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem('user_hash', uid);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const getUserHash = () => {
+    try {
+      return typeof window !== 'undefined' ? localStorage.getItem('user_hash') ?? '' : '';
+    } catch {
+      return '';
+    }
   };
 
   const submitVote = async () => {
-    try {
-      const voteData = {
-        poll_id: pollId,
-        option_ids: ranking, // Envia a classificação final
-      };
+    const user_hash = getUserHash();
+    if (!user_hash) {
+      alert('Não foi possível identificar o usuário. Tente novamente.');
+      return;
+    }
 
+    const payload = {
+      poll_id: pollId,
+      option_ids: order,
+      user_hash,
+    };
+
+    try {
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(voteData),
+        body: JSON.stringify(payload),
       });
+
+      const data = await res.json().catch(() => null);
 
       if (res.ok) {
         alert('Voto registrado com sucesso!');
+      } else if (data?.error) {
+        alert(`Erro: ${data.error} ${data?.message ? '- ' + data.message : ''}`);
       } else {
         alert('Erro ao registrar voto.');
       }
     } catch (err) {
-      console.error('Erro ao enviar o voto:', err);
+      console.error('Erro ao enviar voto:', err);
       alert('Erro ao registrar voto.');
     }
   };
 
+  // build a quick map for option text rendering in current order
+  const optionsById = new Map(options.map((o) => [o.id, o]));
+
   return (
-    <div>
-      <h3>Classifique as opções:</h3>
-      <div style={{ marginBottom: '20px' }}>
-        {options.map((option, index) => (
-          <DraggableOption
-            key={option.id}
-            index={index}
-            option={option}
-            moveOption={moveOption}
-          />
-        ))}
+    <section>
+      <h3 className="text-lg font-semibold mb-3">Classifique as opções</h3>
+
+      <div role="list" aria-label="Ranking de opções" style={{ marginBottom: 16 }}>
+        {order.map((id, idx) => {
+          const option = optionsById.get(id);
+          if (!option) return null;
+          return (
+            <DraggableOption
+              key={id}
+              option={option}
+              index={idx}
+              moveOption={moveOption}
+            />
+          );
+        })}
       </div>
 
-      <button onClick={submitVote} className="mt-4 p-2 bg-blue-600 text-white rounded">
+      <button
+        onClick={submitVote}
+        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+        aria-label="Submeter classificação"
+      >
         Submeter Classificação
       </button>
-    </div>
+    </section>
   );
 }
