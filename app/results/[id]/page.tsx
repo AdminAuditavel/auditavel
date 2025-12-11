@@ -17,6 +17,9 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     .single();
 
   if (pollError || !pollData) {
+    console.error("ERRO AO BUSCAR A POLL:", pollError);
+    console.error("ID RECEBIDO:", id);
+  
     return (
       <main className="p-6 max-w-xl mx-auto">
         Erro ao carregar a enquete.
