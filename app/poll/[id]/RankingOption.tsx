@@ -24,7 +24,6 @@ export default function RankingOption({ text, index, moveUp, moveDown }: Ranking
         <button
           onClick={moveDown}
           className="px-2 py-1 border rounded"
-          disabled={false}
         >
           ↓
         </button>
