@@ -1,19 +1,15 @@
-export const dynamic = "force-dynamic";   // impede que vire estático
-export const revalidate = 0;              // garante renderização dinâmica SEM cache
-
+import { useRouter } from "next/router";  // Importando useRouter para capturar parâmetros da URL
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
-export default async function ResultsPage({ params }: { params: { id: string } }) {
-  // Log mínimo e seguro para diagnóstico
-  console.log("RESULT PAGE — params (raw):", JSON.stringify(params));
+export default async function ResultsPage() {
+  const router = useRouter();
+  const { id } = router.query;  // Acessando o parâmetro 'id' diretamente da URL
 
-  const { id } = params;
-
+  // Log para diagnóstico
+  console.log("RESULT PAGE — params (raw):", router.query);
   console.log("RESULT PAGE — ID recebido:", id);
 
-  // ============================================================
   // 1. GUARDA DE SEGURANÇA — impede erro se id vier vazio/bugado
-  // ============================================================
   if (!id || typeof id !== "string" || id.trim() === "") {
     console.error("RESULT PAGE — ID inválido:", id);
     return (
@@ -25,14 +21,12 @@ export default async function ResultsPage({ params }: { params: { id: string } }
 
   const safeId = id.trim();
 
-  // ============================================================
-  // 2. Buscar dados da enquete
-  // ============================================================
+  // 2. Buscar dados da pesquisa
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
     .select("voting_type")
     .eq("id", safeId)
-    .maybeSingle();
+    .maybeSingle();   // <-- evitar 406
 
   console.log("RESULT PAGE — pollData:", pollData);
   console.log("RESULT PAGE — pollError:", pollError);
@@ -48,9 +42,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
 
   const votingType = pollData.voting_type;
 
-  // ============================================================
   // 3. RESULTADO — VOTO ÚNICO
-  // ============================================================
   if (votingType === "single") {
     const { data: options } = await supabase
       .from("poll_options")
@@ -74,10 +66,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
         <h1 className="text-2xl font-bold mb-4">Resultados (Voto Único)</h1>
 
         {options?.map(o => (
-          <div
-            key={o.id}
-            className="p-3 border rounded flex justify-between"
-          >
+          <div key={o.id} className="p-3 border rounded flex justify-between">
             <span>{o.option_text}</span>
             <b>{count[o.id] || 0} votos</b>
           </div>
@@ -86,9 +75,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     );
   }
 
-  // ============================================================
   // 4. RESULTADO — RANKING / BORDA
-  // ============================================================
   const baseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000";
@@ -120,10 +107,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
         <p>Nenhum voto ainda.</p>
       ) : (
         json.result.map((row: any, index: number) => (
-          <div
-            key={row.option_id}
-            className="p-3 border rounded flex justify-between items-center"
-          >
+          <div key={row.option_id} className="p-3 border rounded flex justify-between items-center">
             <span>
               <strong>{index + 1}º</strong> — {row.option_text}
             </span>
