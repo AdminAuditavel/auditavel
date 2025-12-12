@@ -1,16 +1,12 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
-// -------------------------
-// Tipos internos apenas para uso local
-// -------------------------
 type Poll = {
   id: string;
   title: string;
   start_date?: string | null;
   end_date?: string | null;
-  created_at?: string | null;
-  voting_type?: string | null; // "single" ou "ranking"
+  voting_type?: string | null; // single | ranking
 };
 
 type PollOption = {
@@ -25,246 +21,191 @@ type Vote = {
 };
 
 type VoteRanking = {
+  vote_id: string;
   option_id: string;
   ranking: number;
 };
 
-// -------------------------
-
 function formatDate(d?: string | null) {
   if (!d) return "-";
-  try {
-    return new Date(d).toLocaleDateString("pt-BR");
-  } catch {
-    return "-";
-  }
+  return new Date(d).toLocaleDateString("pt-BR");
 }
 
-function computeStatus(p: Poll) {
+function statusFromDates(p: Poll) {
   const now = new Date();
   const start = p.start_date ? new Date(p.start_date) : null;
   const end = p.end_date ? new Date(p.end_date) : null;
-
   if (start && now < start) return "not_started";
   if (end && now > end) return "closed";
   return "open";
 }
 
-function cardColor(status: string) {
-  if (status === "open") return "bg-green-50";
-  if (status === "not_started") return "bg-yellow-50";
-  return "bg-red-50";
-}
-
-// -------------------------
-
 export default async function Home() {
-  // 1) Buscar pesquisas
+  // 1) polls
   const { data: pollsData } = await supabase
     .from("polls")
-    .select("id, title, start_date, end_date, created_at, voting_type")
+    .select("id, title, start_date, end_date, voting_type")
     .order("created_at", { ascending: false });
 
-  const polls: Poll[] = Array.isArray(pollsData) ? pollsData : [];
-
+  const polls: Poll[] = pollsData || [];
   if (!polls.length) {
-    return (
-      <main className="p-6 max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Auditável — Pesquisas</h1>
-        <p className="text-gray-600 text-center">Nenhuma pesquisa ativa.</p>
-      </main>
-    );
+    return <p className="p-6 text-center">Nenhuma pesquisa ativa.</p>;
   }
 
-  const pollIds = polls.map((p) => p.id);
+  const pollIds = polls.map(p => p.id);
 
-  // 2) Buscar opções
+  // 2) options
   const { data: optionsData } = await supabase
     .from("poll_options")
     .select("id, poll_id, option_text")
     .in("poll_id", pollIds);
 
-  const options: PollOption[] = Array.isArray(optionsData) ? optionsData : [];
+  const options: PollOption[] = optionsData || [];
 
-  // 3) Buscar votos simples
+  // 3) votes (SINGLE)
   const { data: votesData } = await supabase
     .from("votes")
     .select("poll_id, option_id")
     .in("poll_id", pollIds);
 
-  const votes: Vote[] = Array.isArray(votesData) ? votesData : [];
+  const votes: Vote[] = votesData || [];
 
-  // 4) Buscar rankings
+  // 4) vote_rankings (RANKING)
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
-    .select("option_id, ranking");
+    .select("vote_id, option_id, ranking");
 
-  const rankings: VoteRanking[] = Array.isArray(rankingsData) ? rankingsData : [];
+  const rankings: VoteRanking[] = rankingsData || [];
 
-  // Agrupar opções por pesquisa
+  // Maps
   const optionsByPoll = new Map<string, PollOption[]>();
   for (const o of options) {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
     optionsByPoll.get(o.poll_id)!.push(o);
   }
 
-  // Agrupar votos por option_id
-  const voteCountByOption = new Map<string, number>();
+  const votesByPoll = new Map<string, Vote[]>();
   for (const v of votes) {
-    if (!v.option_id) continue;
-    voteCountByOption.set(v.option_id, (voteCountByOption.get(v.option_id) || 0) + 1);
+    if (!votesByPoll.has(v.poll_id)) votesByPoll.set(v.poll_id, []);
+    votesByPoll.get(v.poll_id)!.push(v);
   }
 
-  // Agrupar rankings por option_id
   const rankingsByOption = new Map<string, VoteRanking[]>();
   for (const r of rankings) {
     if (!rankingsByOption.has(r.option_id)) rankingsByOption.set(r.option_id, []);
     rankingsByOption.get(r.option_id)!.push(r);
   }
 
-  // -------------------------
-  // Renderizar interface
-  // -------------------------
+  const rankingsByPoll = new Map<string, Set<string>>();
+  for (const r of rankings) {
+    // usamos vote_id para contar votos únicos
+    const opt = options.find(o => o.id === r.option_id);
+    if (!opt) continue;
+    if (!rankingsByPoll.has(opt.poll_id)) rankingsByPoll.set(opt.poll_id, new Set());
+    rankingsByPoll.get(opt.poll_id)!.add(r.vote_id);
+  }
 
   return (
-    <main className="p-6 max-w-3xl mx-auto space-y-6">
+    <main className="p-6 max-w-3xl mx-auto space-y-4">
       <h1 className="text-3xl font-bold text-center">Auditável — Pesquisas</h1>
 
-      <div className="space-y-4">
-        {polls.map((p) => {
-          const status = computeStatus(p);
-          const opts = optionsByPoll.get(p.id) || [];
-          const isRanking = (p.voting_type || "").toLowerCase() === "ranking";
+      {polls.map(p => {
+        const opts = optionsByPoll.get(p.id) || [];
+        const status = statusFromDates(p);
+        const isRanking = p.voting_type === "ranking";
 
-          // ----- VOTOS SIMPLES -----
-          const totalVotes = opts.reduce(
-            (acc, opt) => acc + (voteCountByOption.get(opt.id) || 0),
-            0
-          );
+        // ===== SINGLE =====
+        let totalVotes = 0;
+        let leaderText = "";
+        let leaderPct = 0;
 
-          let leaderSimple: PollOption | null = null;
-          let leaderPct = 0;
+        if (!isRanking) {
+          const pollVotes = votesByPoll.get(p.id) || [];
+          totalVotes = pollVotes.length;
 
-          if (!isRanking && totalVotes > 0) {
-            leaderSimple = opts
-              .slice()
-              .sort(
-                (a, b) =>
-                  (voteCountByOption.get(b.id) || 0) -
-                  (voteCountByOption.get(a.id) || 0)
-              )[0];
+          const countByOption = new Map<string, number>();
+          for (const v of pollVotes) {
+            if (!v.option_id) continue;
+            countByOption.set(v.option_id, (countByOption.get(v.option_id) || 0) + 1);
+          }
 
-            if (leaderSimple) {
-              leaderPct =
-                Math.round(
-                  ((voteCountByOption.get(leaderSimple.id) || 0) / totalVotes) *
-                    1000
-                ) / 10;
+          if (totalVotes > 0) {
+            const [leaderId, leaderCount] =
+              [...countByOption.entries()].sort((a, b) => b[1] - a[1])[0];
+            const opt = opts.find(o => o.id === leaderId);
+            if (opt) {
+              leaderText = opt.option_text;
+              leaderPct = Math.round((leaderCount / totalVotes) * 1000) / 10;
             }
           }
+        }
 
-          // ----- RANKING -----
-          let leaderRanking: {
-            option: PollOption;
-            avg: number;
-            count: number;
-          } | null = null;
+        // ===== RANKING =====
+        let rankingTotalVotes = 0;
+        let rankingLeader = "";
+        let rankingAvg = 0;
 
-          if (isRanking) {
-            const summaries = opts.map((opt) => {
-              const rks = rankingsByOption.get(opt.id) || [];
-              if (!rks.length)
-                return { option: opt, avg: Infinity, count: 0 };
-              const avg =
-                rks.reduce((s, r) => s + r.ranking, 0) / rks.length;
-              return { option: opt, avg, count: rks.length };
-            });
+        if (isRanking) {
+          rankingTotalVotes = rankingsByPoll.get(p.id)?.size || 0;
 
-            leaderRanking =
-              summaries.slice().sort((a, b) => a.avg - b.avg)[0] || null;
+          const summaries = opts.map(opt => {
+            const rs = rankingsByOption.get(opt.id) || [];
+            if (!rs.length) return null;
+            const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
+            return { text: opt.option_text, avg };
+          }).filter(Boolean) as { text: string; avg: number }[];
+
+          if (summaries.length) {
+            const best = summaries.sort((a, b) => a.avg - b.avg)[0];
+            rankingLeader = best.text;
+            rankingAvg = best.avg;
           }
+        }
 
-          return (
-            <Link
-              key={p.id}
-              href={`/poll/${p.id}`}
-              className={`block p-4 border rounded-lg hover:shadow transition-shadow ${cardColor(
-                status
-              )}`}
-            >
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                {p.title}
-              </h2>
+        return (
+          <Link key={p.id} href={`/poll/${p.id}`} className="block p-4 border rounded-lg bg-white hover:shadow">
+            <h2 className="text-lg font-semibold">{p.title}</h2>
 
-              <div className="text-sm text-gray-700 flex flex-wrap gap-4 mb-2">
-                <span>Início: {formatDate(p.start_date)}</span>
-                <span>Fim: {formatDate(p.end_date)}</span>
-                <span>Tipo: {isRanking ? "Ranking" : "Voto Único"}</span>
-              </div>
+            <div className="text-sm text-gray-600 mt-1">
+              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+            </div>
 
-              {/* ----------- SIMPLE POLL ----------- */}
-              {!isRanking && (
-                <>
-                  <div className="text-sm text-gray-700">
-                    <b>Total de votos:</b> {totalVotes}
+            {!isRanking && (
+              <div className="mt-2 text-sm">
+                <b>Total de votos:</b> {totalVotes}
+                {leaderText && (
+                  <div className="mt-1 text-green-700 font-medium">
+                    Líder: {leaderText} ({leaderPct}%)
                   </div>
-
-                  {leaderSimple && (
-                    <div className="mt-1 text-sm font-medium text-green-700">
-                      Líder: {leaderSimple.option_text}{" "}
-                      <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 font-bold">
-                        {leaderPct}%
-                      </span>{" "}
-                      ({voteCountByOption.get(leaderSimple.id)} votos)
-                    </div>
-                  )}
-
-                  {totalVotes === 0 && (
-                    <div className="text-gray-600 mt-1 text-sm">
-                      Sem votos ainda.
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* ----------- RANKING POLL ----------- */}
-              {isRanking && leaderRanking && leaderRanking.count > 0 && (
-                <div className="mt-1 text-sm font-medium text-green-700">
-                  Líder (ranking médio): {leaderRanking.option.option_text}{" "}
-                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 font-bold">
-                    {leaderRanking.avg.toFixed(2)}
-                  </span>{" "}
-                  ({leaderRanking.count} votos)
-                </div>
-              )}
-
-              {isRanking && leaderRanking?.count === 0 && (
-                <div className="text-gray-600 mt-1 text-sm">
-                  Nenhum ranking registrado ainda.
-                </div>
-              )}
-
-              {/* Status */}
-              <div className="mt-3">
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${status === "open"
-                    ? "bg-green-100 text-green-800"
-                    : status === "not_started"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-                    }`}
-                >
-                  {status === "open"
-                    ? "Aberta"
-                    : status === "not_started"
-                    ? "Não iniciada"
-                    : "Encerrada"}
-                </span>
+                )}
               </div>
-            </Link>
-          );
-        })}
-      </div>
+            )}
+
+            {isRanking && (
+              <div className="mt-2 text-sm">
+                <b>Total de votos:</b> {rankingTotalVotes}
+                {rankingLeader && (
+                  <div className="mt-1 text-green-700 font-medium">
+                    Líder (ranking médio): {rankingLeader} ({rankingAvg.toFixed(2)})
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-3">
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                status === "open"
+                  ? "bg-green-100 text-green-800"
+                  : status === "not_started"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-red-100 text-red-800"
+              }`}>
+                {status === "open" ? "Aberta" : status === "not_started" ? "Não iniciada" : "Encerrada"}
+              </span>
+            </div>
+          </Link>
+        );
+      })}
     </main>
   );
 }
