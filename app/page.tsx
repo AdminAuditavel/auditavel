@@ -55,7 +55,7 @@ function statusBadgeClasses(s: string) {
 export default async function Home() {
   // 1) buscar polls principais (mantendo created_at para ordenação)
   const { data: pollsData, error: pollsError } = await supabase
-    .from<PollRow>("polls")
+    .from("polls")
     .select("id, title, start_date, end_date, created_at, voting_type")
     .order("created_at", { ascending: false });
 
