@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export default async function Home() {
   const { data: polls } = await supabase
     .from("polls")
-    .select("id, title, start_date, end_date")
+    .select("id, title, start_date, end_date, options(votes, text)")
     .order("created_at", { ascending: false });
 
   const now = new Date();
@@ -12,16 +12,15 @@ export default async function Home() {
   function formatDate(d: string | null | undefined) {
     if (!d) return "-";
     try {
-      return new Date(d).toLocaleString("pt-BR", {
+      return new Date(d).toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
       });
     } catch {
       return "-";
     }
+  }
   }
 
   function statusFor(p: any) {
@@ -46,12 +45,22 @@ export default async function Home() {
           className="block p-4 border rounded-lg hover:bg-gray-50"
         >
           <div className="flex flex-col">
-            <span className="font-medium">{p.title}</span>
+            <span className="font-medium text-lg">{p.title}</span>
             <div className="text-sm text-gray-600 mt-2">
               <span className="mr-3">Início: {formatDate(p.start_date)}</span>
               <span className="mr-3">Fim: {formatDate(p.end_date)}</span>
-              <span className="font-semibold">Status: {statusFor(p)}</span>
             </div>
+            <div className="text-sm mt-2 font-semibold text-gray-700">
+              Total de votos: {p.options?.reduce((acc: number, o: any) => acc + (o.votes || 0), 0)}
+            </div>
+            <div className="text-sm text-green-700 font-medium mt-1">
+              {(() => {
+                if (!p.options?.length) return null;
+                const leader = [...p.options].sort((a, b) => (b.votes || 0) - (a.votes || 0))[0];
+                return leader ? `Liderando: ${leader.text} (${leader.votes} votos)` : null;
+              })()}
+            </div>
+          </div>
           </div>
         </Link>
       ))}
