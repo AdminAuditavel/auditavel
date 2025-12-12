@@ -1,8 +1,10 @@
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { getResults } from "@/lib/getResults";
 
-export default async function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
-  // Resolva a Promise para acessar o parâmetro
-  const { id } = await params;
+export default async function ResultsPage({ params }: { params: Promise<{ id: string }> | any }) {
+  // Resolver params (compatível com Promise ou objeto)
+  const resolvedParams = params && typeof params.then === "function" ? await params : params;
+  const { id } = resolvedParams ?? {};
 
   // Log para diagnóstico
   console.log("RESULT PAGE — params (raw):", { id });
@@ -41,7 +43,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
 
   const votingType = pollData.voting_type;
 
-  // 3. RESULTADO — VOTO ÚNICO
+  // 3. RESULTADO — VOTO ÚNICO (mantém comportamento atual)
   if (votingType === "single") {
     const { data: options } = await supabase
       .from("poll_options")
@@ -54,7 +56,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       .eq("poll_id", safeId);
 
     const count: Record<string, number> = {};
-    votes?.forEach(v => {
+    votes?.forEach((v: any) => {
       if (v.option_id) {
         count[v.option_id] = (count[v.option_id] || 0) + 1;
       }
@@ -64,7 +66,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       <main className="p-6 max-w-xl mx-auto space-y-4">
         <h1 className="text-2xl font-bold mb-4">Resultados (Voto Único)</h1>
 
-        {options?.map(o => (
+        {options?.map((o: any) => (
           <div key={o.id} className="p-3 border rounded flex justify-between">
             <span>{o.option_text}</span>
             <b>{count[o.id] || 0} votos</b>
@@ -75,45 +77,35 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   }
 
   // 4. RESULTADO — RANKING / BORDA
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
+  // Substitui fetch externo por chamada direta ao helper getResults (server-side)
+  try {
+    const json = await getResults(safeId);
+    console.log("RESULT PAGE — resultados calculados internamente:", json);
 
-  console.log("RESULT PAGE — chamando API:", `${baseUrl}/api/results/${safeId}`);
+    return (
+      <main className="p-6 max-w-xl mx-auto space-y-4">
+        <h1 className="text-2xl font-bold mb-4">Resultado — Ranking (Sistema Borda)</h1>
 
-  const res = await fetch(`${baseUrl}/api/results/${safeId}`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const apiError = await res.text();
-    console.error("Erro ao buscar resultado (API):", apiError);
-
+        {!json.result || json.result.length === 0 ? (
+          <p>Nenhum voto ainda.</p>
+        ) : (
+          json.result.map((row: any, index: number) => (
+            <div key={row.option_id} className="p-3 border rounded flex justify-between items-center">
+              <span>
+                <strong>{index + 1}º</strong> — {row.option_text}
+              </span>
+              <span className="font-bold">{row.score} pts</span>
+            </div>
+          ))
+        )}
+      </main>
+    );
+  } catch (err) {
+    console.error("RESULT PAGE — erro ao obter resultados internamente:", err);
     return (
       <main className="p-6 max-w-xl mx-auto">
         Erro ao carregar resultados da pesquisa.
       </main>
     );
   }
-
-  const json = await res.json();
-
-  return (
-    <main className="p-6 max-w-xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold mb-4">Resultado — Ranking (Sistema Borda)</h1>
-
-      {!json.result || json.result.length === 0 ? (
-        <p>Nenhum voto ainda.</p>
-      ) : (
-        json.result.map((row: any, index: number) => (
-          <div key={row.option_id} className="p-3 border rounded flex justify-between items-center">
-            <span>
-              <strong>{index + 1}º</strong> — {row.option_text}
-            </span>
-            <span className="font-bold">{row.score} pts</span>
-          </div>
-        ))
-      )}
-    </main>
-  );
 }
