@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -44,28 +45,31 @@ function getStatus(p: Poll) {
   return "open";
 }
 
+function statusLabel(status: string) {
+  if (status === "open") return "Aberta";
+  if (status === "not_started") return "Não iniciada";
+  return "Encerrada";
+}
+
+function statusColor(status: string) {
+  if (status === "open") return "bg-green-100 text-green-800";
+  if (status === "not_started") return "bg-yellow-100 text-yellow-800";
+  return "bg-red-100 text-red-800";
+}
+
 export default async function Home() {
-  // 1) Buscar pesquisas
   const { data: pollsData } = await supabase
     .from("polls")
-    .select(
-      "id, title, start_date, end_date, voting_type, allow_multiple"
-    )
+    .select("id, title, start_date, end_date, voting_type, allow_multiple")
     .order("created_at", { ascending: false });
 
   const polls: Poll[] = pollsData || [];
-
   if (!polls.length) {
-    return (
-      <main className="p-6 max-w-xl mx-auto text-center">
-        Nenhuma pesquisa ativa.
-      </main>
-    );
+    return <p className="p-6 text-center">Nenhuma pesquisa ativa.</p>;
   }
 
-  const pollIds = polls.map((p) => p.id);
+  const pollIds = polls.map(p => p.id);
 
-  // 2) Buscar opções
   const { data: optionsData } = await supabase
     .from("poll_options")
     .select("id, poll_id, option_text")
@@ -73,7 +77,6 @@ export default async function Home() {
 
   const options: PollOption[] = optionsData || [];
 
-  // 3) Buscar votos (single)
   const { data: votesData } = await supabase
     .from("votes")
     .select("poll_id, option_id, user_hash")
@@ -81,167 +84,97 @@ export default async function Home() {
 
   const votes: Vote[] = votesData || [];
 
-  // 4) Buscar rankings
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
     .select("vote_id, option_id, ranking");
 
   const rankings: VoteRanking[] = rankingsData || [];
 
-  // ---- Agrupamentos ----
-
   const optionsByPoll = new Map<string, PollOption[]>();
-  options.forEach((o) => {
+  options.forEach(o => {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
     optionsByPoll.get(o.poll_id)!.push(o);
   });
 
   const votesByPoll = new Map<string, Vote[]>();
-  votes.forEach((v) => {
+  votes.forEach(v => {
     if (!votesByPoll.has(v.poll_id)) votesByPoll.set(v.poll_id, []);
     votesByPoll.get(v.poll_id)!.push(v);
   });
 
   const rankingsByOption = new Map<string, VoteRanking[]>();
-  rankings.forEach((r) => {
-    if (!rankingsByOption.has(r.option_id))
-      rankingsByOption.set(r.option_id, []);
+  rankings.forEach(r => {
+    if (!rankingsByOption.has(r.option_id)) rankingsByOption.set(r.option_id, []);
     rankingsByOption.get(r.option_id)!.push(r);
   });
 
   const rankingVotesByPoll = new Map<string, Set<string>>();
-  rankings.forEach((r) => {
-    const opt = options.find((o) => o.id === r.option_id);
+  rankings.forEach(r => {
+    const opt = options.find(o => o.id === r.option_id);
     if (!opt) return;
-    if (!rankingVotesByPoll.has(opt.poll_id))
-      rankingVotesByPoll.set(opt.poll_id, new Set());
+    if (!rankingVotesByPoll.has(opt.poll_id)) rankingVotesByPoll.set(opt.poll_id, new Set());
     rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
   });
 
   return (
-    <main className="p-6 max-w-3xl mx-auto space-y-5">
-      <h1 className="text-3xl font-bold text-center">
-        Auditável — Pesquisas
-      </h1>
+    <main className="p-6 max-w-3xl mx-auto space-y-6">
+      <h1 className="text-3xl font-bold text-center">Auditável — Pesquisas</h1>
 
-      {polls.map((p) => {
+      {polls.map(p => {
         const opts = optionsByPoll.get(p.id) || [];
         const status = getStatus(p);
         const isRanking = p.voting_type === "ranking";
 
-        // ===== SINGLE =====
         let totalVotes = 0;
-        let leaderText = "";
-        let leaderCount = 0;
 
         if (!isRanking) {
           const pollVotes = votesByPoll.get(p.id) || [];
-
           totalVotes = p.allow_multiple
             ? pollVotes.length
-            : new Set(pollVotes.map((v) => v.user_hash)).size;
-
-          const countByOption = new Map<string, number>();
-
-          pollVotes.forEach((v) => {
-            if (!v.option_id) return;
-            countByOption.set(
-              v.option_id,
-              (countByOption.get(v.option_id) || 0) + 1
-            );
-          });
-
-          if (countByOption.size > 0) {
-            const [leaderId, count] = [...countByOption.entries()].sort(
-              (a, b) => b[1] - a[1]
-            )[0];
-            const opt = opts.find((o) => o.id === leaderId);
-            if (opt) {
-              leaderText = opt.option_text;
-              leaderCount = count;
-            }
-          }
-        }
-
-        // ===== RANKING =====
-        let rankingTotal = 0;
-        let rankingLeader = "";
-        let rankingAvg = 0;
-
-        if (isRanking) {
-          rankingTotal = rankingVotesByPoll.get(p.id)?.size || 0;
-
-          const summaries = opts
-            .map((o) => {
-              const rs = rankingsByOption.get(o.id) || [];
-              if (!rs.length) return null;
-              const avg =
-                rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
-              return { text: o.option_text, avg };
-            })
-            .filter(Boolean) as { text: string; avg: number }[];
-
-          if (summaries.length) {
-            const best = summaries.sort((a, b) => a.avg - b.avg)[0];
-            rankingLeader = best.text;
-            rankingAvg = best.avg;
-          }
+            : new Set(pollVotes.map(v => v.user_hash)).size;
+        } else {
+          totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
         }
 
         return (
-          <Link
+          <div
             key={p.id}
-            href={`/poll/${p.id}`}
-            className="block p-4 border rounded-lg bg-white hover:shadow transition"
+            className="relative p-5 border rounded-xl bg-white shadow-sm hover:shadow-md transition"
           >
-            <h2 className="text-lg font-semibold">{p.title}</h2>
+            {/* STATUS */}
+            <span
+              className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                status
+              )}`}
+            >
+              {statusLabel(status)}
+            </span>
 
-            <div className="text-sm text-gray-600 mt-1">
-              Início: {formatDate(p.start_date)} · Fim:{" "}
-              {formatDate(p.end_date)}
+            {/* TITLE */}
+            <h2 className="text-lg font-semibold text-blue-700 pr-24">
+              {p.title}
+            </h2>
+
+            {/* META */}
+            <div className="text-sm text-gray-600 mt-2">
+              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
             </div>
 
-            {!isRanking && (
-              <div className="mt-2 text-sm">
-                <b>Total de votos:</b> {totalVotes}
-                {leaderText && (
-                  <div className="mt-1 text-green-700 font-medium">
-                    Líder: {leaderText} ({leaderCount} votos)
-                  </div>
-                )}
-              </div>
-            )}
+            {/* TOTAL */}
+            <div className="mt-3 text-sm">
+              <b>Total de votos:</b> {totalVotes}
+            </div>
 
-            {isRanking && (
-              <div className="mt-2 text-sm">
-                <b>Total de votos:</b> {rankingTotal}
-                {rankingLeader && (
-                  <div className="mt-1 text-green-700 font-medium">
-                    Líder (ranking médio): {rankingLeader} (
-                    {rankingAvg.toFixed(2)})
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="mt-3">
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  status === "open"
-                    ? "bg-green-100 text-green-800"
-                    : status === "not_started"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-                }`}
+            {/* CTA */}
+            <div className="mt-4">
+              <Link
+                href={`/poll/${p.id}`}
+                className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
               >
-                {status === "open"
-                  ? "Aberta"
-                  : status === "not_started"
-                  ? "Não iniciada"
-                  : "Encerrada"}
-              </span>
+                Ir para votação →
+              </Link>
             </div>
-          </Link>
+          </div>
         );
       })}
     </main>
