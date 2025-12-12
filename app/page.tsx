@@ -49,8 +49,14 @@ function statusBadgeClasses(status: string) {
   return "bg-red-100 text-red-800";
 }
 
+function cardColor(status: string) {
+  if (status === "open") return "bg-green-50";
+  if (status === "not_started") return "bg-yellow-50";
+  return "bg-red-50";
+}
+
 export default async function Home() {
-  // --- 1) Buscar polls ---
+  // 1) Buscar todas as pesquisas
   const { data: pollsData } = await supabase
     .from("polls")
     .select("id, title, start_date, end_date, created_at, voting_type")
@@ -67,7 +73,7 @@ export default async function Home() {
     );
   }
 
-  // --- 2) Buscar poll_options ---
+  // 2) Buscar opções de todas as pesquisas
   const pollIds = polls.map((p) => p.id);
 
   const { data: optionsData } = await supabase
@@ -75,30 +81,29 @@ export default async function Home() {
     .select("id, poll_id, option_text, votes_count")
     .in("poll_id", pollIds);
 
-  const options: PollOption[] = optionsData || [];
+  const options: PollOption[] = Array.isArray(optionsData) ? optionsData : [];
 
-  // --- 3) Buscar vote_rankings ---
-  // (não filtramos por poll_id porque vote_rankings não tem esse campo)
+  // 3) Buscar rankings (para pesquisas de ranking)
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
     .select("id, vote_id, option_id, ranking");
 
-  const rankings: VoteRanking[] = rankingsData || [];
+  const rankings: VoteRanking[] = Array.isArray(rankingsData) ? rankingsData : [];
 
-  // --- Agrupamentos eficientes ---
+  // Agrupar opções por pesquisa
   const optionsByPoll = new Map<string, PollOption[]>();
   for (const o of options) {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
     optionsByPoll.get(o.poll_id)!.push(o);
   }
 
+  // Agrupar rankings por option_id
   const rankingsByOption = new Map<string, VoteRanking[]>();
   for (const r of rankings) {
     if (!rankingsByOption.has(r.option_id)) rankingsByOption.set(r.option_id, []);
     rankingsByOption.get(r.option_id)!.push(r);
   }
 
-  // --- Render UI ---
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold mb-2 text-center">Auditável — Pesquisas</h1>
@@ -109,20 +114,22 @@ export default async function Home() {
           const opts = optionsByPoll.get(p.id) || [];
           const isRanking = (p.voting_type || "").toLowerCase() === "ranking";
 
-          // --- Pesquisa simples: votos e porcentagens ---
+          // ==== PESQUISAS SIMPLES ====
           const totalVotes = opts.reduce((acc, o) => acc + (o.votes_count || 0), 0);
 
-          const leaderSimple =
-            opts
-              .slice()
-              .sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0))[0] || null;
+          let leaderSimple: PollOption | null = null;
+          let leaderPct = 0;
 
-          const leaderPct =
-            leaderSimple && totalVotes > 0
+          if (totalVotes > 0) {
+            leaderSimple = opts
+              .slice()
+              .sort((a, b) => (b.votes_count || 0) - (a.votes_count || 0))[0];
+            leaderPct = leaderSimple
               ? Math.round(((leaderSimple.votes_count || 0) / totalVotes) * 1000) / 10
               : 0;
+          }
 
-          // --- Pesquisa ranking: média de ranking ---
+          // ==== PESQUISAS RANKING ====
           let leaderRanking: {
             option: PollOption;
             avg: number;
@@ -132,48 +139,47 @@ export default async function Home() {
           if (isRanking) {
             const summaries = opts.map((opt) => {
               const rks = rankingsByOption.get(opt.id) || [];
-              if (!rks.length) {
-                return { option: opt, avg: Infinity, count: 0 };
-              }
+              if (!rks.length) return { option: opt, avg: Infinity, count: 0 };
+
               const avg = rks.reduce((s, r) => s + r.ranking, 0) / rks.length;
               return { option: opt, avg, count: rks.length };
             });
 
-            leaderRanking = summaries.slice().sort((a, b) => a.avg - b.avg)[0] || null;
+            leaderRanking = summaries.sort((a, b) => a.avg - b.avg)[0] || null;
           }
 
           return (
             <Link
               key={p.id}
               href={`/poll/${p.id}`}
-              className="block p-4 border rounded-lg hover:shadow transition-shadow duration-150 bg-white"
+              className={`block p-4 border rounded-lg hover:shadow transition-shadow duration-150 ${cardColor(
+                status
+              )}`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <h2 className="text-lg font-semibold text-gray-900 truncate">{p.title}</h2>
 
-                  <div className="mt-2 text-sm text-gray-600 flex flex-wrap gap-3">
+                  <div className="mt-2 text-sm text-gray-700 flex flex-wrap gap-3">
                     <span>Início: {formatDate(p.start_date)}</span>
                     <span>Fim: {formatDate(p.end_date)}</span>
                     <span>Tipo: {isRanking ? "Ranking" : "Voto simples"}</span>
                   </div>
 
-                  {/* --- Painel líder --- */}
-                  <div className="mt-4 text-sm text-gray-700">
+                  {/* Painel de informações principais */}
+                  <div className="mt-3 text-sm text-gray-700">
 
-                    {/* Pesquisa simples */}
+                    {/* ======= SIMPLE POLL ======= */}
                     {!isRanking && (
                       <>
                         <div>
                           <span className="font-medium">Total de votos:</span> {totalVotes}
                         </div>
 
-                        {leaderSimple && (
+                        {leaderSimple && totalVotes > 0 && (
                           <div className="mt-2">
                             <span className="font-medium">Líder:</span>{" "}
-                            <span className="font-semibold">
-                              {leaderSimple.option_text}
-                            </span>{" "}
+                            <span className="font-semibold">{leaderSimple.option_text}</span>{" "}
                             <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-sm font-bold bg-blue-50 text-blue-800">
                               {leaderPct}%
                             </span>
@@ -185,10 +191,10 @@ export default async function Home() {
                       </>
                     )}
 
-                    {/* Pesquisa ranking */}
-                    {isRanking && leaderRanking && (
-                      <div>
-                        <span className="font-medium">Líder (média de ranking):</span>{" "}
+                    {/* ======= RANKING POLL ======= */}
+                    {isRanking && leaderRanking && leaderRanking.count > 0 && (
+                      <div className="mt-2">
+                        <span className="font-medium">Líder (média ranking):</span>{" "}
                         <span className="font-semibold">
                           {leaderRanking.option.option_text}
                         </span>{" "}
@@ -201,8 +207,8 @@ export default async function Home() {
                       </div>
                     )}
 
-                    {isRanking && !leaderRanking && (
-                      <div className="text-gray-600">Nenhum ranking disponível.</div>
+                    {isRanking && (!leaderRanking || leaderRanking.count === 0) && (
+                      <div className="text-gray-600">Nenhum ranking disponível ainda.</div>
                     )}
                   </div>
                 </div>
