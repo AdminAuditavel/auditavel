@@ -2,6 +2,7 @@ import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  console.log("RESULT PAGE — ID recebido:", id);
 
   // Buscar dados da poll (inclui voting_type)
   const { data: pollData, error: pollError } = await supabase
@@ -9,6 +10,8 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     .select("voting_type")
     .eq("id", id)
     .single();
+    console.log("RESULT PAGE — pollData:", pollData);
+    console.log("RESULT PAGE — pollError:", pollError);
 
   if (pollError || !pollData) {
     console.error("Erro ao buscar poll:", pollError);
