@@ -1,10 +1,11 @@
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
-export default async function ResultsPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
+  // Resolva a Promise para acessar o parâmetro
+  const { id } = await params;
 
   // Log para diagnóstico
-  console.log("RESULT PAGE — params (raw):", params);
+  console.log("RESULT PAGE — params (raw):", { id });
   console.log("RESULT PAGE — ID recebido:", id);
 
   // 1. GUARDA DE SEGURANÇA — impede erro se id vier vazio/bugado
