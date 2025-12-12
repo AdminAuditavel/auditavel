@@ -22,6 +22,20 @@ export default function VoteButton({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  // -------------------------------------------------------------
+  // 1. Guard Clause: garante que pollId nunca esteja undefined
+  // -------------------------------------------------------------
+  if (!pollId || typeof pollId !== "string" || pollId.trim() === "") {
+    console.error("ERRO GRAVE: VoteButton recebeu pollId inválido:", pollId);
+    return (
+      <p className="text-red-600 mt-2">
+        Erro interno: ID da pesquisa ausente.
+      </p>
+    );
+  }
+
+  const safePollId = pollId.trim(); // Normaliza
+
   async function vote() {
     if (loading) return;
     setLoading(true);
@@ -35,7 +49,7 @@ export default function VoteButton({
       }
 
       const voteData = {
-        poll_id: pollId,
+        poll_id: safePollId,
         option_id: optionId,
         user_hash: uid,
       };
@@ -69,9 +83,11 @@ export default function VoteButton({
         return;
       }
 
-      // sucesso → redireciona
-      router.push(`/results/${pollId}`);
-      return;
+      // -------------------------------------------------------------
+      // 2. Redirecionamento SEGURO
+      // -------------------------------------------------------------
+      console.log("Redirecionando para:", `/results/${safePollId}`);
+      router.push(`/results/${safePollId}`);
 
     } catch (err) {
       console.error('Erro ao registrar voto:', err);
@@ -84,10 +100,10 @@ export default function VoteButton({
     if (allowMultiple) {
       vote();
     } else {
-      const alreadyVoted = localStorage.getItem(`voted_poll_${pollId}`);
+      const alreadyVoted = localStorage.getItem(`voted_poll_${safePollId}`);
       if (alreadyVoted) {
         setMessage({
-          text: 'Você já votou nesta pesquisa. Deseja alterar seu voto?',
+          text: 'Você já votou nesta pesquisa mas pode alterar seu voto?',
           type: 'error',
         });
       } else {
