@@ -1,7 +1,10 @@
+export const dynamic = "force-dynamic";   // impede que vire estático
+export const revalidate = 0;              // garante renderização dinâmica SEM cache
+
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
-  // Log mínimo e seguro para diagnóstico (sem usar headers())
+  // Log mínimo e seguro para diagnóstico
   console.log("RESULT PAGE — params (raw):", JSON.stringify(params));
 
   const { id } = params;
@@ -29,7 +32,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     .from("polls")
     .select("voting_type")
     .eq("id", safeId)
-    .maybeSingle();   // <-- evitar 406
+    .maybeSingle();
 
   console.log("RESULT PAGE — pollData:", pollData);
   console.log("RESULT PAGE — pollError:", pollError);
