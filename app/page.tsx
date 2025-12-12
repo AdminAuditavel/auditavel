@@ -4,32 +4,8 @@ import { supabase } from "@/lib/supabase";
 export default async function Home() {
   const { data: polls } = await supabase
     .from("polls")
-    .select("id, title, start_date, end_date, created_at, options(votes, text)")
+    .select("id, title")
     .order("created_at", { ascending: false });
-
-  function formatDate(d: string | null | undefined) {
-    if (!d) return "-";
-    try {
-      return new Date(d).toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return "-";
-    }
-  }
-
-  function statusFor(p: any) {
-    const now = new Date();
-    const start = p?.start_date ? new Date(p.start_date) : null;
-    const end = p?.end_date ? new Date(p.end_date) : null;
-
-    if (!start && !end) return "Sem datas";
-    if (start && now < start) return `Não iniciada (começa em ${formatDate(p.start_date)})`;
-    if (end && now > end) return `Encerrada (fechou em ${formatDate(p.end_date)})`;
-    return "Aberta";
-  }
 
   return (
     <main className="p-6 max-w-xl mx-auto space-y-4">
@@ -37,30 +13,13 @@ export default async function Home() {
 
       {!polls?.length && <p className="text-gray-600 text-center">Nenhuma pesquisa ativa.</p>}
 
-      {polls?.map((p: any) => (
+      {polls?.map(p => (
         <Link
           key={p.id}
           href={`/poll/${p.id}`}
           className="block p-4 border rounded-lg hover:bg-gray-50"
         >
-          <div className="flex flex-col">
-            <span className="font-medium text-lg">{p.title}</span>
-            <div className="text-sm text-gray-600 mt-2">
-              <span className="mr-3">Início: {formatDate(p.start_date)}</span>
-              <span className="mr-3">Fim: {formatDate(p.end_date)}</span>
-            </div>
-            <div className="text-sm mt-2 font-semibold text-gray-700">
-              Total de votos: {p.options?.reduce((acc: number, o: any) => acc + (Number(o.votes) || 0), 0)}
-            </div>
-            <div className="text-sm text-green-700 font-medium mt-1">
-              {(() => {
-                if (!p.options?.length) return null;
-                const leader = [...p.options].sort((a, b) => (Number(b.votes) || 0) - (Number(a.votes) || 0))[0];
-                return leader ? `Liderando: ${leader.text} (${leader.votes || 0} votos)` : null;
-              })()}
-            </div>
-            <div className="text-sm text-gray-500 mt-1">{statusFor(p)}</div>
-          </div>
+          {p.title}
         </Link>
       ))}
     </main>
