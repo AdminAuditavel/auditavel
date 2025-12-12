@@ -11,6 +11,9 @@ export default function PollPage() {
   const router = useRouter();
   const id = params?.id as string | undefined;
 
+  console.log("DEBUG POLL PAGE — params:", params);
+  console.log("DEBUG POLL PAGE — id:", id);
+
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any | null>(null);
   const [options, setOptions] = useState<any[]>([]);
