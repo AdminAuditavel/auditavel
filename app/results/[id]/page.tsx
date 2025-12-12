@@ -1,9 +1,9 @@
-import { useRouter } from "next/router";  // Importando useRouter para capturar parâmetros da URL
+import { useRouter } from "next/navigation";  // Correção: Importando useRouter de next/navigation
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export default async function ResultsPage() {
-  const router = useRouter();
-  const { id } = router.query;  // Acessando o parâmetro 'id' diretamente da URL
+  const router = useRouter();  // Correção: Usando useRouter de next/navigation
+  const { id } = router.query;  // Acessando o id
 
   // Log para diagnóstico
   console.log("RESULT PAGE — params (raw):", router.query);
@@ -26,7 +26,7 @@ export default async function ResultsPage() {
     .from("polls")
     .select("voting_type")
     .eq("id", safeId)
-    .maybeSingle();   // <-- evitar 406
+    .maybeSingle();
 
   console.log("RESULT PAGE — pollData:", pollData);
   console.log("RESULT PAGE — pollError:", pollError);
