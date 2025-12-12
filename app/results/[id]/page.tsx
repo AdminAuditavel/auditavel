@@ -1,12 +1,10 @@
-import { useRouter } from "next/navigation";  // Correção: Importando useRouter de next/navigation
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
-export default async function ResultsPage() {
-  const router = useRouter();  // Correção: Usando useRouter de next/navigation
-  const { id } = router.query;  // Acessando o id
+export default async function ResultsPage({ params }: { params: { id: string } }) {
+  const { id } = params;
 
   // Log para diagnóstico
-  console.log("RESULT PAGE — params (raw):", router.query);
+  console.log("RESULT PAGE — params (raw):", params);
   console.log("RESULT PAGE — ID recebido:", id);
 
   // 1. GUARDA DE SEGURANÇA — impede erro se id vier vazio/bugado
