@@ -1,6 +1,12 @@
+import { headers } from "next/headers";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
+  // Logs mínimos para diagnóstico (não altera fluxo)
+  console.log("RESULT PAGE — params (raw):", JSON.stringify(params));
+  const reqHeaders = Object.fromEntries(headers().entries());
+  console.log("RESULT PAGE — headers:", JSON.stringify(reqHeaders));
+
   const { id } = params;
 
   console.log("RESULT PAGE — ID recebido:", id);
