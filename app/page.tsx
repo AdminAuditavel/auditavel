@@ -86,7 +86,7 @@ export default async function Home() {
   const pollIds = polls.map((p) => p.id);
 
   const { data: optionsData, error: optionsError } = await supabase
-    .from<PollOptionRow>("poll_options")
+    .from("poll_options")
     .select("id, poll_id, option_text, votes_count")
     .in("poll_id", pollIds);
 
