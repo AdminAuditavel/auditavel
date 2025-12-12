@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/results/:id",
+      "destination": "/results/[id]"
+    }
+  ]
+}
