@@ -21,7 +21,6 @@ export default async function Home() {
       return "-";
     }
   }
-  }
 
   function statusFor(p: any) {
     if (!p?.start_date && !p?.end_date) return "Sem datas";
@@ -60,7 +59,6 @@ export default async function Home() {
                 return leader ? `Liderando: ${leader.text} (${leader.votes} votos)` : null;
               })()}
             </div>
-          </div>
           </div>
         </Link>
       ))}
