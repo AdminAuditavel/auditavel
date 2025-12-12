@@ -4,8 +4,34 @@ import { supabase } from "@/lib/supabase";
 export default async function Home() {
   const { data: polls } = await supabase
     .from("polls")
-    .select("id, title")
+    .select("id, title, start_date, end_date")
     .order("created_at", { ascending: false });
+
+  const now = new Date();
+
+  function formatDate(d: string | null | undefined) {
+    if (!d) return "-";
+    try {
+      return new Date(d).toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "-";
+    }
+  }
+
+  function statusFor(p: any) {
+    if (!p?.start_date && !p?.end_date) return "Sem datas";
+    const start = p?.start_date ? new Date(p.start_date) : null;
+    const end = p?.end_date ? new Date(p.end_date) : null;
+    if (start && now < start) return `Não iniciada (começa em ${formatDate(p.start_date)})`;
+    if (end && now > end) return `Encerrada (fechou em ${formatDate(p.end_date)})`;
+    return "Aberta";
+  }
 
   return (
     <main className="p-6 max-w-xl mx-auto space-y-4">
@@ -13,13 +39,20 @@ export default async function Home() {
 
       {!polls?.length && <p className="text-gray-600 text-center">Nenhuma pesquisa ativa.</p>}
 
-      {polls?.map(p => (
+      {polls?.map((p: any) => (
         <Link
           key={p.id}
           href={`/poll/${p.id}`}
           className="block p-4 border rounded-lg hover:bg-gray-50"
         >
-          {p.title}
+          <div className="flex flex-col">
+            <span className="font-medium">{p.title}</span>
+            <div className="text-sm text-gray-600 mt-2">
+              <span className="mr-3">Início: {formatDate(p.start_date)}</span>
+              <span className="mr-3">Fim: {formatDate(p.end_date)}</span>
+              <span className="font-semibold">Status: {statusFor(p)}</span>
+            </div>
+          </div>
         </Link>
       ))}
     </main>
