@@ -2,18 +2,36 @@ import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   const { id } = params;
+
   console.log("RESULT PAGE — ID recebido:", id);
 
-  // Buscar dados da poll (inclui voting_type)
+  // ============================================================
+  // 1. GUARDA DE SEGURANÇA — impede erro se id vier vazio/bugado
+  // ============================================================
+  if (!id || typeof id !== "string" || id.trim() === "") {
+    console.error("RESULT PAGE — ID inválido:", id);
+    return (
+      <main className="p-6 max-w-xl mx-auto">
+        Erro: ID da enquete inválido.
+      </main>
+    );
+  }
+
+  const safeId = id.trim();
+
+  // ============================================================
+  // 2. Buscar dados da enquete
+  // ============================================================
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
     .select("voting_type")
-    .eq("id", id)
-    .single();
-    console.log("RESULT PAGE — pollData:", pollData);
-    console.log("RESULT PAGE — pollError:", pollError);
+    .eq("id", safeId)
+    .maybeSingle();   // <-- evitar 406
 
-  if (pollError || !pollData) {
+  console.log("RESULT PAGE — pollData:", pollData);
+  console.log("RESULT PAGE — pollError:", pollError);
+
+  if (!pollData) {
     console.error("Erro ao buscar poll:", pollError);
     return (
       <main className="p-6 max-w-xl mx-auto">
@@ -24,19 +42,19 @@ export default async function ResultsPage({ params }: { params: { id: string } }
 
   const votingType = pollData.voting_type;
 
-  // =====================================================================
-  // RESULTADO — VOTO ÚNICO
-  // =====================================================================
+  // ============================================================
+  // 3. RESULTADO — VOTO ÚNICO
+  // ============================================================
   if (votingType === "single") {
     const { data: options } = await supabase
       .from("poll_options")
       .select("id, option_text")
-      .eq("poll_id", id);
+      .eq("poll_id", safeId);
 
     const { data: votes } = await supabase
       .from("votes")
       .select("option_id")
-      .eq("poll_id", id);
+      .eq("poll_id", safeId);
 
     const count: Record<string, number> = {};
     votes?.forEach(v => {
@@ -62,21 +80,23 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     );
   }
 
-  // =====================================================================
-  // RESULTADO — RANKING (BORDA)
-  // =====================================================================
-
-  // Construção automática da URL BASE (sem depender de variável externa)
+  // ============================================================
+  // 4. RESULTADO — RANKING / BORDA
+  // ============================================================
   const baseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000";
 
-  const res = await fetch(`${baseUrl}/api/results/${id}`, {
+  console.log("RESULT PAGE — chamando API:", `${baseUrl}/api/results/${safeId}`);
+
+  const res = await fetch(`${baseUrl}/api/results/${safeId}`, {
     cache: "no-store",
   });
 
   if (!res.ok) {
-    console.error("Erro ao buscar resultado (API):", await res.text());
+    const apiError = await res.text();
+    console.error("Erro ao buscar resultado (API):", apiError);
+
     return (
       <main className="p-6 max-w-xl mx-auto">
         Erro ao carregar resultados da pesquisa.
