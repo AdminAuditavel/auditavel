@@ -48,7 +48,7 @@ export default function PollPage() {
           .from('polls')
           .select('*')
           .eq('id', safeId)
-          .single();
+          .maybeSingle()
 
         if (!mounted) return;
 
@@ -90,7 +90,7 @@ export default function PollPage() {
           .select('option_id')
           .eq('poll_id', safeId)
           .eq('user_hash', userHash)
-          .single();
+          .maybeSingle()
 
         if (!mounted) return;
         setUserHasVoted(!!voteData);
