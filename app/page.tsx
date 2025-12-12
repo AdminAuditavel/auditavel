@@ -58,6 +58,7 @@ function statusColor(status: string) {
 }
 
 export default async function Home() {
+  // 1) Polls
   const { data: pollsData } = await supabase
     .from("polls")
     .select("id, title, start_date, end_date, voting_type, allow_multiple")
@@ -70,6 +71,7 @@ export default async function Home() {
 
   const pollIds = polls.map(p => p.id);
 
+  // 2) Options
   const { data: optionsData } = await supabase
     .from("poll_options")
     .select("id, poll_id, option_text")
@@ -77,6 +79,7 @@ export default async function Home() {
 
   const options: PollOption[] = optionsData || [];
 
+  // 3) Votes (single)
   const { data: votesData } = await supabase
     .from("votes")
     .select("poll_id, option_id, user_hash")
@@ -84,11 +87,14 @@ export default async function Home() {
 
   const votes: Vote[] = votesData || [];
 
+  // 4) Rankings
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
     .select("vote_id, option_id, ranking");
 
   const rankings: VoteRanking[] = rankingsData || [];
+
+  // ---- Agrupamentos ----
 
   const optionsByPoll = new Map<string, PollOption[]>();
   options.forEach(o => {
@@ -112,7 +118,8 @@ export default async function Home() {
   rankings.forEach(r => {
     const opt = options.find(o => o.id === r.option_id);
     if (!opt) return;
-    if (!rankingVotesByPoll.has(opt.poll_id)) rankingVotesByPoll.set(opt.poll_id, new Set());
+    if (!rankingVotesByPoll.has(opt.poll_id))
+      rankingVotesByPoll.set(opt.poll_id, new Set());
     rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
   });
 
@@ -125,15 +132,61 @@ export default async function Home() {
         const status = getStatus(p);
         const isRanking = p.voting_type === "ranking";
 
+        /* ===== SINGLE ===== */
         let totalVotes = 0;
+        let leaderText = "";
+        let leaderCount = 0;
 
         if (!isRanking) {
           const pollVotes = votesByPoll.get(p.id) || [];
+
           totalVotes = p.allow_multiple
             ? pollVotes.length
             : new Set(pollVotes.map(v => v.user_hash)).size;
-        } else {
-          totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
+
+          const countByOption = new Map<string, number>();
+          pollVotes.forEach(v => {
+            if (!v.option_id) return;
+            countByOption.set(
+              v.option_id,
+              (countByOption.get(v.option_id) || 0) + 1
+            );
+          });
+
+          if (countByOption.size > 0) {
+            const [leaderId, count] = [...countByOption.entries()].sort(
+              (a, b) => b[1] - a[1]
+            )[0];
+            const opt = opts.find(o => o.id === leaderId);
+            if (opt) {
+              leaderText = opt.option_text;
+              leaderCount = count;
+            }
+          }
+        }
+
+        /* ===== RANKING ===== */
+        let rankingTotal = 0;
+        let rankingLeader = "";
+        let rankingAvg = 0;
+
+        if (isRanking) {
+          rankingTotal = rankingVotesByPoll.get(p.id)?.size || 0;
+
+          const summaries = opts
+            .map(o => {
+              const rs = rankingsByOption.get(o.id) || [];
+              if (!rs.length) return null;
+              const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
+              return { text: o.option_text, avg };
+            })
+            .filter(Boolean) as { text: string; avg: number }[];
+
+          if (summaries.length) {
+            const best = summaries.sort((a, b) => a.avg - b.avg)[0];
+            rankingLeader = best.text;
+            rankingAvg = best.avg;
+          }
         }
 
         return (
@@ -156,14 +209,34 @@ export default async function Home() {
             </h2>
 
             {/* META */}
-            <div className="text-sm text-gray-600 mt-2">
-              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+            <div className="text-sm text-gray-600 mt-1">
+              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} ·
+              Tipo: {isRanking ? " Ranking" : " Voto simples"}
             </div>
 
-            {/* TOTAL */}
-            <div className="mt-3 text-sm">
-              <b>Total de votos:</b> {totalVotes}
-            </div>
+            {/* CONTENT */}
+            {!isRanking && (
+              <div className="mt-3 text-sm">
+                <b>Total de votos:</b> {totalVotes}
+                {leaderText && (
+                  <div className="mt-1 text-green-700 font-medium">
+                    Líder: {leaderText} ({leaderCount} votos)
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isRanking && (
+              <div className="mt-3 text-sm">
+                <b>Total de votos:</b> {rankingTotal}
+                {rankingLeader && (
+                  <div className="mt-1 text-green-700 font-medium">
+                    Líder (ranking médio): {rankingLeader} (
+                    {rankingAvg.toFixed(2)})
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* CTA */}
             <div className="mt-4">
