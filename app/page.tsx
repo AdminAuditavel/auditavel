@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export default async function Home() {
   const { data: polls } = await supabase
     .from("polls")
-    .select("id, title, start_date, end_date, created_at, options(votes, text)"))
+    .select("id, title, start_date, end_date, created_at, options(votes, text)")
     .order("created_at", { ascending: false });
 
   const now = new Date();
@@ -22,7 +22,16 @@ export default async function Home() {
     }
   }
 
-  function statusFor(p: any) {
+  function function statusFor(p: any) {
+    const now = new Date();
+    const start = p?.start_date ? new Date(p.start_date) : null;
+    const end = p?.end_date ? new Date(p.end_date) : null;
+
+    if (start && now < start) return `Não iniciada`;
+    if (end && now > end) return `Encerrada`;
+    return "Aberta";
+  }
+(p: any) {
     if (!p?.start_date && !p?.end_date) return "Sem datas";
     const start = p?.start_date ? new Date(p.start_date) : null;
     const end = p?.end_date ? new Date(p.end_date) : null;
