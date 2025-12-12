@@ -11,8 +11,23 @@ export default function PollPage() {
   const router = useRouter();
   const id = params?.id as string | undefined;
 
+  // LOG de diagnóstico
   console.log("DEBUG POLL PAGE — params:", params);
   console.log("DEBUG POLL PAGE — id:", id);
+
+  // ======================================================
+  // 1. GUARDA DE SEGURANÇA — ID inválido? Não renderiza.
+  // ======================================================
+  if (!id || typeof id !== "string" || id.trim() === "") {
+    console.error("PollPage recebeu id inválido:", id);
+    return (
+      <main className="p-6 max-w-xl mx-auto text-red-600">
+        Erro interno: ID da pesquisa ausente ou inválido.
+      </main>
+    );
+  }
+
+  const safeId = id.trim();  // Normaliza e evita espaços invisíveis
 
   const [userHasVoted, setUserHasVoted] = useState(false);
   const [poll, setPoll] = useState<any | null>(null);
@@ -21,8 +36,10 @@ export default function PollPage() {
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // ======================================================
+  // 2. FETCH dos dados da pesquisa
+  // ======================================================
   useEffect(() => {
-    if (!id) return;
     let mounted = true;
 
     const fetchPollData = async () => {
@@ -30,12 +47,13 @@ export default function PollPage() {
         const { data: pollData, error } = await supabase
           .from('polls')
           .select('*')
-          .eq('id', id)
+          .eq('id', safeId)
           .single();
 
         if (!mounted) return;
 
         if (error || !pollData) {
+          console.error("Erro ao buscar poll:", error);
           router.replace('/404');
           return;
         }
@@ -47,7 +65,7 @@ export default function PollPage() {
         const { data: optionsData } = await supabase
           .from('poll_options')
           .select('id, option_text')
-          .eq('poll_id', id);
+          .eq('poll_id', safeId);
 
         if (!mounted) return;
         setOptions(optionsData ?? []);
@@ -70,7 +88,7 @@ export default function PollPage() {
         const { data: voteData } = await supabase
           .from('votes')
           .select('option_id')
-          .eq('poll_id', id)
+          .eq('poll_id', safeId)
           .eq('user_hash', userHash)
           .single();
 
@@ -88,14 +106,26 @@ export default function PollPage() {
     return () => {
       mounted = false;
     };
-  }, [id, router]);
+  }, [safeId, router]);
 
+  // ======================================================
+  // 3. LOADING / FALHAS
+  // ======================================================
   if (loading) {
     return <main className="p-6 max-w-xl mx-auto">Carregando...</main>;
   }
 
-  if (!poll) return null;
+  if (!poll) {
+    return (
+      <main className="p-6 max-w-xl mx-auto text-red-600">
+        Erro ao carregar a pesquisa.
+      </main>
+    );
+  }
 
+  // ======================================================
+  // 4. RENDERIZAÇÃO DA POLL
+  // ======================================================
   return (
     <main className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">{poll.title}</h1>
@@ -112,9 +142,9 @@ export default function PollPage() {
         </p>
       )}
 
-      {/* =======================================================
-          MODO RANKING (voting_type = "ranking")
-      ======================================================= */}
+      {/* ======================================================
+          MODO RANKING
+      ====================================================== */}
       {votingType === "ranking" ? (
         <>
           <p className="mb-3 text-sm text-gray-600">
@@ -159,7 +189,7 @@ export default function PollPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  poll_id: id,
+                  poll_id: safeId,
                   option_ids: orderedIds,
                   user_hash: userHash,
                 }),
@@ -168,12 +198,15 @@ export default function PollPage() {
               const data = await res.json();
 
               if (!res.ok) {
-                alert('Erro ao enviar classificação: ' + (data.message ?? data.error ?? 'Erro desconhecido'));
+                alert(
+                  'Erro ao enviar classificação: ' +
+                  (data.message ?? data.error ?? 'Erro desconhecido')
+                );
                 return;
               }
 
-              // redirecionamento automático
-              window.location.href = `/results/${id}`;
+              // Redirecionamento SEGURO
+              window.location.href = `/results/${safeId}`;
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded"
           >
@@ -181,14 +214,14 @@ export default function PollPage() {
           </button>
         </>
       ) : (
-        /* =======================================================
-            MODO VOTO ÚNICO (voting_type = "single")
-        ======================================================= */
+        /* ======================================================
+            MODO VOTO ÚNICO
+        ====================================================== */
         <div className="space-y-3">
           {options.map((o) => (
             <VoteButton
               key={o.id}
-              pollId={id as string}
+              pollId={safeId}
               optionId={o.id}
               text={o.option_text}
               allowMultiple={allowMultiple}
