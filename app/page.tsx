@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export default async function Home() {
   const { data: polls } = await supabase
     .from("polls")
-    .select("id, title, created_at, start_date, end_date, options(votes, text)")
+    .select("id, title, start_date, end_date, created_at, options(votes, text)")")
     .order("created_at", { ascending: false });
 
   const now = new Date();
