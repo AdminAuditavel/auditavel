@@ -20,13 +20,15 @@ export default function VoteButton({
 }: VoteButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
-  // -------------------------------------------------------------
-  // 1. Guard Clause: garante que pollId nunca esteja undefined
-  // -------------------------------------------------------------
-  if (!pollId || typeof pollId !== "string" || pollId.trim() === "") {
-    console.error("ERRO GRAVE: VoteButton recebeu pollId inválido:", pollId);
+  /* =======================
+     GUARDA
+  ======================= */
+  if (!pollId || typeof pollId !== 'string' || pollId.trim() === '') {
     return (
       <p className="text-red-600 mt-2">
         Erro interno: ID da pesquisa ausente.
@@ -34,8 +36,11 @@ export default function VoteButton({
     );
   }
 
-  const safePollId = pollId.trim(); // Normaliza
+  const safePollId = pollId.trim();
 
+  /* =======================
+     VOTE
+  ======================= */
   async function vote() {
     if (loading) return;
     setLoading(true);
@@ -48,49 +53,39 @@ export default function VoteButton({
         localStorage.setItem('auditavel_uid', uid);
       }
 
-      const voteData = {
-        poll_id: safePollId,
-        option_id: optionId,
-        user_hash: uid,
-      };
-
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(voteData),
+        body: JSON.stringify({
+          poll_id: safePollId,
+          option_id: optionId,
+          user_hash: uid,
+        }),
       });
 
       if (!res.ok) {
-        let errorText = "Erro ao registrar voto.";
+        let errorText = 'Erro ao registrar voto.';
 
         try {
           const json = await res.json();
 
-          if (json.error === "cooldown_active") {
+          if (json.error === 'cooldown_active') {
             const secs = json.remaining_seconds ?? 0;
-            errorText = `Você deve esperar ${secs} segundo${secs > 1 ? "s" : ""} antes de votar novamente.`;
-          }
-          else if (json.message) {
+            errorText = `Você deve esperar ${secs} segundo${secs > 1 ? 's' : ''} antes de votar novamente.`;
+          } else if (json.message) {
             errorText = json.message;
-          }
-          else if (json.error) {
+          } else if (json.error) {
             errorText = json.error;
           }
         } catch {}
 
         setLoading(false);
-        setMessage({ text: errorText, type: "error" });
+        setMessage({ text: errorText, type: 'error' });
         return;
       }
 
-      // -------------------------------------------------------------
-      // 2. Redirecionamento SEGURO
-      // -------------------------------------------------------------
-      console.log("Redirecionando para:", `/results/${safePollId}`);
       router.push(`/results/${safePollId}`);
-
     } catch (err) {
-      console.error('Erro ao registrar voto:', err);
       setLoading(false);
       setMessage({ text: 'Erro ao registrar voto.', type: 'error' });
     }
@@ -103,7 +98,7 @@ export default function VoteButton({
       const alreadyVoted = localStorage.getItem(`voted_poll_${safePollId}`);
       if (alreadyVoted) {
         setMessage({
-          text: 'Você já votou nesta pesquisa mas pode alterar seu voto?',
+          text: 'Você já votou nesta pesquisa, mas pode alterar seu voto.',
           type: 'error',
         });
       } else {
@@ -112,20 +107,42 @@ export default function VoteButton({
     }
   }
 
+  /* =======================
+     RENDER
+  ======================= */
   return (
-    <div>
+    <div className="space-y-1">
       <button
         onClick={handleVoteClick}
         disabled={loading}
-        className="block w-full p-3 border rounded-lg hover:bg-gray-100 disabled:opacity-60"
         aria-disabled={loading}
+        className="
+          w-full
+          p-4
+          text-left
+          border
+          border-gray-200
+          rounded-xl
+          bg-white
+          hover:bg-emerald-50
+          hover:border-emerald-300
+          transition
+          disabled:opacity-60
+          disabled:cursor-not-allowed
+        "
       >
-        {loading ? 'Registrando...' : text}
+        <span className="text-sm font-medium text-gray-800">
+          {loading ? 'Registrando voto…' : text}
+        </span>
       </button>
 
       {message && (
         <p
-          className={`mt-2 text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+          className={`text-xs ${
+            message.type === 'success'
+              ? 'text-emerald-600'
+              : 'text-red-600'
+          }`}
           role={message.type === 'error' ? 'alert' : undefined}
         >
           {message.text}
