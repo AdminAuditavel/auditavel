@@ -105,15 +105,17 @@ export default function PollPage() {
     const checkUserVote = async () => {
       const userHash = localStorage.getItem('auditavel_uid');
       if (!userHash) return;
-
+    
       const { data } = await supabase
         .from('votes')
-        .select('option_id')
+        .select('id')
         .eq('poll_id', safeId)
         .eq('user_hash', userHash)
-        .maybeSingle();
-
-      if (mounted) setUserHasVoted(!!data);
+        .limit(1);
+    
+      if (mounted) {
+        setUserHasVoted(Boolean(data && data.length > 0));
+      }
     };
 
     fetchPollData();
