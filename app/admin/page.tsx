@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import Link from "next/link";
+import PollStatusSelect from "./PollStatusSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -7,71 +8,20 @@ type Poll = {
   id: string;
   title: string;
   status: "draft" | "open" | "paused" | "closed";
-  voting_type: "single" | "ranking";
   show_partial_results: boolean;
-  start_date: string | null;
-  end_date: string | null;
   created_at: string;
 };
-
-function statusLabel(status: Poll["status"]) {
-  switch (status) {
-    case "draft":
-      return "Rascunho";
-    case "open":
-      return "Aberta";
-    case "paused":
-      return "Pausada";
-    case "closed":
-      return "Encerrada";
-    default:
-      return status;
-  }
-}
-
-function statusStyle(status: Poll["status"]) {
-  switch (status) {
-    case "draft":
-      return "bg-slate-100 text-slate-700";
-    case "open":
-      return "bg-green-100 text-green-800";
-    case "paused":
-      return "bg-yellow-100 text-yellow-800";
-    case "closed":
-      return "bg-red-100 text-red-800";
-  }
-}
-
-function typeLabel(type: Poll["voting_type"]) {
-  return type === "ranking" ? "Ranking" : "Voto simples";
-}
-
-function formatDate(date: string | null) {
-  if (!date) return "-";
-  return new Date(date).toLocaleDateString("pt-BR");
-}
 
 export default async function AdminPage() {
   const { data: polls, error } = await supabase
     .from("polls")
-    .select(
-      `
-      id,
-      title,
-      status,
-      voting_type,
-      show_partial_results,
-      start_date,
-      end_date,
-      created_at
-    `
-    )
+    .select("id, title, status, show_partial_results, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
     return (
-      <main className="p-6 max-w-5xl mx-auto text-red-600">
-        Erro ao carregar pesquisas administrativas.
+      <main className="p-6 max-w-4xl mx-auto text-red-600">
+        Erro ao carregar pesquisas.
       </main>
     );
   }
@@ -79,7 +29,7 @@ export default async function AdminPage() {
   return (
     <main className="p-6 max-w-5xl mx-auto space-y-6">
       {/* HEADER */}
-      <header className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-emerald-700">
           Admin — Pesquisas
         </h1>
@@ -88,89 +38,84 @@ export default async function AdminPage() {
           href="/"
           className="text-sm text-emerald-600 hover:underline"
         >
-          Voltar para Auditável
+          Voltar ao site
         </Link>
-      </header>
+      </div>
 
       {/* TABELA */}
-      <div className="overflow-x-auto border rounded-lg">
-        <table className="min-w-full border-collapse text-sm">
-          <thead className="bg-slate-50 text-slate-700">
+      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-4 py-3 text-left">Título</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-left">Tipo</th>
-              <th className="px-4 py-3 text-center">Parciais</th>
-              <th className="px-4 py-3 text-left">Início</th>
-              <th className="px-4 py-3 text-left">Fim</th>
-              <th className="px-4 py-3 text-center">Ações</th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Pesquisa
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Status
+              </th>
+              <th className="px-4 py-3 text-center font-semibold">
+                Resultados parciais
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Criada em
+              </th>
             </tr>
           </thead>
 
           <tbody>
-            {polls && polls.length === 0 && (
+            {polls && polls.length > 0 ? (
+              polls.map((poll: Poll) => (
+                <tr
+                  key={poll.id}
+                  className="border-b last:border-b-0 hover:bg-gray-50"
+                >
+                  {/* TITLE */}
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-gray-900">
+                      {poll.title}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      ID: {poll.id}
+                    </div>
+                  </td>
+
+                  {/* STATUS SELECT */}
+                  <td className="px-4 py-3">
+                    <PollStatusSelect
+                      pollId={poll.id}
+                      currentStatus={poll.status}
+                    />
+                  </td>
+
+                  {/* SHOW PARTIAL RESULTS (somente visual por enquanto) */}
+                  <td className="px-4 py-3 text-center">
+                    {poll.show_partial_results ? (
+                      <span className="inline-block px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-800">
+                        Sim
+                      </span>
+                    ) : (
+                      <span className="inline-block px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
+                        Não
+                      </span>
+                    )}
+                  </td>
+
+                  {/* CREATED AT */}
+                  <td className="px-4 py-3 text-gray-600">
+                    {new Date(poll.created_at).toLocaleDateString("pt-BR")}
+                  </td>
+                </tr>
+              ))
+            ) : (
               <tr>
                 <td
-                  colSpan={7}
-                  className="px-4 py-6 text-center text-slate-500"
+                  colSpan={4}
+                  className="px-4 py-6 text-center text-gray-500"
                 >
-                  Nenhuma pesquisa cadastrada.
+                  Nenhuma pesquisa encontrada.
                 </td>
               </tr>
             )}
-
-            {polls?.map((poll: Poll) => (
-              <tr
-                key={poll.id}
-                className="border-t hover:bg-slate-50 transition"
-              >
-                <td className="px-4 py-3 font-medium">
-                  {poll.title}
-                </td>
-
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusStyle(
-                      poll.status
-                    )}`}
-                  >
-                    {statusLabel(poll.status)}
-                  </span>
-                </td>
-
-                <td className="px-4 py-3">
-                  {typeLabel(poll.voting_type)}
-                </td>
-
-                <td className="px-4 py-3 text-center">
-                  {poll.show_partial_results ? "Sim" : "Não"}
-                </td>
-
-                <td className="px-4 py-3">
-                  {formatDate(poll.start_date)}
-                </td>
-
-                <td className="px-4 py-3">
-                  {formatDate(poll.end_date)}
-                </td>
-
-                <td className="px-4 py-3 text-center space-x-3">
-                  <Link
-                    href={`/poll/${poll.id}`}
-                    className="text-emerald-600 hover:underline"
-                  >
-                    Votar
-                  </Link>
-
-                  <Link
-                    href={`/results/${poll.id}`}
-                    className="text-emerald-600 hover:underline"
-                  >
-                    Resultados
-                  </Link>
-                </td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
