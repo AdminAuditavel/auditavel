@@ -20,10 +20,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Buscar configuração da pesquisa (agora incluindo voting_type)
+    // Buscar configuração da pesquisa (agora incluindo voting_type e status)
     const { data: poll, error: pollError } = await supabase
       .from("polls")
-      .select("allow_multiple, vote_cooldown_seconds, voting_type")
+      .select("allow_multiple, vote_cooldown_seconds, voting_type, status")
       .eq("id", poll_id)
       .single();
 
@@ -35,21 +35,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔒 BLOQUEIO POR STATUS DA PESQUISA
-    if (poll.status !== "open") {
-      return NextResponse.json(
-        {
-          error: "poll_not_open",
-          message: "Esta pesquisa não está aberta para votação.",
-          status: poll.status,
-        },
-        { status: 403 }
-      );
-    }
-
     const allowMultiple = Boolean(poll.allow_multiple);
     const cooldownSeconds = poll.vote_cooldown_seconds ?? 0;
     const votingType = (poll.voting_type ?? "single") as string;
+    const status = poll.status; // Captura o status da pesquisa
+
+    // Verifica se a pesquisa está aberta para votação
+    if (status !== "open") {
+      return NextResponse.json(
+        { error: "poll_not_open", message: "Esta pesquisa não está aberta para votos" },
+        { status: 403 }
+      );
+    }
 
     // =========================
     // RANKING (option_ids array)
