@@ -35,6 +35,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 🔒 BLOQUEIO POR STATUS DA PESQUISA
+    if (poll.status !== "open") {
+      return NextResponse.json(
+        {
+          error: "poll_not_open",
+          message: "Esta pesquisa não está aberta para votação.",
+          status: poll.status,
+        },
+        { status: 403 }
+      );
+    }
+
     const allowMultiple = Boolean(poll.allow_multiple);
     const cooldownSeconds = poll.vote_cooldown_seconds ?? 0;
     const votingType = (poll.voting_type ?? "single") as string;
