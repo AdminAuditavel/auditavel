@@ -1,4 +1,3 @@
-//app/page.tsx
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
@@ -39,32 +38,23 @@ function formatDate(d?: string | null) {
 }
 
 function statusLabel(status: Poll["status"]) {
-  switch (status) {
-    case "open":
-      return "Aberta";
-    case "paused":
-      return "Pausada";
-    case "closed":
-      return "Encerrada";
-    case "draft":
-      return "Rascunho";
-  }
+  if (status === "open") return "Aberta";
+  if (status === "paused") return "Pausada";
+  if (status === "closed") return "Encerrada";
+  return "Rascunho";
 }
 
 function statusColor(status: Poll["status"]) {
-  switch (status) {
-    case "open":
-      return "bg-green-100 text-green-800";
-    case "paused":
-      return "bg-yellow-100 text-yellow-800";
-    case "closed":
-      return "bg-red-100 text-red-800";
-    case "draft":
-      return "bg-gray-200 text-gray-700";
-  }
+  if (status === "open") return "bg-green-100 text-green-800";
+  if (status === "paused") return "bg-yellow-100 text-yellow-800";
+  if (status === "closed") return "bg-red-100 text-red-800";
+  return "bg-gray-100 text-gray-600";
 }
 
 export default async function Home() {
+  /* =======================
+     POLLS
+  ======================= */
   const { data: pollsData } = await supabase
     .from("polls")
     .select(
@@ -73,14 +63,16 @@ export default async function Home() {
     .order("created_at", { ascending: false });
 
   const polls: Poll[] = pollsData || [];
-  const visiblePolls = polls.filter(p => p.status !== "draft");
 
-  if (!visiblePolls.length) {
+  if (!polls.length) {
     return <p className="p-6 text-center">Nenhuma pesquisa disponível.</p>;
   }
 
-  const pollIds = visiblePolls.map(p => p.id);
+  const pollIds = polls.map(p => p.id);
 
+  /* =======================
+     OPTIONS
+  ======================= */
   const { data: optionsData } = await supabase
     .from("poll_options")
     .select("id, poll_id, option_text")
@@ -88,6 +80,9 @@ export default async function Home() {
 
   const options: PollOption[] = optionsData || [];
 
+  /* =======================
+     VOTES (SINGLE)
+  ======================= */
   const { data: votesData } = await supabase
     .from("votes")
     .select("poll_id, option_id, user_hash")
@@ -95,12 +90,18 @@ export default async function Home() {
 
   const votes: Vote[] = votesData || [];
 
+  /* =======================
+     RANKINGS
+  ======================= */
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
     .select("vote_id, option_id, ranking");
 
   const rankings: VoteRanking[] = rankingsData || [];
 
+  /* =======================
+     AGRUPAMENTOS
+  ======================= */
   const optionsByPoll = new Map<string, PollOption[]>();
   options.forEach(o => {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
@@ -115,8 +116,7 @@ export default async function Home() {
 
   const rankingsByOption = new Map<string, VoteRanking[]>();
   rankings.forEach(r => {
-    if (!rankingsByOption.has(r.option_id))
-      rankingsByOption.set(r.option_id, []);
+    if (!rankingsByOption.has(r.option_id)) rankingsByOption.set(r.option_id, []);
     rankingsByOption.get(r.option_id)!.push(r);
   });
 
@@ -129,27 +129,34 @@ export default async function Home() {
     rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
   });
 
+  /* =======================
+     RENDER
+  ======================= */
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold text-center text-emerald-600">
+      <h1 className="text-3xl font-bold text-center text-emerald-700">
         Auditável — Pesquisas
       </h1>
 
-      {visiblePolls.map(p => {
+      {polls.map(p => {
+        if (p.status === "draft") return null;
+
         const opts = optionsByPoll.get(p.id) || [];
         const isRanking = p.voting_type === "ranking";
 
-        const canShowSummary =
+        const canShowResults =
           p.status === "closed" ||
-          ((p.status === "open" || p.status === "paused") &&
-            p.show_partial_results);
+          p.status === "paused" ||
+          (p.status === "open" && p.show_partial_results);
 
+        /* ===== SINGLE ===== */
         let totalVotes = 0;
         let leaderText = "";
         let leaderCount = 0;
 
-        if (!isRanking && canShowSummary) {
+        if (!isRanking) {
           const pollVotes = votesByPoll.get(p.id) || [];
+
           totalVotes = p.allow_multiple
             ? pollVotes.length
             : new Set(pollVotes.map(v => v.user_hash)).size;
@@ -175,11 +182,11 @@ export default async function Home() {
           }
         }
 
+        /* ===== RANKING ===== */
         let rankingTotal = 0;
         let rankingLeader = "";
-        let rankingAvg = 0;
 
-        if (isRanking && canShowSummary) {
+        if (isRanking) {
           rankingTotal = rankingVotesByPoll.get(p.id)?.size || 0;
 
           const summaries = opts
@@ -192,17 +199,16 @@ export default async function Home() {
             .filter(Boolean) as { text: string; avg: number }[];
 
           if (summaries.length) {
-            const best = summaries.sort((a, b) => a.avg - b.avg)[0];
-            rankingLeader = best.text;
-            rankingAvg = best.avg;
+            rankingLeader = summaries.sort((a, b) => a.avg - b.avg)[0].text;
           }
         }
 
         return (
           <div
             key={p.id}
-            className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-sm"
+            className="relative p-5 border border-gray-200 rounded-xl bg-emerald-50/30 shadow-sm hover:shadow-md transition"
           >
+            {/* STATUS */}
             <span
               className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                 p.status
@@ -211,70 +217,64 @@ export default async function Home() {
               {statusLabel(p.status)}
             </span>
 
-            <h2 className="text-lg font-semibold text-emerald-600 pr-24">
+            {/* TITLE */}
+            <h2 className="text-lg font-semibold text-emerald-700 pr-24">
               {p.title}
             </h2>
 
+            {/* META */}
             <div className="text-sm text-gray-600 mt-1">
-              Início: {formatDate(p.start_date)} · Fim:{" "}
-              {formatDate(p.end_date)} · Tipo:{" "}
-              {isRanking ? "Ranking" : "Voto simples"}
+              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} ·
+              Tipo: {isRanking ? " Ranking" : " Voto simples"}
             </div>
 
-            {canShowSummary ? (
-              <>
-                {!isRanking && (
-                  <div className="mt-3 text-sm text-gray-700">
-                    <b>Total de votos:</b> {totalVotes}
-                    {leaderText && (
-                      <div className="mt-1 text-emerald-600 font-medium">
-                        Líder: {leaderText} ({leaderCount} votos)
-                      </div>
-                    )}
+            {/* CONTENT */}
+            {!isRanking && (
+              <div className="mt-3 text-sm">
+                <b className="text-gray-700">Total de votos:</b>{" "}
+                <span className="text-emerald-700 font-semibold">
+                  {totalVotes}
+                </span>
+                {leaderText && (
+                  <div className="mt-1 text-emerald-700 font-medium">
+                    Líder: {leaderText} ({leaderCount})
                   </div>
                 )}
-
-                {isRanking && (
-                  <div className="mt-3 text-sm text-gray-700">
-                    <b>Total de votos:</b> {rankingTotal}
-                    {rankingLeader && (
-                      <div className="mt-1 text-emerald-600 font-medium">
-                        Líder (ranking médio): {rankingLeader} (
-                        {rankingAvg.toFixed(2)})
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="mt-3 text-sm text-muted-foreground">
-                Resultados ocultos no momento.
               </div>
             )}
 
-            <div className="mt-4">
-              {p.status === "open" && (
-                <Link
-                  href={`/poll/${p.id}`}
-                  className="inline-block px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition"
-                >
-                  Ir para votação →
-                </Link>
-              )}
-
-              {p.status === "paused" && (
-                <span className="inline-block px-4 py-2 rounded-lg bg-gray-200 text-gray-600 text-sm font-medium cursor-not-allowed">
-                  Pesquisa pausada
+            {isRanking && (
+              <div className="mt-3 text-sm">
+                <b className="text-gray-700">Total de votos:</b>{" "}
+                <span className="text-emerald-700 font-semibold">
+                  {rankingTotal}
                 </span>
-              )}
+                {rankingLeader && (
+                  <div className="mt-1 text-emerald-700 font-medium">
+                    Líder: {rankingLeader}
+                  </div>
+                )}
+              </div>
+            )}
 
-              {p.status === "closed" && (
-                <Link
-                  href={`/results/${p.id}`}
-                  className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
-                >
-                  Ver resultados →
-                </Link>
+            {/* CTA */}
+            <div className="mt-4 space-y-1">
+              <Link
+                href={`/poll/${p.id}`}
+                className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+              >
+                Ir para votação →
+              </Link>
+
+              {canShowResults && (
+                <div>
+                  <Link
+                    href={`/results/${p.id}`}
+                    className="text-sm text-emerald-700 hover:underline"
+                  >
+                    Ver resultados
+                  </Link>
+                </div>
               )}
             </div>
           </div>
