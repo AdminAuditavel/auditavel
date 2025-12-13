@@ -14,21 +14,15 @@ type Poll = {
   created_at: string;
 };
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams: { token?: string };
+export default async function AdminPage(props: {
+  searchParams: Promise<{ token?: string }>;
 }) {
-  
-  /* =======================
-     PROTEÇÃO ADMIN (PASSO 4.2)
-  ======================= */
+  const searchParams = await props.searchParams;
   const token = searchParams?.token;
 
-  console.log("ADMIN DEBUG → searchParams:", searchParams);
-  console.log("ADMIN DEBUG → token URL:", searchParams.token);
+  console.log("ADMIN DEBUG → token URL:", token);
   console.log("ADMIN DEBUG → token ENV:", process.env.ADMIN_TOKEN);
-  
+
   if (token !== process.env.ADMIN_TOKEN) {
     redirect("/");
   }
