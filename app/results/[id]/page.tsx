@@ -84,7 +84,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       </Link>
 
       <Link href="/" className="text-emerald-600 hover:underline">
-        Ir para home
+        Auditavél
       </Link>
     </div>
   );
