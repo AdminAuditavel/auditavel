@@ -206,7 +206,7 @@ export default async function Home() {
         return (
           <div
             key={p.id}
-            className="relative p-5 border border-gray-200 rounded-xl bg-emerald-50/10 shadow-sm hover:shadow-md transition"
+            className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md transition"
           >
             {/* STATUS */}
             <span
