@@ -148,10 +148,10 @@ export default async function Home() {
           p.status === "paused" ||
           (p.status === "open" && p.show_partial_results);
 
-        /* ===== LÍDERES — VOTO ÚNICO ===== */
         let totalVotes = 0;
-        let leaders: { text: string; count?: number }[] = [];
+        let leaders: { text: string; percent: number }[] = [];
 
+        /* ===== SINGLE ===== */
         if (!isRanking) {
           const pollVotes = votesByPoll.get(p.id) || [];
 
@@ -159,44 +159,50 @@ export default async function Home() {
             ? pollVotes.length
             : new Set(pollVotes.map(v => v.user_hash)).size;
 
-          const countByOption = new Map<string, number>();
-          pollVotes.forEach(v => {
-            if (!v.option_id) return;
-            countByOption.set(
-              v.option_id,
-              (countByOption.get(v.option_id) || 0) + 1
-            );
-          });
+          if (totalVotes > 0) {
+            const countByOption = new Map<string, number>();
+            pollVotes.forEach(v => {
+              if (!v.option_id) return;
+              countByOption.set(
+                v.option_id,
+                (countByOption.get(v.option_id) || 0) + 1
+              );
+            });
 
-          const maxVotes = Math.max(0, ...countByOption.values());
+            const maxVotes = Math.max(...countByOption.values());
 
-          leaders = opts
-            .filter(o => countByOption.get(o.id) === maxVotes && maxVotes > 0)
-            .map(o => ({
-              text: o.option_text,
-              count: countByOption.get(o.id),
-            }));
+            leaders = opts
+              .filter(o => countByOption.get(o.id) === maxVotes)
+              .map(o => ({
+                text: o.option_text,
+                percent: Math.round((maxVotes / totalVotes) * 100),
+              }))
+              .sort((a, b) => a.text.localeCompare(b.text));
+          }
         }
 
-        /* ===== LÍDERES — RANKING ===== */
+        /* ===== RANKING ===== */
         if (isRanking) {
-          const summaries = opts
-            .map(o => {
-              const rs = rankingsByOption.get(o.id) || [];
-              if (!rs.length) return null;
-              const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
-              return { text: o.option_text, avg };
-            })
-            .filter(Boolean) as { text: string; avg: number }[];
-
-          if (summaries.length) {
-            const bestAvg = Math.min(...summaries.map(s => s.avg));
-            leaders = summaries
-              .filter(s => s.avg === bestAvg)
-              .map(s => ({ text: s.text }));
-          }
-
           totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
+
+          if (totalVotes > 0) {
+            const summaries = opts
+              .map(o => {
+                const rs = rankingsByOption.get(o.id) || [];
+                if (!rs.length) return null;
+                const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
+                return { text: o.option_text, avg };
+              })
+              .filter(Boolean) as { text: string; avg: number }[];
+
+            if (summaries.length) {
+              const bestAvg = Math.min(...summaries.map(s => s.avg));
+              leaders = summaries
+                .filter(s => s.avg === bestAvg)
+                .map(s => ({ text: s.text, percent: 0 }))
+                .sort((a, b) => a.text.localeCompare(b.text));
+            }
+          }
         }
 
         const leaderLabel = leaders.length > 1 ? "Líderes" : "Líder";
@@ -234,17 +240,24 @@ export default async function Home() {
               </span>
 
               {leaders.length > 0 && (
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  {leaders.map((l, idx) => (
-                    <span key={idx} className="text-emerald-700 font-medium">
-                      {l.text}
-                      {l.count !== undefined && ` (${l.count})`}
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
+                      {leaderLabel}
                     </span>
-                  ))}
+                  </div>
 
-                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
-                    {leaderLabel}
-                  </span>
+                  <div className="flex flex-wrap gap-4">
+                    {leaders.map((l, idx) => (
+                      <span
+                        key={idx}
+                        className="font-bold text-emerald-700"
+                      >
+                        {l.text}
+                        {!isRanking && ` (${l.percent}%)`}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
