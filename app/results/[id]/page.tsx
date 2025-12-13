@@ -45,7 +45,19 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   const status = pollData.status;
   const showPartial = Boolean(pollData.show_partial_results);
 
-  // 🔐 REGRA CENTRAL DE VISIBILIDADE
+  // 🔒 BLOQUEIO TOTAL PARA DRAFT
+  if (status === "draft") {
+    return (
+      <main className="p-6 max-w-xl mx-auto text-center space-y-3">
+        <h1 className="text-xl font-bold">Pesquisa indisponível</h1>
+        <p className="text-sm text-muted-foreground">
+          Esta pesquisa ainda não foi publicada.
+        </p>
+      </main>
+    );
+  }
+
+  // 🔐 REGRA CENTRAL DE VISIBILIDADE DE RESULTADOS
   const canShowResults =
     status === "closed" ||
     ((status === "open" || status === "paused") && showPartial);
@@ -73,7 +85,6 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   // RESULTADOS VISÍVEIS A PARTIR DAQUI
   // ============================
 
-  // Aviso contextual
   const statusMessage =
     status === "paused"
       ? "Pesquisa pausada — resultados parciais até o momento."
