@@ -47,20 +47,14 @@ export default function PollPage() {
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<string | null>(null); // Mensagem de erro ou alerta
 
   /* =======================
      SENSORS (DESKTOP + MOBILE)
   ======================= */
   const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: { distance: 5 },
-    }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
+      activationConstraint: { delay: 200, tolerance: 5 },
     })
   );
 
@@ -106,14 +100,14 @@ export default function PollPage() {
     const checkUserVote = async () => {
       const userHash = localStorage.getItem('auditavel_uid');
       if (!userHash) return;
-    
+
       const { data } = await supabase
         .from('votes')
         .select('id')
         .eq('poll_id', safeId)
         .eq('user_hash', userHash)
         .limit(1);
-    
+
       if (mounted) {
         setUserHasVoted(Boolean(data && data.length > 0));
       }
@@ -221,13 +215,28 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* Mensagem de alerta para voto único */}
-      {allowMultiple === false && userHasVoted && (
-        <p className="text-sm text-yellow-700 mb-4">
-          Você já votou nesta pesquisa, mas pode alterar seu voto.
-        </p>
+      {/* ===== ALERTAS AO USUÁRIO ===== */}
+      {userHasVoted && votingType !== 'ranking' && !allowMultiple && (
+        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
+          <strong>Atenção:</strong> Você já votou nesta pesquisa, mas pode mudar seu voto anterior.
+        </div>
       )}
 
+      {userHasVoted && votingType !== 'ranking' && allowMultiple && (
+        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <strong>Informação:</strong> Você já votou nesta pesquisa mas pode votar novamente.  
+          Cada novo voto será somado ao total.
+        </div>
+      )}
+
+      {userHasVoted && votingType === 'ranking' && (
+        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <strong>Informação:</strong> Você já enviou uma classificação.  
+          Você pode reorganizar as opções e reenviar se desejar.
+        </div>
+      )}
+
+      {/* ===== OPTIONS ===== */}
       {votingType === 'ranking' ? (
         <>
           <p className="text-sm text-gray-600">
