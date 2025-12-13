@@ -235,13 +235,15 @@ export default async function Home() {
                 <span className="text-emerald-700 font-semibold">
                   {totalVotes}
                 </span>
-                {leaderText && (
-                  <div className="mt-1 text-emerald-700 font-medium">
-                    Líder: {leaderText} ({leaderCount})
-                  </div>
-                )}
-              </div>
-            )}
+               {leaderText && (
+                <div className="mt-1 text-emerald-700 font-medium flex items-center">
+                  <span>{leaderText} ({leaderCount})</span>
+              
+                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
+                    Líder
+                  </span>
+                </div>
+              )}
 
             {isRanking && (
               <div className="mt-3 text-sm">
@@ -250,8 +252,12 @@ export default async function Home() {
                   {rankingTotal}
                 </span>
                 {rankingLeader && (
-                  <div className="mt-1 text-emerald-700 font-medium">
-                    Líder: {rankingLeader}
+                  <div className="mt-1 text-emerald-700 font-medium flex items-center">
+                    <span>{rankingLeader}</span>
+                
+                    <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
+                      Líder
+                    </span>
                   </div>
                 )}
               </div>
