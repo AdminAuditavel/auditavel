@@ -1,6 +1,7 @@
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import Link from "next/link";
 import PollStatusSelect from "./PollStatusSelect";
+import PollVisibilityToggle from "./PollVisibilityToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -89,15 +90,10 @@ export default async function AdminPage() {
 
                   {/* SHOW PARTIAL RESULTS (somente visual por enquanto) */}
                   <td className="px-4 py-3 text-center">
-                    {poll.show_partial_results ? (
-                      <span className="inline-block px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-800">
-                        Sim
-                      </span>
-                    ) : (
-                      <span className="inline-block px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
-                        Não
-                      </span>
-                    )}
+                    <PollVisibilityToggle
+                      pollId={poll.id}
+                      initialValue={poll.show_partial_results}
+                    />
                   </td>
 
                   {/* CREATED AT */}
