@@ -14,22 +14,27 @@ type Poll = {
   created_at: string;
 };
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams?: { token?: string };
+}) {
+  /* =======================
+     PROTEÇÃO ADMIN (PASSO 4.2)
+  ======================= */
+  const token = searchParams?.token;
+
+  if (token !== process.env.ADMIN_TOKEN) {
+    redirect("/");
+  }
+
+  /* =======================
+     FETCH
+  ======================= */
   const { data: polls, error } = await supabase
     .from("polls")
     .select("id, title, status, show_partial_results, created_at")
     .order("created_at", { ascending: false });
-
-  export default async function AdminPage({
-    searchParams,
-  }: {
-    searchParams?: { token?: string };
-  }) {
-    const token = searchParams?.token;
-  
-    if (token !== process.env.ADMIN_TOKEN) {
-      redirect("/");
-    }
 
   if (error) {
     return (
@@ -92,7 +97,7 @@ export default async function AdminPage() {
                     </div>
                   </td>
 
-                  {/* STATUS SELECT */}
+                  {/* STATUS */}
                   <td className="px-4 py-3">
                     <PollStatusSelect
                       pollId={poll.id}
@@ -100,7 +105,7 @@ export default async function AdminPage() {
                     />
                   </td>
 
-                  {/* SHOW PARTIAL RESULTS (somente visual por enquanto) */}
+                  {/* VISIBILIDADE */}
                   <td className="px-4 py-3 text-center">
                     <PollVisibilityToggle
                       pollId={poll.id}
