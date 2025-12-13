@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
 
 export default async function ResultsPage({ params }: { params: Promise<{ id: string }> | any }) {
-  const resolvedParams = params && typeof params.then === "function" ? await params : params;
+  const resolvedParams =
+    params && typeof params.then === "function" ? await params : params;
   const { id } = resolvedParams ?? {};
 
   if (!id || typeof id !== "string" || id.trim() === "") {
@@ -70,6 +72,24 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       : "Resultado final";
 
   /* =======================
+     BOTÕES DE NAVEGAÇÃO
+  ======================= */
+  const Navigation = () => (
+    <div className="flex justify-between items-center mb-4 text-sm">
+      <Link
+        href={`/poll/${safeId}`}
+        className="text-emerald-600 hover:underline"
+      >
+        ← Voltar para votação
+      </Link>
+
+      <Link href="/" className="text-emerald-600 hover:underline">
+        Ir para home
+      </Link>
+    </div>
+  );
+
+  /* =======================
      VOTO ÚNICO
   ======================= */
   if (voting_type === "single") {
@@ -91,29 +111,38 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       count[v.option_id] = (count[v.option_id] || 0) + 1;
     });
 
+    // 🔢 Ordenar do mais votado para o menos votado
+    const sortedOptions =
+      options
+        ?.map(o => ({
+          ...o,
+          votes: count[o.id] || 0,
+        }))
+        .sort((a, b) => b.votes - a.votes) || [];
+
     return (
       <main className="p-6 max-w-xl mx-auto space-y-5">
+        <Navigation />
+
         {/* HEADER */}
         <div>
           <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
           <p className="text-xs text-muted-foreground">{statusMessage}</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Total de votos: {totalVotes}
-          </p>
         </div>
 
         {/* RESULTS */}
         <div className="space-y-4">
-          {options?.map(o => {
-            const v = count[o.id] || 0;
-            const pct = totalVotes ? Math.round((v / totalVotes) * 100) : 0;
+          {sortedOptions.map(o => {
+            const pct = totalVotes
+              ? Math.round((o.votes / totalVotes) * 100)
+              : 0;
 
             return (
               <div key={o.id} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span>{o.option_text}</span>
                   <span className="text-gray-600">
-                    {v} votos ({pct}%)
+                    {o.votes} votos ({pct}%)
                   </span>
                 </div>
 
@@ -127,6 +156,11 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
             );
           })}
         </div>
+
+        {/* TOTAL */}
+        <div className="text-right text-xs text-gray-500">
+          Total de votos: {totalVotes}
+        </div>
       </main>
     );
   }
@@ -139,13 +173,12 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
 
   return (
     <main className="p-6 max-w-xl mx-auto space-y-5">
+      <Navigation />
+
       {/* HEADER */}
       <div>
         <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
         <p className="text-xs text-muted-foreground">{statusMessage}</p>
-        <p className="text-xs text-gray-500 mt-1">
-          Total de votos: {json.result.length}
-        </p>
       </div>
 
       {/* RESULTS */}
@@ -171,6 +204,11 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
             </div>
           );
         })}
+      </div>
+
+      {/* TOTAL */}
+      <div className="text-right text-xs text-gray-500">
+        Total de votos: {json.result.length}
       </div>
     </main>
   );
