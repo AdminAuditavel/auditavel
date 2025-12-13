@@ -48,6 +48,9 @@ export default function PollPage() {
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 👉 NOVO: mensagem de erro do ranking (cooldown etc.)
+  const [rankingMessage, setRankingMessage] = useState<string | null>(null);
+
   /* =======================
      SENSORS (DESKTOP + MOBILE)
   ======================= */
@@ -137,23 +140,6 @@ export default function PollPage() {
   }
 
   /* =======================
-     STATUS
-  ======================= */
-  const statusLabel =
-    poll.status === 'open'
-      ? 'Aberta'
-      : poll.status === 'paused'
-      ? 'Pausada'
-      : 'Encerrada';
-
-  const statusColor =
-    poll.status === 'open'
-      ? 'bg-green-100 text-green-800'
-      : poll.status === 'paused'
-      ? 'bg-yellow-100 text-yellow-800'
-      : 'bg-red-100 text-red-800';
-
-  /* =======================
      NAV
   ======================= */
   const Navigation = () => (
@@ -174,39 +160,6 @@ export default function PollPage() {
   );
 
   /* =======================
-     BLOQUEIOS
-  ======================= */
-  if (poll.status === 'paused') {
-    return (
-      <main className="p-6 max-w-xl mx-auto space-y-5">
-        <Navigation />
-        <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
-          {statusLabel}
-        </span>
-        <p className="text-sm text-muted-foreground">
-          A votação desta pesquisa está temporariamente pausada.
-        </p>
-      </main>
-    );
-  }
-
-  if (poll.status === 'closed') {
-    return (
-      <main className="p-6 max-w-xl mx-auto space-y-5">
-        <Navigation />
-        <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
-        <Link
-          href={`/results/${safeId}`}
-          className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
-        >
-          Ver resultados
-        </Link>
-      </main>
-    );
-  }
-
-  /* =======================
      OPEN — VOTAÇÃO
   ======================= */
   return (
@@ -215,28 +168,29 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* ===== ALERTAS AO USUÁRIO ===== */}
+      {/* ===== ALERTAS GERAIS ===== */}
       {userHasVoted && votingType !== 'ranking' && !allowMultiple && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          <strong>Atenção:</strong> Você já votou nesta pesquisa, mas pode mudar seu voto anterior.
+          <strong>Atenção:</strong> você já votou nesta pesquisa.  
+          Ao escolher uma nova opção, seu voto anterior será substituído.
         </div>
       )}
 
       {userHasVoted && votingType !== 'ranking' && allowMultiple && (
         <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> Você já votou nesta pesquisa mas pode votar novamente.  
+          <strong>Informação:</strong> você já votou nesta pesquisa e pode votar novamente.  
           Cada novo voto será somado ao total.
         </div>
       )}
 
       {userHasVoted && votingType === 'ranking' && (
         <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> Você já enviou uma classificação.  
+          <strong>Informação:</strong> você já enviou uma classificação.  
           Você pode reorganizar as opções e reenviar se desejar.
         </div>
       )}
 
-      {/* ===== OPTIONS ===== */}
+      {/* ===== RANKING ===== */}
       {votingType === 'ranking' ? (
         <>
           <p className="text-sm text-gray-600">
@@ -274,8 +228,17 @@ export default function PollPage() {
             </SortableContext>
           </DndContext>
 
+          {/* 👉 MENSAGEM DE COOLDOWN / ERRO DO RANKING */}
+          {rankingMessage && (
+            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {rankingMessage}
+            </div>
+          )}
+
           <button
             onClick={async () => {
+              setRankingMessage(null);
+
               let userHash = localStorage.getItem('auditavel_uid');
               if (!userHash) {
                 userHash = crypto.randomUUID();
@@ -296,7 +259,11 @@ export default function PollPage() {
 
               if (!res.ok) {
                 const data = await res.json();
-                alert(data.message ?? data.error ?? 'Erro ao votar');
+                setRankingMessage(
+                  data.message ??
+                  data.error ??
+                  'Não foi possível registrar sua classificação no momento.'
+                );
                 return;
               }
 
