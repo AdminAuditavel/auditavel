@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
+  /* =======================
+     PROTEÇÃO ADMIN (B4.3)
+  ======================= */
+  const adminToken = req.headers.get("x-admin-token");
+
+  if (adminToken !== process.env.ADMIN_TOKEN) {
+    return NextResponse.json(
+      { error: "unauthorized" },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await req.json();
     const { poll_id, status } = body as {
