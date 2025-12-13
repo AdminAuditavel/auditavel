@@ -4,14 +4,29 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+
 import VoteButton from './VoteButton';
 import RankingOption from './RankingOption';
+
+import {
+  DndContext,
+  closestCenter,
+} from '@dnd-kit/core';
+
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 
 export default function PollPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
 
+  /* =======================
+     GUARDA
+  ======================= */
   if (!id || typeof id !== 'string' || id.trim() === '') {
     return (
       <main className="p-6 max-w-xl mx-auto text-center text-red-600">
@@ -90,6 +105,9 @@ export default function PollPage() {
     };
   }, [safeId, router]);
 
+  /* =======================
+     LOADING / ERRO
+  ======================= */
   if (loading) {
     return <main className="p-6 max-w-xl mx-auto">Carregando…</main>;
   }
@@ -215,15 +233,15 @@ export default function PollPage() {
       </div>
 
       {/* INFO USUÁRIO */}
-      {allowMultiple === false && userHasVoted && (
+      {!allowMultiple && userHasVoted && (
         <p className="text-sm text-yellow-700">
           Você já votou, mas pode alterar seu voto.
         </p>
       )}
 
-      {allowMultiple === true && userHasVoted && (
+      {allowMultiple && userHasVoted && (
         <p className="text-sm text-emerald-700">
-          Você já votou e pode votar novamente. Um novo voto será somado.
+          Você já votou e pode votar novamente.
         </p>
       )}
 
@@ -231,32 +249,38 @@ export default function PollPage() {
       {votingType === 'ranking' ? (
         <>
           <p className="text-sm text-gray-600">
-            Reorganize as opções e envie sua classificação.
+            Arraste as opções para definir a ordem desejada.
           </p>
 
-          <div className="space-y-2">
-            {options.map((opt, index) => (
-              <RankingOption
-                key={opt.id}
-                text={opt.option_text}
-                index={index}
-                moveUp={() => {
-                  if (index === 0) return;
-                  const reordered = [...options];
-                  [reordered[index - 1], reordered[index]] =
-                    [reordered[index], reordered[index - 1]];
-                  setOptions(reordered);
-                }}
-                moveDown={() => {
-                  if (index === options.length - 1) return;
-                  const reordered = [...options];
-                  [reordered[index], reordered[index + 1]] =
-                    [reordered[index + 1], reordered[index]];
-                  setOptions(reordered);
-                }}
-              />
-            ))}
-          </div>
+          <DndContext
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => {
+              const { active, over } = event;
+              if (!over || active.id === over.id) return;
+
+              setOptions((items) => {
+                const oldIndex = items.findIndex(i => i.id === active.id);
+                const newIndex = items.findIndex(i => i.id === over.id);
+                return arrayMove(items, oldIndex, newIndex);
+              });
+            }}
+          >
+            <SortableContext
+              items={options.map(o => o.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {options.map((opt, index) => (
+                  <RankingOption
+                    key={opt.id}
+                    id={opt.id}
+                    text={opt.option_text}
+                    index={index}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           <button
             onClick={async () => {
