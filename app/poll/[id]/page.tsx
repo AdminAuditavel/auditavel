@@ -47,6 +47,7 @@ export default function PollPage() {
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null); // Mensagem de erro ou alerta
 
   /* =======================
      SENSORS (DESKTOP + MOBILE)
@@ -220,10 +221,17 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
+      {/* Mensagem de alerta para voto único */}
+      {allowMultiple === false && userHasVoted && (
+        <p className="text-sm text-yellow-700 mb-4">
+          Você já votou nesta pesquisa, mas pode alterar seu voto.
+        </p>
+      )}
+
       {votingType === 'ranking' ? (
         <>
           <p className="text-sm text-gray-600">
-            Segure e arraste as opções para definir a ordem desejada.
+            Arraste as opções para definir a ordem desejada.
           </p>
 
           <DndContext
