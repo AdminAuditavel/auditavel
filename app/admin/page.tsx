@@ -24,6 +24,9 @@ export default async function AdminPage({
   ======================= */
   const token = searchParams?.token;
 
+  console.log("ADMIN DEBUG → token URL:", token);
+  console.log("ADMIN DEBUG → token ENV:", process.env.ADMIN_TOKEN);
+  
   if (token !== process.env.ADMIN_TOKEN) {
     redirect("/");
   }
