@@ -63,7 +63,6 @@ export default async function Home() {
     .order("created_at", { ascending: false });
 
   const polls: Poll[] = pollsData || [];
-
   if (!polls.length) {
     return <p className="p-6 text-center">Nenhuma pesquisa disponível.</p>;
   }
@@ -81,7 +80,7 @@ export default async function Home() {
   const options: PollOption[] = optionsData || [];
 
   /* =======================
-     VOTES (SINGLE)
+     VOTES
   ======================= */
   const { data: votesData } = await supabase
     .from("votes")
@@ -149,10 +148,9 @@ export default async function Home() {
           p.status === "paused" ||
           (p.status === "open" && p.show_partial_results);
 
-        /* ===== SINGLE ===== */
+        /* ===== LÍDERES — VOTO ÚNICO ===== */
         let totalVotes = 0;
-        let leaderText = "";
-        let leaderCount = 0;
+        let leaders: { text: string; count?: number }[] = [];
 
         if (!isRanking) {
           const pollVotes = votesByPoll.get(p.id) || [];
@@ -170,25 +168,18 @@ export default async function Home() {
             );
           });
 
-          if (countByOption.size > 0) {
-            const [leaderId, count] = [...countByOption.entries()].sort(
-              (a, b) => b[1] - a[1]
-            )[0];
-            const opt = opts.find(o => o.id === leaderId);
-            if (opt) {
-              leaderText = opt.option_text;
-              leaderCount = count;
-            }
-          }
+          const maxVotes = Math.max(0, ...countByOption.values());
+
+          leaders = opts
+            .filter(o => countByOption.get(o.id) === maxVotes && maxVotes > 0)
+            .map(o => ({
+              text: o.option_text,
+              count: countByOption.get(o.id),
+            }));
         }
 
-        /* ===== RANKING ===== */
-        let rankingTotal = 0;
-        let rankingLeader = "";
-
+        /* ===== LÍDERES — RANKING ===== */
         if (isRanking) {
-          rankingTotal = rankingVotesByPoll.get(p.id)?.size || 0;
-
           const summaries = opts
             .map(o => {
               const rs = rankingsByOption.get(o.id) || [];
@@ -199,9 +190,16 @@ export default async function Home() {
             .filter(Boolean) as { text: string; avg: number }[];
 
           if (summaries.length) {
-            rankingLeader = summaries.sort((a, b) => a.avg - b.avg)[0].text;
+            const bestAvg = Math.min(...summaries.map(s => s.avg));
+            leaders = summaries
+              .filter(s => s.avg === bestAvg)
+              .map(s => ({ text: s.text }));
           }
+
+          totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
         }
+
+        const leaderLabel = leaders.length > 1 ? "Líderes" : "Líder";
 
         return (
           <div
@@ -228,40 +226,28 @@ export default async function Home() {
               Tipo: {isRanking ? " Ranking" : " Voto simples"}
             </div>
 
-            {/* CONTENT */}
-            {!isRanking && (
-              <div className="mt-3 text-sm">
-                <b className="text-gray-700">Total de votos:</b>{" "}
-                <span className="text-emerald-700 font-semibold">
-                  {totalVotes}
-                </span>
-               {leaderText && (
-                <div className="mt-1 text-emerald-700 font-medium flex items-center">
-                  <span>{leaderText} ({leaderCount})</span>
-              
-                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
-                    Líder
+            {/* INFO */}
+            <div className="mt-3 text-sm">
+              <b className="text-gray-700">Total de votos:</b>{" "}
+              <span className="text-emerald-700 font-semibold">
+                {totalVotes}
+              </span>
+
+              {leaders.length > 0 && (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {leaders.map((l, idx) => (
+                    <span key={idx} className="text-emerald-700 font-medium">
+                      {l.text}
+                      {l.count !== undefined && ` (${l.count})`}
+                    </span>
+                  ))}
+
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
+                    {leaderLabel}
                   </span>
                 </div>
               )}
-
-            {isRanking && (
-              <div className="mt-3 text-sm">
-                <b className="text-gray-700">Total de votos:</b>{" "}
-                <span className="text-emerald-700 font-semibold">
-                  {rankingTotal}
-                </span>
-                {rankingLeader && (
-                  <div className="mt-1 text-emerald-700 font-medium flex items-center">
-                    <span>{rankingLeader}</span>
-                
-                    <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
-                      Líder
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
 
             {/* CTA */}
             <div className="mt-4 space-y-1">
