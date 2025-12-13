@@ -20,9 +20,6 @@ export default async function AdminPage(props: {
   const searchParams = await props.searchParams;
   const token = searchParams?.token;
 
-  console.log("ADMIN DEBUG → token URL:", token);
-  console.log("ADMIN DEBUG → token ENV:", process.env.ADMIN_TOKEN);
-
   if (token !== process.env.ADMIN_TOKEN) {
     redirect("/");
   }
