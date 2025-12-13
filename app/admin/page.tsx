@@ -2,6 +2,7 @@ import { supabaseServer as supabase } from "@/lib/supabase-server";
 import Link from "next/link";
 import PollStatusSelect from "./PollStatusSelect";
 import PollVisibilityToggle from "./PollVisibilityToggle";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,17 @@ export default async function AdminPage() {
     .from("polls")
     .select("id, title, status, show_partial_results, created_at")
     .order("created_at", { ascending: false });
+
+  export default async function AdminPage({
+    searchParams,
+  }: {
+    searchParams?: { token?: string };
+  }) {
+    const token = searchParams?.token;
+  
+    if (token !== process.env.ADMIN_TOKEN) {
+      redirect("/");
+    }
 
   if (error) {
     return (
