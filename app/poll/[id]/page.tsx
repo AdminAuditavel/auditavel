@@ -11,6 +11,10 @@ import RankingOption from './RankingOption';
 import {
   DndContext,
   closestCenter,
+  useSensor,
+  useSensors,
+  MouseSensor,
+  TouchSensor,
 } from '@dnd-kit/core';
 
 import {
@@ -43,6 +47,21 @@ export default function PollPage() {
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  /* =======================
+     SENSORS (DESKTOP + MOBILE)
+  ======================= */
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    })
+  );
 
   /* =======================
      FETCH
@@ -164,18 +183,10 @@ export default function PollPage() {
     return (
       <main className="p-6 max-w-xl mx-auto space-y-5">
         <Navigation />
-
-        <div>
-          <h1 className="text-2xl font-bold text-emerald-600">
-            {poll.title}
-          </h1>
-          <span
-            className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}
-          >
-            {statusLabel}
-          </span>
-        </div>
-
+        <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
+          {statusLabel}
+        </span>
         <p className="text-sm text-muted-foreground">
           A votação desta pesquisa está temporariamente pausada.
         </p>
@@ -187,22 +198,7 @@ export default function PollPage() {
     return (
       <main className="p-6 max-w-xl mx-auto space-y-5">
         <Navigation />
-
-        <div>
-          <h1 className="text-2xl font-bold text-emerald-600">
-            {poll.title}
-          </h1>
-          <span
-            className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}
-          >
-            {statusLabel}
-          </span>
-        </div>
-
-        <p className="text-sm text-muted-foreground">
-          Esta pesquisa já foi encerrada.
-        </p>
-
+        <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
         <Link
           href={`/results/${safeId}`}
           className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
@@ -220,39 +216,16 @@ export default function PollPage() {
     <main className="p-6 max-w-xl mx-auto space-y-5">
       <Navigation />
 
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-bold text-emerald-600">
-          {poll.title}
-        </h1>
-        <span
-          className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}
-        >
-          {statusLabel}
-        </span>
-      </div>
+      <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* INFO USUÁRIO */}
-      {!allowMultiple && userHasVoted && (
-        <p className="text-sm text-yellow-700">
-          Você já votou, mas pode alterar seu voto.
-        </p>
-      )}
-
-      {allowMultiple && userHasVoted && (
-        <p className="text-sm text-emerald-700">
-          Você já votou e pode votar novamente.
-        </p>
-      )}
-
-      {/* OPTIONS */}
       {votingType === 'ranking' ? (
         <>
           <p className="text-sm text-gray-600">
-            Arraste as opções para definir a ordem desejada.
+            Segure e arraste as opções para definir a ordem desejada.
           </p>
 
           <DndContext
+            sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={(event) => {
               const { active, over } = event;
@@ -289,9 +262,9 @@ export default function PollPage() {
                 userHash = crypto.randomUUID();
                 localStorage.setItem('auditavel_uid', userHash);
               }
-          
+
               const orderedIds = options.map(o => o.id);
-          
+
               const res = await fetch('/api/vote', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -301,14 +274,13 @@ export default function PollPage() {
                   user_hash: userHash,
                 }),
               });
-          
-              const data = await res.json();
-          
+
               if (!res.ok) {
+                const data = await res.json();
                 alert(data.message ?? data.error ?? 'Erro ao votar');
                 return;
               }
-          
+
               window.location.href = `/results/${safeId}`;
             }}
             className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
