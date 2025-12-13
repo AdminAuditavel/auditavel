@@ -284,14 +284,14 @@ export default function PollPage() {
 
           <button
             onClick={async () => {
-              const userHash = localStorage.getItem('auditavel_uid');
+              let userHash = localStorage.getItem('auditavel_uid');
               if (!userHash) {
-                alert('Usuário não identificado');
-                return;
+                userHash = crypto.randomUUID();
+                localStorage.setItem('auditavel_uid', userHash);
               }
-
+          
               const orderedIds = options.map(o => o.id);
-
+          
               const res = await fetch('/api/vote', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -301,14 +301,14 @@ export default function PollPage() {
                   user_hash: userHash,
                 }),
               });
-
+          
               const data = await res.json();
-
+          
               if (!res.ok) {
                 alert(data.message ?? data.error ?? 'Erro ao votar');
                 return;
               }
-
+          
               window.location.href = `/results/${safeId}`;
             }}
             className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
