@@ -22,10 +22,10 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
 
   const safeId = id.trim();
 
-  // 2. Buscar dados da pesquisa
+  // 2. Buscar dados da pesquisa (status + visibilidade + tipo de voto)
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
-    .select("voting_type")
+    .select("voting_type, status, show_partial_results")
     .eq("id", safeId)
     .maybeSingle();
 
@@ -42,8 +42,46 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   }
 
   const votingType = pollData.voting_type;
+  const status = pollData.status;
+  const showPartial = Boolean(pollData.show_partial_results);
 
-  // 3. RESULTADO — VOTO ÚNICO (mantém comportamento atual)
+  // 🔐 REGRA CENTRAL DE VISIBILIDADE
+  const canShowResults =
+    status === "closed" ||
+    ((status === "open" || status === "paused") && showPartial);
+
+  // Se NÃO pode mostrar resultados, encerra aqui
+  if (!canShowResults) {
+    return (
+      <main className="p-6 max-w-xl mx-auto space-y-4 text-center">
+        <h1 className="text-2xl font-bold">Resultados</h1>
+
+        <p className="text-sm text-muted-foreground">
+          Os resultados desta pesquisa estão ocultos no momento.
+        </p>
+
+        {status === "open" && (
+          <p className="text-xs text-muted-foreground">
+            Os resultados serão exibidos após o encerramento da pesquisa.
+          </p>
+        )}
+      </main>
+    );
+  }
+
+  // ============================
+  // RESULTADOS VISÍVEIS A PARTIR DAQUI
+  // ============================
+
+  // Aviso contextual
+  const statusMessage =
+    status === "paused"
+      ? "Pesquisa pausada — resultados parciais até o momento."
+      : status === "open"
+      ? "Resultados parciais."
+      : "Resultado final.";
+
+  // 3. RESULTADO — VOTO ÚNICO
   if (votingType === "single") {
     const { data: options } = await supabase
       .from("poll_options")
@@ -64,7 +102,8 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
 
     return (
       <main className="p-6 max-w-xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold mb-4">Resultados (Voto Único)</h1>
+        <h1 className="text-2xl font-bold mb-1">Resultados</h1>
+        <p className="text-xs text-muted-foreground">{statusMessage}</p>
 
         {options?.map((o: any) => (
           <div key={o.id} className="p-3 border rounded flex justify-between">
@@ -77,14 +116,14 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   }
 
   // 4. RESULTADO — RANKING / BORDA
-  // Substitui fetch externo por chamada direta ao helper getResults (server-side)
   try {
     const json = await getResults(safeId);
     console.log("RESULT PAGE — resultados calculados internamente:", json);
 
     return (
       <main className="p-6 max-w-xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold mb-4">Resultado — Ranking (Sistema Borda)</h1>
+        <h1 className="text-2xl font-bold mb-1">Resultados</h1>
+        <p className="text-xs text-muted-foreground">{statusMessage}</p>
 
         {!json.result || json.result.length === 0 ? (
           <p>Nenhum voto ainda.</p>
