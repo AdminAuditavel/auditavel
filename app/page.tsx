@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-import VoteButton from './VoteButton';
+import VoteButton from '@/app/components/VoteButton';
 import RankingOption from './RankingOption';
 
 import {
