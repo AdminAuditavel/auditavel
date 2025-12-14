@@ -49,7 +49,6 @@ export default function PollPage() {
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [rankingMessage, setRankingMessage] = useState<string | null>(null);
 
   /* =======================
@@ -173,7 +172,6 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* STATUS */}
       {isPaused && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
           <strong>Pesquisa pausada.</strong> As opções estão visíveis, mas novas
@@ -187,28 +185,6 @@ export default function PollPage() {
         </div>
       )}
 
-      {/* ALERTAS (APENAS OPEN) */}
-      {isOpen && userHasVoted && votingType !== 'ranking' && !allowMultiple && (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          <strong>Atenção:</strong> você já votou nesta pesquisa. Ao escolher uma
-          nova opção, seu voto anterior será substituído.
-        </div>
-      )}
-
-      {isOpen && userHasVoted && votingType !== 'ranking' && allowMultiple && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> você já votou nesta pesquisa e pode votar
-          novamente. Cada novo voto será somado ao total.
-        </div>
-      )}
-
-      {isOpen && userHasVoted && votingType === 'ranking' && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> você já enviou uma classificação.
-        </div>
-      )}
-
-      {/* RANKING */}
       {votingType === 'ranking' ? (
         <>
           <p className="text-sm text-gray-600">
@@ -263,6 +239,7 @@ export default function PollPage() {
                   localStorage.setItem('auditavel_uid', userHash);
                 }
 
+                const participantId = getOrCreateParticipantId();
                 const orderedIds = options.map(o => o.id);
 
                 const res = await fetch('/api/vote', {
@@ -272,6 +249,7 @@ export default function PollPage() {
                     poll_id: safeId,
                     option_ids: orderedIds,
                     user_hash: userHash,
+                    participant_id: participantId,
                   }),
                 });
 
@@ -295,21 +273,21 @@ export default function PollPage() {
         </>
       ) : (
         <div
-  className={`space-y-3 ${
-    !isOpen ? 'pointer-events-none opacity-60' : ''
-  }`}
->
-  {options.map(o => (
-    <VoteButton
-      key={o.id}
-      pollId={safeId}
-      optionId={o.id}
-      text={o.option_text}
-      allowMultiple={allowMultiple}
-      userHasVoted={userHasVoted}
-    />
-  ))}
-</div>
+          className={`space-y-3 ${
+            !isOpen ? 'pointer-events-none opacity-60' : ''
+          }`}
+        >
+          {options.map(o => (
+            <VoteButton
+              key={o.id}
+              pollId={safeId}
+              optionId={o.id}
+              text={o.option_text}
+              allowMultiple={allowMultiple}
+              userHasVoted={userHasVoted}
+            />
+          ))}
+        </div>
       )}
     </main>
   );
