@@ -1,268 +1,291 @@
-'use client';
+// app/page.tsx
+export const dynamic = "force-dynamic";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
-import {
-  DndContext,
-  closestCenter,
-  useSensor,
-  useSensors,
-  MouseSensor,
-  TouchSensor,
-} from '@dnd-kit/core';
+type Poll = {
+  id: string;
+  title: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  voting_type: "single" | "ranking";
+  allow_multiple: boolean;
+  status: "draft" | "open" | "paused" | "closed";
+  show_partial_results: boolean;
+};
 
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-} from '@dnd-kit/sortable';
+type PollOption = {
+  id: string;
+  poll_id: string;
+  option_text: string;
+};
 
-export default function PollPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params?.id as string | undefined;
+type Vote = {
+  poll_id: string;
+  option_id: string | null;
+  user_hash: string;
+};
 
+type VoteRanking = {
+  vote_id: string;
+  option_id: string;
+  ranking: number;
+};
+
+function formatDate(d?: string | null) {
+  if (!d) return "-";
+  return new Date(d).toLocaleDateString("pt-BR");
+}
+
+function statusLabel(status: Poll["status"]) {
+  if (status === "open") return "Aberta";
+  if (status === "paused") return "Pausada";
+  if (status === "closed") return "Encerrada";
+  return "Rascunho";
+}
+
+function statusColor(status: Poll["status"]) {
+  if (status === "open") return "bg-green-100 text-green-800";
+  if (status === "paused") return "bg-yellow-100 text-yellow-800";
+  if (status === "closed") return "bg-red-100 text-red-800";
+  return "bg-gray-100 text-gray-600";
+}
+
+export default async function Home() {
   /* =======================
-     GUARDA
+     POLLS
   ======================= */
-  if (!id || typeof id !== 'string' || id.trim() === '') {
-    return (
-      <main className="p-6 max-w-xl mx-auto text-center text-red-600">
-        Erro interno: ID da pesquisa inválido.
-      </main>
-    );
+  const { data: pollsData } = await supabase
+    .from("polls")
+    .select(
+      "id, title, start_date, end_date, voting_type, allow_multiple, status, show_partial_results"
+    )
+    .order("created_at", { ascending: false });
+
+  const polls: Poll[] = pollsData || [];
+  if (!polls.length) {
+    return <p className="p-6 text-center">Nenhuma pesquisa disponível.</p>;
   }
 
-  const safeId = id.trim();
-
-  const [poll, setPoll] = useState<any | null>(null);
-  const [options, setOptions] = useState<any[]>([]);
-  const [userHasVoted, setUserHasVoted] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const pollIds = polls.map(p => p.id);
 
   /* =======================
-     SENSORS (DESKTOP + MOBILE)
+     OPTIONS
   ======================= */
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 5 },
-    })
-  );
+  const { data: optionsData } = await supabase
+    .from("poll_options")
+    .select("id, poll_id, option_text")
+    .in("poll_id", pollIds);
+
+  const options: PollOption[] = optionsData || [];
 
   /* =======================
-     FETCH
+     VOTES
   ======================= */
-  useEffect(() => {
-    let mounted = true;
+  const { data: votesData } = await supabase
+    .from("votes")
+    .select("poll_id, option_id, user_hash")
+    .in("poll_id", pollIds);
 
-    const fetchData = async () => {
-      try {
-        const { data: pollData } = await supabase
-          .from('polls')
-          .select('*')
-          .eq('id', safeId)
-          .maybeSingle();
-
-        if (!mounted || !pollData || pollData.status === 'draft') {
-          router.replace('/404');
-          return;
-        }
-
-        setPoll(pollData);
-
-        const { data: optionsData } = await supabase
-          .from('poll_options')
-          .select('id, option_text')
-          .eq('poll_id', safeId);
-
-        if (mounted) setOptions(optionsData ?? []);
-
-        const userHash = localStorage.getItem('auditavel_uid');
-        if (userHash) {
-          const { data: voteData } = await supabase
-            .from('votes')
-            .select('id')
-            .eq('poll_id', safeId)
-            .eq('user_hash', userHash)
-            .limit(1);
-
-          if (mounted) setUserHasVoted(Boolean(voteData && voteData.length > 0));
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchData();
-    return () => {
-      mounted = false;
-    };
-  }, [safeId, router]);
+  const votes: Vote[] = votesData || [];
 
   /* =======================
-     LOADING
+     RANKINGS
   ======================= */
-  if (loading) {
-    return <main className="p-6 max-w-xl mx-auto">Carregando…</main>;
-  }
+  const { data: rankingsData } = await supabase
+    .from("vote_rankings")
+    .select("vote_id, option_id, ranking");
 
-  if (!poll) {
-    return (
-      <main className="p-6 max-w-xl mx-auto text-center text-red-600">
-        Erro ao carregar a pesquisa.
-      </main>
-    );
-  }
+  const rankings: VoteRanking[] = rankingsData || [];
 
   /* =======================
-     STATUS FLAGS
+     AGRUPAMENTOS
   ======================= */
-  const isOpen = poll.status === 'open';
-  const isPaused = poll.status === 'paused';
-  const isClosed = poll.status === 'closed';
+  const optionsByPoll = new Map<string, PollOption[]>();
+  options.forEach(o => {
+    if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
+    optionsByPoll.get(o.poll_id)!.push(o);
+  });
 
-  /* =======================
-     NAV
-  ======================= */
-  const Navigation = () => (
-    <div className="flex justify-between items-center mb-4 text-sm">
-      <Link href="/" className="text-emerald-600 hover:underline">
-        Auditável
-      </Link>
+  const votesByPoll = new Map<string, Vote[]>();
+  votes.forEach(v => {
+    if (!votesByPoll.has(v.poll_id)) votesByPoll.set(v.poll_id, []);
+    votesByPoll.get(v.poll_id)!.push(v);
+  });
 
-      {isClosed && (
-        <Link
-          href={`/results/${safeId}`}
-          className="text-emerald-600 hover:underline"
-        >
-          Ver resultados →
-        </Link>
-      )}
-    </div>
-  );
+  const rankingsByOption = new Map<string, VoteRanking[]>();
+  rankings.forEach(r => {
+    if (!rankingsByOption.has(r.option_id))
+      rankingsByOption.set(r.option_id, []);
+    rankingsByOption.get(r.option_id)!.push(r);
+  });
+
+  const rankingVotesByPoll = new Map<string, Set<string>>();
+  rankings.forEach(r => {
+    const opt = options.find(o => o.id === r.option_id);
+    if (!opt) return;
+    if (!rankingVotesByPoll.has(opt.poll_id))
+      rankingVotesByPoll.set(opt.poll_id, new Set());
+    rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
+  });
 
   /* =======================
      RENDER
   ======================= */
   return (
-    <main className="p-6 max-w-xl mx-auto space-y-5">
-      <Navigation />
-
-      <h1 className="text-2xl font-bold text-emerald-600">
-        {poll.title}
+    <main className="p-6 max-w-3xl mx-auto space-y-6">
+      <h1 className="text-3xl font-bold text-center text-emerald-700">
+        Auditável — Pesquisas
       </h1>
 
-      {/* ===== ALERTAS ===== */}
-      {isPaused && (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          <strong>Pesquisa pausada.</strong> A votação está temporariamente indisponível.
-        </div>
-      )}
+      {polls.map(p => {
+        if (p.status === "draft") return null;
 
-      {isClosed && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-          <strong>Pesquisa encerrada.</strong> Não é mais possível votar.
-        </div>
-      )}
+        const opts = optionsByPoll.get(p.id) || [];
+        const isRanking = p.voting_type === "ranking";
 
-      {isOpen && userHasVoted && !poll.allow_multiple && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Atenção:</strong> você já votou nesta pesquisa.  
-          Ao escolher uma nova opção, seu voto anterior será substituído.
-        </div>
-      )}
+        const canShowResults =
+          p.status === "closed" ||
+          ((p.status === "open" || p.status === "paused") &&
+            p.show_partial_results);
 
-      {isOpen && userHasVoted && poll.allow_multiple && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          Você já votou e pode votar novamente. Cada novo voto será somado ao total.
-        </div>
-      )}
+        const isVotingOpen = p.status === "open";
 
-      {/* ===== OPTIONS ===== */}
-      {isOpen && poll.voting_type === 'ranking' && (
-        <>
-          <p className="text-sm text-gray-600">
-            Arraste as opções para definir a ordem desejada.
-          </p>
+        let totalVotes = 0;
+        let leaders: { text: string; percent: number }[] = [];
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => {
-              const { active, over } = event;
-              if (!over || active.id === over.id) return;
+        /* ===== SINGLE ===== */
+        if (!isRanking) {
+          const pollVotes = votesByPoll.get(p.id) || [];
 
-              setOptions((items) => {
-                const oldIndex = items.findIndex(i => i.id === active.id);
-                const newIndex = items.findIndex(i => i.id === over.id);
-                return arrayMove(items, oldIndex, newIndex);
-              });
-            }}
+          totalVotes = p.allow_multiple
+            ? pollVotes.length
+            : new Set(pollVotes.map(v => v.user_hash)).size;
+
+          if (canShowResults && totalVotes > 0) {
+            const countByOption = new Map<string, number>();
+            pollVotes.forEach(v => {
+              if (!v.option_id) return;
+              countByOption.set(
+                v.option_id,
+                (countByOption.get(v.option_id) || 0) + 1
+              );
+            });
+
+            const maxVotes = Math.max(...countByOption.values());
+
+            leaders = opts
+              .filter(o => countByOption.get(o.id) === maxVotes)
+              .map(o => ({
+                text: o.option_text,
+                percent: Math.round((maxVotes / totalVotes) * 100),
+              }))
+              .sort((a, b) => a.text.localeCompare(b.text));
+          }
+        }
+
+        /* ===== RANKING ===== */
+        if (isRanking) {
+          totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
+
+          if (canShowResults && totalVotes > 0) {
+            const summaries = opts
+              .map(o => {
+                const rs = rankingsByOption.get(o.id) || [];
+                if (!rs.length) return null;
+                const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
+                return { text: o.option_text, avg };
+              })
+              .filter(Boolean) as { text: string; avg: number }[];
+
+            if (summaries.length) {
+              const bestAvg = Math.min(...summaries.map(s => s.avg));
+              leaders = summaries
+                .filter(s => s.avg === bestAvg)
+                .map(s => ({ text: s.text, percent: 0 }))
+                .sort((a, b) => a.text.localeCompare(b.text));
+            }
+          }
+        }
+
+        const leaderLabel = leaders.length > 1 ? "Líderes" : "Líder";
+
+        return (
+          <div
+            key={p.id}
+            className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md transition"
           >
-            <SortableContext
-              items={options.map(o => o.id)}
-              strategy={verticalListSortingStrategy}
+            {/* STATUS */}
+            <span
+              className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                p.status
+              )}`}
             >
-              <div className="space-y-2">
-                {options.map((opt, index) => (
-                  <RankingOption
-                    key={opt.id}
-                    id={opt.id}
-                    text={opt.option_text}
-                    index={index}
-                  />
-                ))}
+              {statusLabel(p.status)}
+            </span>
+
+            {/* TITLE */}
+            <h2 className="text-lg font-semibold text-emerald-700 pr-24">
+              {p.title}
+            </h2>
+
+            {/* META */}
+            <div className="text-sm text-gray-600 mt-1">
+              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} ·
+              Tipo: {isRanking ? " Ranking" : " Voto simples"}
+            </div>
+
+            {/* RESULTADOS (CONDICIONAL) */}
+            {canShowResults && (
+              <div className="mt-3 text-sm">
+                <b className="text-gray-700">Total de votos:</b>{" "}
+                <span className="text-emerald-700 font-semibold">
+                  {totalVotes}
+                </span>
+
+                {leaders.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
+                      {leaderLabel}
+                    </span>
+
+                    <div className="flex flex-wrap gap-4">
+                      {leaders.map((l, idx) => (
+                        <span key={idx} className="font-bold text-emerald-700">
+                          {l.text}
+                          {!isRanking && ` (${l.percent}%)`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </SortableContext>
-          </DndContext>
+            )}
 
-          <button
-            onClick={async () => {
-              let userHash = localStorage.getItem('auditavel_uid');
-              if (!userHash) {
-                userHash = crypto.randomUUID();
-                localStorage.setItem('auditavel_uid', userHash);
-              }
+            {/* CTA */}
+            <div className="mt-4 space-y-1">
+              <Link
+                href={`/poll/${p.id}`}
+                className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+              >
+                {isVotingOpen ? "Ir para votação →" : "Ver opções →"}
+              </Link>
 
-              const orderedIds = options.map(o => o.id);
-
-              await fetch('/api/vote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  poll_id: safeId,
-                  option_ids: orderedIds,
-                  user_hash: userHash,
-                }),
-              });
-
-              window.location.href = `/results/${safeId}`;
-            }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
-          >
-            Enviar classificação
-          </button>
-        </>
-      )}
-
-      {isOpen && poll.voting_type !== 'ranking' && (
-        <div className="space-y-3">
-          {options.map(o => (
-            <VoteButton
-              key={o.id}
-              pollId={safeId}
-              optionId={o.id}
-              text={o.option_text}
-              allowMultiple={poll.allow_multiple}
-              userHasVoted={userHasVoted}
-            />
-          ))}
-        </div>
-      )}
+              {canShowResults && (
+                <div>
+                  <Link
+                    href={`/results/${p.id}`}
+                    className="text-sm text-emerald-700 hover:underline"
+                  >
+                    Ver resultados
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </main>
   );
 }
