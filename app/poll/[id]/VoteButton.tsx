@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getOrCreateParticipantId } from "@/lib/participant";
 
 interface VoteButtonProps {
   pollId: string;
@@ -52,7 +53,8 @@ export default function VoteButton({
         uid = crypto.randomUUID();
         localStorage.setItem('auditavel_uid', uid);
       }
-
+      
+      const participantId = getOrCreateParticipantId();
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,6 +62,7 @@ export default function VoteButton({
           poll_id: safePollId,
           option_id: optionId,
           user_hash: uid,
+          participant_id: participantId
         }),
       });
 
