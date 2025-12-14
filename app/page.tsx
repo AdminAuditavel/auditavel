@@ -160,8 +160,6 @@ export default async function Home() {
             ((p.status === "open" || p.status === "paused") &&
               p.show_partial_results);
 
-          const isVotingOpen = p.status === "open";
-
           let totalVotes = 0;
           let topSingle: { text: string; percent: number }[] = [];
           let topRanking: { text: string; score: number }[] = [];
@@ -248,7 +246,6 @@ export default async function Home() {
               {/* CONTENT + GRAPH */}
               {canShowResults && (
                 <div className="mt-4 flex gap-4 items-start">
-                  {/* TEXTO — DESCRIPTION */}
                   <div className="flex-1 text-sm text-gray-700">
                     {p.description ? (
                       <p>{p.description}</p>
@@ -260,7 +257,6 @@ export default async function Home() {
                     )}
                   </div>
 
-                  {/* MINI GRÁFICO */}
                   <div className="w-40 space-y-2">
                     {!isRanking &&
                       topSingle.map((o, i) => (
@@ -299,29 +295,26 @@ export default async function Home() {
               )}
 
               {/* CTA */}
-              <div className="mt-4 space-y-1">
+              <div className="mt-4">
                 <Link
                   href={`/poll/${p.id}`}
-                  className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+                  className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
                 >
-                  {isVotingOpen ? "Ir para votação →" : "Ver opções →"}
+                  Participar
                 </Link>
-
-                <div>
-                  {canShowResults ? (
-                    <Link
-                      href={`/results/${p.id}`}
-                      className="text-sm text-emerald-700 hover:underline"
-                    >
-                      Ver resultados
-                    </Link>
-                  ) : (
-                    <span className="text-sm text-gray-500">
-                      Resultados indisponíveis — serão divulgados ao final da pesquisa.
-                    </span>
-                  )}
-                </div>
               </div>
+
+              {/* BADGE RESULTADOS */}
+              {canShowResults && (
+                <Link
+                  href={`/results/${p.id}`}
+                  className="absolute bottom-4 right-4 inline-flex items-center px-3 py-1 rounded-full
+                             text-xs font-semibold bg-orange-100 text-orange-800
+                             hover:bg-orange-200 transition"
+                >
+                  Resultados
+                </Link>
+              )}
             </div>
           );
         })}
