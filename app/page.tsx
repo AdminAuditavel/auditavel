@@ -134,16 +134,14 @@ export default async function Home() {
   ======================= */
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-10">
-      {/* HERO / IDENTIDADE */}
+      {/* HERO */}
       <section className="text-center space-y-3">
         <h1 className="text-4xl font-bold text-emerald-700">
           Auditável
         </h1>
-
         <p className="text-lg font-medium text-gray-800">
           Onde decisões públicas podem ser verificadas.
         </p>
-
         <p className="text-sm text-gray-600 max-w-xl mx-auto">
           Uma plataforma para coletar dados, gerar informação e produzir
           conhecimento público confiável.
@@ -152,7 +150,6 @@ export default async function Home() {
 
       <hr className="border-gray-200" />
 
-      {/* LISTAGEM */}
       <section className="space-y-6">
         {polls.map(p => {
           if (p.status === "draft") return null;
@@ -168,9 +165,10 @@ export default async function Home() {
           const isVotingOpen = p.status === "open";
 
           let totalVotes = 0;
-          let leaders: { text: string; percent: number }[] = [];
 
           /* ===== SINGLE ===== */
+          let topSingle: { text: string; percent: number }[] = [];
+
           if (!isRanking) {
             const pollVotes = votesByPoll.get(p.id) || [];
 
@@ -188,50 +186,51 @@ export default async function Home() {
                 );
               });
 
-              const maxVotes = Math.max(...countByOption.values());
-
-              leaders = opts
-                .filter(o => countByOption.get(o.id) === maxVotes)
+              topSingle = opts
                 .map(o => ({
                   text: o.option_text,
-                  percent: Math.round((maxVotes / totalVotes) * 100),
+                  votes: countByOption.get(o.id) || 0,
                 }))
-                .sort((a, b) => a.text.localeCompare(b.text));
+                .filter(o => o.votes > 0)
+                .sort((a, b) => b.votes - a.votes)
+                .slice(0, 3)
+                .map(o => ({
+                  text: o.text,
+                  percent: Math.round((o.votes / totalVotes) * 100),
+                }));
             }
           }
 
           /* ===== RANKING ===== */
-          if (isRanking) {
-            totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
+          let topRanking: { text: string; score: number }[] = [];
 
-            if (canShowResults && totalVotes > 0) {
-              const summaries = opts
-                .map(o => {
-                  const rs = rankingsByOption.get(o.id) || [];
-                  if (!rs.length) return null;
-                  const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
-                  return { text: o.option_text, avg };
-                })
-                .filter(Boolean) as { text: string; avg: number }[];
+          if (isRanking && canShowResults) {
+            const summaries = opts
+              .map(o => {
+                const rs = rankingsByOption.get(o.id) || [];
+                if (!rs.length) return null;
+                const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
+                return { text: o.option_text, score: avg };
+              })
+              .filter(Boolean) as { text: string; score: number }[];
 
-              if (summaries.length) {
-                const bestAvg = Math.min(...summaries.map(s => s.avg));
-                leaders = summaries
-                  .filter(s => s.avg === bestAvg)
-                  .map(s => ({ text: s.text, percent: 0 }))
-                  .sort((a, b) => a.text.localeCompare(b.text));
-              }
+            if (summaries.length) {
+              const best = Math.min(...summaries.map(s => s.score));
+              topRanking = summaries
+                .sort((a, b) => a.score - b.score)
+                .slice(0, 3)
+                .map(s => ({
+                  text: s.text,
+                  score: Math.round((best / s.score) * 100),
+                }));
             }
           }
-
-          const leaderLabel = leaders.length > 1 ? "Líderes" : "Líder";
 
           return (
             <div
               key={p.id}
               className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md transition"
             >
-              {/* STATUS */}
               <span
                 className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                   p.status
@@ -250,32 +249,41 @@ export default async function Home() {
                 {isRanking ? "Ranking" : "Voto simples"}
               </div>
 
+              {/* MINI GRÁFICOS — V1 */}
               {canShowResults && (
-                <div className="mt-3 text-sm">
-                  <b className="text-gray-700">Total de votos:</b>{" "}
-                  <span className="text-emerald-700 font-semibold">
-                    {totalVotes}
-                  </span>
-
-                  {leaders.length > 0 && (
-                    <div className="mt-3 space-y-1">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
-                        {leaderLabel}
-                      </span>
-
-                      <div className="flex flex-wrap gap-4">
-                        {leaders.map((l, idx) => (
-                          <span
-                            key={idx}
-                            className="font-bold text-emerald-700"
-                          >
-                            {l.text}
-                            {!isRanking && ` (${l.percent}%)`}
-                          </span>
-                        ))}
+                <div className="mt-4 space-y-2">
+                  {!isRanking &&
+                    topSingle.map((o, i) => (
+                      <div key={i} className="text-xs">
+                        <div className="flex justify-between">
+                          <span>{o.text}</span>
+                          <span>{o.percent}%</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded">
+                          <div
+                            className="h-2 bg-emerald-500 rounded"
+                            style={{ width: `${o.percent}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ))}
+
+                  {isRanking &&
+                    topRanking.map((o, i) => (
+                      <div key={i} className="text-xs">
+                        <div className="flex justify-between">
+                          <span>
+                            <strong>{i + 1}º</strong> — {o.text}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded">
+                          <div
+                            className="h-2 bg-emerald-500 rounded"
+                            style={{ width: `${o.score}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )}
 
