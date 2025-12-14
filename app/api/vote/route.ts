@@ -6,11 +6,18 @@ import { randomUUID } from "crypto";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { poll_id, option_id, option_ids, user_hash } = body as {
+    const {
+      poll_id,
+      option_id,
+      option_ids,
+      user_hash,
+      participant_id,
+    } = body as {
       poll_id?: string;
       option_id?: string;
       option_ids?: string[];
       user_hash?: string;
+      participant_id?: string;
     };
 
     if (!poll_id || !user_hash) {
@@ -20,7 +27,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Buscar configuração da pesquisa (agora incluindo voting_type e status)
+    /* =========================
+       PARTICIPANT (V2.1)
+    ========================= */
+    if (participant_id) {
+      try {
+        const { data: existingParticipant } = await supabase
+          .from("participants")
+          .select("id")
+          .eq("id", participant_id)
+          .maybeSingle();
+
+        if (!existingParticipant) {
+          await supabase.from("participants").insert({
+            id: participant_id,
+          });
+        } else {
+          await supabase
+            .from("participants")
+            .update({ last_seen_at: new Date().toISOString() })
+            .eq("id", participant_id);
+        }
+      } catch (e) {
+        console.error("Erro ao sincronizar participante:", e);
+        // NÃO bloqueia o voto
+      }
+    }
+
+    /* =========================
+       POLL CONFIG
+    ========================= */
     const { data: poll, error: pollError } = await supabase
       .from("polls")
       .select("allow_multiple, vote_cooldown_seconds, voting_type, status")
@@ -38,38 +74,44 @@ export async function POST(req: NextRequest) {
     const allowMultiple = Boolean(poll.allow_multiple);
     const cooldownSeconds = poll.vote_cooldown_seconds ?? 0;
     const votingType = (poll.voting_type ?? "single") as string;
-    const status = poll.status; // Captura o status da pesquisa
+    const status = poll.status;
 
-    // Verifica se a pesquisa está aberta para votação
     if (status !== "open") {
       return NextResponse.json(
-        { error: "poll_not_open", message: "Esta pesquisa não está aberta para votos" },
+        {
+          error: "poll_not_open",
+          message: "Esta pesquisa não está aberta para votos",
+        },
         { status: 403 }
       );
     }
 
-    // =========================
-    // RANKING (option_ids array)
-    // =========================
+    /* =========================
+       RANKING
+    ========================= */
     if (Array.isArray(option_ids)) {
-      // Ensure poll expects ranking
       if (votingType !== "ranking") {
         return NextResponse.json(
-          { error: "ranking_not_allowed", message: "This poll is not configured for ranking votes" },
+          {
+            error: "ranking_not_allowed",
+            message: "This poll is not configured for ranking votes",
+          },
           { status: 400 }
         );
       }
 
       if (option_ids.length === 0) {
         return NextResponse.json(
-          { error: "invalid_data", message: "option_ids must contain at least one id" },
+          {
+            error: "invalid_data",
+            message: "option_ids must contain at least one id",
+          },
           { status: 400 }
         );
       }
 
-      // Cooldown check
       if (cooldownSeconds > 0) {
-        const { data: lastVote, error: lastVoteError } = await supabase
+        const { data: lastVote } = await supabase
           .from("votes")
           .select("created_at")
           .eq("poll_id", poll_id)
@@ -78,23 +120,21 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle();
 
-        if (lastVoteError) {
-          console.error("Erro ao verificar cooldown (ranking):", lastVoteError);
-        }
-
         if (lastVote) {
-          const lastTime = new Date(lastVote.created_at).getTime();
-          const now = Date.now();
-          const cooldownEnd = lastTime + cooldownSeconds * 1000;
+          const cooldownEnd =
+            new Date(lastVote.created_at).getTime() +
+            cooldownSeconds * 1000;
 
-          if (now < cooldownEnd) {
-            const remainingSeconds = Math.ceil((cooldownEnd - now) / 1000);
+          if (Date.now() < cooldownEnd) {
+            const remainingSeconds = Math.ceil(
+              (cooldownEnd - Date.now()) / 1000
+            );
 
             return NextResponse.json(
               {
                 error: "cooldown_active",
                 message: `Você deve esperar ${remainingSeconds} segundos antes de votar novamente.`,
-                remaining_seconds: remainingSeconds
+                remaining_seconds: remainingSeconds,
               },
               { status: 429 }
             );
@@ -102,55 +142,29 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Se allow_multiple = false -> remover votos anteriores desse usuário (ranking e vote pai)
       if (!allowMultiple) {
-        try {
-          // buscar votes anteriores (ids)
-          const { data: previousVotes, error: prevSelectErr } = await supabase
-            .from("votes")
-            .select("id")
-            .eq("poll_id", poll_id)
-            .eq("user_hash", user_hash);
+        const { data: previousVotes } = await supabase
+          .from("votes")
+          .select("id")
+          .eq("poll_id", poll_id)
+          .eq("user_hash", user_hash);
 
-          if (prevSelectErr) {
-            console.error("Erro ao selecionar votos anteriores (ranking):", prevSelectErr);
-          } else if (previousVotes && previousVotes.length > 0) {
-            const prevIds = previousVotes.map((v: any) => v.id);
+        if (previousVotes && previousVotes.length > 0) {
+          const ids = previousVotes.map(v => v.id);
 
-            // deletar vote_rankings associados
-            const { error: deleteRankingsErr } = await supabase
-              .from("vote_rankings")
-              .delete()
-              .in("vote_id", prevIds);
-
-            if (deleteRankingsErr) {
-              console.error("Erro ao deletar vote_rankings anteriores:", deleteRankingsErr);
-            }
-
-            // deletar votes pai antigos
-            const { error: deleteVotesErr } = await supabase
-              .from("votes")
-              .delete()
-              .in("id", prevIds);
-
-            if (deleteVotesErr) {
-              console.error("Erro ao deletar votes anteriores:", deleteVotesErr);
-            }
-          }
-        } catch (e) {
-          console.error("Erro ao limpar votos anteriores (ranking):", e);
+          await supabase.from("vote_rankings").delete().in("vote_id", ids);
+          await supabase.from("votes").delete().in("id", ids);
         }
       }
 
-      // 1) Criar vote pai
       const parentVoteId = randomUUID();
-      const parentPayload: any = {
+      const parentPayload = {
         id: parentVoteId,
         poll_id,
         user_hash,
+        participant_id: participant_id ?? null,
       };
 
-      // insert vote pai
       const { data: parentVoteData, error: parentVoteError } = await supabase
         .from("votes")
         .insert(parentPayload)
@@ -158,115 +172,88 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (parentVoteError || !parentVoteData) {
-        console.error("Erro ao inserir vote pai (ranking):", parentVoteError);
         return NextResponse.json(
-          { error: "parent_vote_insert_failed", details: parentVoteError?.message ?? parentVoteError },
+          { error: "parent_vote_insert_failed" },
           { status: 500 }
         );
       }
 
-      const voteId = parentVoteData.id ?? parentVoteId;
+      const voteId = parentVoteData.id;
 
-      // 2) Inserir linhas em vote_rankings
-      const rows = option_ids.map((optId: string, idx: number) => ({
+      const rows = option_ids.map((optId, idx) => ({
         id: randomUUID(),
         vote_id: voteId,
         option_id: optId,
         ranking: idx + 1,
       }));
 
-      const { error: insertRankingError } = await supabase.from("vote_rankings").insert(rows);
+      const { error: insertRankingError } = await supabase
+        .from("vote_rankings")
+        .insert(rows);
 
       if (insertRankingError) {
-        console.error("Erro ao inserir vote_rankings (ranking):", insertRankingError);
-        // tentativa de rollback simples: remover vote pai criado
-        try {
-          await supabase.from("vote_rankings").delete().in("vote_id", [voteId]);
-          await supabase.from("votes").delete().eq("id", voteId);
-        } catch (rollbackErr) {
-          console.error("Erro no rollback após falha ao inserir rankings:", rollbackErr);
-        }
-
+        await supabase.from("votes").delete().eq("id", voteId);
         return NextResponse.json(
-          { error: "insert_failed", details: insertRankingError.message ?? insertRankingError },
+          { error: "insert_failed" },
           { status: 500 }
         );
       }
 
-      return NextResponse.json({ success: true, vote_id: voteId, inserted: rows.length });
+      return NextResponse.json({
+        success: true,
+        vote_id: voteId,
+        inserted: rows.length,
+      });
     }
 
-    // =========================================================================
-    // MODO A — VOTO ÚNICO (option_id supplied) — fluxo existente (sem mudança)
-    // =========================================================================
+    /* =========================
+       SINGLE / MULTIPLE
+    ========================= */
     if (!option_id) {
       return NextResponse.json(
-        { error: "missing_option", message: "option_id or option_ids must be provided" },
+        {
+          error: "missing_option",
+          message: "option_id or option_ids must be provided",
+        },
         { status: 400 }
       );
     }
 
     if (!allowMultiple) {
-      // single-choice mode: upsert (update existing or insert new)
-      const { data: existing, error: existingError } = await supabase
+      const { data: existing } = await supabase
         .from("votes")
         .select("id")
         .eq("poll_id", poll_id)
         .eq("user_hash", user_hash)
         .maybeSingle();
 
-      if (existingError) {
-        console.error("Erro ao buscar voto existente (modo A):", existingError);
-      }
-
-      // Já existe -> atualizar
       if (existing) {
-        const { error } = await supabase
+        await supabase
           .from("votes")
           .update({
             option_id,
+            participant_id: participant_id ?? null,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existing.id);
 
-        if (error) {
-          console.error("Erro ao atualizar voto (modo A):", error);
-          return NextResponse.json(
-            { error: "update_failed", details: error.message ?? error },
-            { status: 500 }
-          );
-        }
-
         return NextResponse.json({ success: true, updated: true });
       }
 
-      // Não existe -> inserir
-      const { error } = await supabase.from("votes").insert({
+      await supabase.from("votes").insert({
         id: randomUUID(),
         poll_id,
         option_id,
         user_hash,
+        participant_id: participant_id ?? null,
         votes_count: 1,
       });
-
-      if (error) {
-        console.error("Erro ao inserir voto (modo A):", error);
-        return NextResponse.json(
-          { error: "insert_failed", details: error.message ?? error },
-          { status: 500 }
-        );
-      }
 
       return NextResponse.json({ success: true });
     }
 
-    // =========================================================================
-    // MODO B — VOTO MÚLTIPLO SIMPLES (allow_multiple = true) com COOLDOWN
-    // =========================================================================
-
-    // Se houver cooldown configurado, verificar o último voto do usuário
     if (cooldownSeconds > 0) {
-      const { data: lastVote, error: lastVoteError } = await supabase
+      const { data: lastVote } = await supabase
         .from("votes")
         .select("created_at")
         .eq("poll_id", poll_id)
@@ -275,23 +262,21 @@ export async function POST(req: NextRequest) {
         .limit(1)
         .maybeSingle();
 
-      if (lastVoteError) {
-        console.error("Erro ao verificar cooldown:", lastVoteError);
-      }
-
       if (lastVote) {
-        const lastTime = new Date(lastVote.created_at).getTime();
-        const now = Date.now();
-        const cooldownEnd = lastTime + cooldownSeconds * 1000;
+        const cooldownEnd =
+          new Date(lastVote.created_at).getTime() +
+          cooldownSeconds * 1000;
 
-        if (now < cooldownEnd) {
-          const remainingSeconds = Math.ceil((cooldownEnd - now) / 1000);
+        if (Date.now() < cooldownEnd) {
+          const remainingSeconds = Math.ceil(
+            (cooldownEnd - Date.now()) / 1000
+          );
 
           return NextResponse.json(
             {
               error: "cooldown_active",
               message: `Você deve esperar ${remainingSeconds} segundos antes de votar novamente.`,
-              remaining_seconds: remainingSeconds
+              remaining_seconds: remainingSeconds,
             },
             { status: 429 }
           );
@@ -299,22 +284,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Inserir voto (sempre insere, mesmo repetido)
-    const { error: insertError } = await supabase.from("votes").insert({
+    await supabase.from("votes").insert({
       id: randomUUID(),
       poll_id,
       option_id,
       user_hash,
+      participant_id: participant_id ?? null,
       votes_count: 1,
     });
-
-    if (insertError) {
-      console.error("Erro ao inserir voto (modo B):", insertError);
-      return NextResponse.json(
-        { error: "insert_failed", details: insertError.message ?? insertError },
-        { status: 500 }
-      );
-    }
 
     return NextResponse.json({ success: true });
 
