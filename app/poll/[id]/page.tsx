@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { getOrCreateParticipantId } from "@/lib/participant";
 
 import VoteButton from './VoteButton';
 import RankingOption from './RankingOption';
