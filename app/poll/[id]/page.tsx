@@ -293,18 +293,22 @@ export default function PollPage() {
           )}
         </>
       ) : (
-        <div className="space-y-3">
-          {options.map(o => (
-            <VoteButton
-              key={o.id}
-              pollId={safeId}
-              optionId={o.id}
-              text={o.option_text}
-              allowMultiple={allowMultiple}
-              userHasVoted={userHasVoted}
-            />
-          ))}
-        </div>
+        <div
+  className={`space-y-3 ${
+    !isOpen ? 'pointer-events-none opacity-60' : ''
+  }`}
+>
+  {options.map(o => (
+    <VoteButton
+      key={o.id}
+      pollId={safeId}
+      optionId={o.id}
+      text={o.option_text}
+      allowMultiple={allowMultiple}
+      userHasVoted={userHasVoted}
+    />
+  ))}
+</div>
       )}
     </main>
   );
