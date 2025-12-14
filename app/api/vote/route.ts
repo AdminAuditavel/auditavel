@@ -20,12 +20,15 @@ export async function POST(req: NextRequest) {
       participant_id?: string;
     };
 
-    if (!poll_id || !user_hash) {
-      return NextResponse.json(
-        { error: "missing_data", message: "poll_id and user_hash are required" },
-        { status: 400 }
-      );
-    }
+   if (!poll_id || !user_hash || !participant_id) {
+    return NextResponse.json(
+      {
+        error: "missing_data",
+        message: "poll_id, user_hash e participant_id são obrigatórios",
+      },
+      { status: 400 }
+    );
+  }
 
     /* =========================
        PARTICIPANT (V2.1)
