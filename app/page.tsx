@@ -1,4 +1,3 @@
-// app/page.tsx
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
@@ -134,158 +133,175 @@ export default async function Home() {
      RENDER
   ======================= */
   return (
-    <main className="p-6 max-w-3xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold text-center text-emerald-700">
-        Auditável — Pesquisas
-      </h1>
+    <main className="p-6 max-w-3xl mx-auto space-y-10">
+      {/* HERO / IDENTIDADE */}
+      <section className="text-center space-y-3">
+        <h1 className="text-4xl font-bold text-emerald-700">
+          Auditável
+        </h1>
 
-      {polls.map(p => {
-        if (p.status === "draft") return null;
+        <p className="text-lg font-medium text-gray-800">
+          Onde decisões públicas podem ser verificadas.
+        </p>
 
-        const opts = optionsByPoll.get(p.id) || [];
-        const isRanking = p.voting_type === "ranking";
+        <p className="text-sm text-gray-600 max-w-xl mx-auto">
+          Uma plataforma para coletar dados, gerar informação e produzir
+          conhecimento público confiável.
+        </p>
+      </section>
 
-        const canShowResults =
-          p.status === "closed" ||
-          ((p.status === "open" || p.status === "paused") &&
-            p.show_partial_results);
+      <hr className="border-gray-200" />
 
-        const isVotingOpen = p.status === "open";
+      {/* LISTAGEM */}
+      <section className="space-y-6">
+        {polls.map(p => {
+          if (p.status === "draft") return null;
 
-        let totalVotes = 0;
-        let leaders: { text: string; percent: number }[] = [];
+          const opts = optionsByPoll.get(p.id) || [];
+          const isRanking = p.voting_type === "ranking";
 
-        /* ===== SINGLE ===== */
-        if (!isRanking) {
-          const pollVotes = votesByPoll.get(p.id) || [];
+          const canShowResults =
+            p.status === "closed" ||
+            ((p.status === "open" || p.status === "paused") &&
+              p.show_partial_results);
 
-          totalVotes = p.allow_multiple
-            ? pollVotes.length
-            : new Set(pollVotes.map(v => v.user_hash)).size;
+          const isVotingOpen = p.status === "open";
 
-          if (canShowResults && totalVotes > 0) {
-            const countByOption = new Map<string, number>();
-            pollVotes.forEach(v => {
-              if (!v.option_id) return;
-              countByOption.set(
-                v.option_id,
-                (countByOption.get(v.option_id) || 0) + 1
-              );
-            });
+          let totalVotes = 0;
+          let leaders: { text: string; percent: number }[] = [];
 
-            const maxVotes = Math.max(...countByOption.values());
+          /* ===== SINGLE ===== */
+          if (!isRanking) {
+            const pollVotes = votesByPoll.get(p.id) || [];
 
-            leaders = opts
-              .filter(o => countByOption.get(o.id) === maxVotes)
-              .map(o => ({
-                text: o.option_text,
-                percent: Math.round((maxVotes / totalVotes) * 100),
-              }))
-              .sort((a, b) => a.text.localeCompare(b.text));
-          }
-        }
+            totalVotes = p.allow_multiple
+              ? pollVotes.length
+              : new Set(pollVotes.map(v => v.user_hash)).size;
 
-        /* ===== RANKING ===== */
-        if (isRanking) {
-          totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
+            if (canShowResults && totalVotes > 0) {
+              const countByOption = new Map<string, number>();
+              pollVotes.forEach(v => {
+                if (!v.option_id) return;
+                countByOption.set(
+                  v.option_id,
+                  (countByOption.get(v.option_id) || 0) + 1
+                );
+              });
 
-          if (canShowResults && totalVotes > 0) {
-            const summaries = opts
-              .map(o => {
-                const rs = rankingsByOption.get(o.id) || [];
-                if (!rs.length) return null;
-                const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
-                return { text: o.option_text, avg };
-              })
-              .filter(Boolean) as { text: string; avg: number }[];
+              const maxVotes = Math.max(...countByOption.values());
 
-            if (summaries.length) {
-              const bestAvg = Math.min(...summaries.map(s => s.avg));
-              leaders = summaries
-                .filter(s => s.avg === bestAvg)
-                .map(s => ({ text: s.text, percent: 0 }))
+              leaders = opts
+                .filter(o => countByOption.get(o.id) === maxVotes)
+                .map(o => ({
+                  text: o.option_text,
+                  percent: Math.round((maxVotes / totalVotes) * 100),
+                }))
                 .sort((a, b) => a.text.localeCompare(b.text));
             }
           }
-        }
 
-        const leaderLabel = leaders.length > 1 ? "Líderes" : "Líder";
+          /* ===== RANKING ===== */
+          if (isRanking) {
+            totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
 
-        return (
-          <div
-            key={p.id}
-            className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md transition"
-          >
-            {/* STATUS */}
-            <span
-              className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                p.status
-              )}`}
+            if (canShowResults && totalVotes > 0) {
+              const summaries = opts
+                .map(o => {
+                  const rs = rankingsByOption.get(o.id) || [];
+                  if (!rs.length) return null;
+                  const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
+                  return { text: o.option_text, avg };
+                })
+                .filter(Boolean) as { text: string; avg: number }[];
+
+              if (summaries.length) {
+                const bestAvg = Math.min(...summaries.map(s => s.avg));
+                leaders = summaries
+                  .filter(s => s.avg === bestAvg)
+                  .map(s => ({ text: s.text, percent: 0 }))
+                  .sort((a, b) => a.text.localeCompare(b.text));
+              }
+            }
+          }
+
+          const leaderLabel = leaders.length > 1 ? "Líderes" : "Líder";
+
+          return (
+            <div
+              key={p.id}
+              className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md transition"
             >
-              {statusLabel(p.status)}
-            </span>
+              {/* STATUS */}
+              <span
+                className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                  p.status
+                )}`}
+              >
+                {statusLabel(p.status)}
+              </span>
 
-            {/* TITLE */}
-            <h2 className="text-lg font-semibold text-emerald-700 pr-24">
-              {p.title}
-            </h2>
+              <h2 className="text-lg font-semibold text-emerald-700 pr-24">
+                {p.title}
+              </h2>
 
-            {/* META */}
-            <div className="text-sm text-gray-600 mt-1">
-              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} ·
-              Tipo: {isRanking ? " Ranking" : " Voto simples"}
-            </div>
+              <div className="text-sm text-gray-600 mt-1">
+                Início: {formatDate(p.start_date)} · Fim:{" "}
+                {formatDate(p.end_date)} · Tipo:{" "}
+                {isRanking ? "Ranking" : "Voto simples"}
+              </div>
 
-            {/* RESULTADOS (CONDICIONAL) */}
-            {canShowResults && (
-              <div className="mt-3 text-sm">
-                <b className="text-gray-700">Total de votos:</b>{" "}
-                <span className="text-emerald-700 font-semibold">
-                  {totalVotes}
-                </span>
+              {canShowResults && (
+                <div className="mt-3 text-sm">
+                  <b className="text-gray-700">Total de votos:</b>{" "}
+                  <span className="text-emerald-700 font-semibold">
+                    {totalVotes}
+                  </span>
 
-                {leaders.length > 0 && (
-                  <div className="mt-3 space-y-1">
-                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
-                      {leaderLabel}
-                    </span>
+                  {leaders.length > 0 && (
+                    <div className="mt-3 space-y-1">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
+                        {leaderLabel}
+                      </span>
 
-                    <div className="flex flex-wrap gap-4">
-                      {leaders.map((l, idx) => (
-                        <span key={idx} className="font-bold text-emerald-700">
-                          {l.text}
-                          {!isRanking && ` (${l.percent}%)`}
-                        </span>
-                      ))}
+                      <div className="flex flex-wrap gap-4">
+                        {leaders.map((l, idx) => (
+                          <span
+                            key={idx}
+                            className="font-bold text-emerald-700"
+                          >
+                            {l.text}
+                            {!isRanking && ` (${l.percent}%)`}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-1">
+                <Link
+                  href={`/poll/${p.id}`}
+                  className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+                >
+                  {isVotingOpen ? "Ir para votação →" : "Ver opções →"}
+                </Link>
+
+                {canShowResults && (
+                  <div>
+                    <Link
+                      href={`/results/${p.id}`}
+                      className="text-sm text-emerald-700 hover:underline"
+                    >
+                      Ver resultados
+                    </Link>
                   </div>
                 )}
               </div>
-            )}
-
-            {/* CTA */}
-            <div className="mt-4 space-y-1">
-              <Link
-                href={`/poll/${p.id}`}
-                className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
-              >
-                {isVotingOpen ? "Ir para votação →" : "Ver opções →"}
-              </Link>
-
-              {canShowResults && (
-                <div>
-                  <Link
-                    href={`/results/${p.id}`}
-                    className="text-sm text-emerald-700 hover:underline"
-                  >
-                    Ver resultados
-                  </Link>
-                </div>
-              )}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </section>
     </main>
   );
 }
