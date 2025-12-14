@@ -67,11 +67,29 @@ export default async function ResultsPage({
 
   if (!canShowResults) {
     return (
-      <main className="p-6 max-w-xl mx-auto text-center space-y-3">
+      <main className="p-6 max-w-xl mx-auto space-y-5 text-center">
         <h1 className="text-xl font-semibold">Resultados</h1>
+  
         <p className="text-sm text-muted-foreground">
-          Os resultados desta pesquisa estão ocultos no momento.
+          Os resultados desta pesquisa estão ocultos no momento e serão
+          divulgados ao final da votação.
         </p>
+  
+        <div className="flex justify-center gap-4 text-sm">
+          <Link
+            href={`/poll/${safeId}`}
+            className="text-emerald-600 hover:underline"
+          >
+            ← Voltar para a pesquisa
+          </Link>
+  
+          <Link
+            href="/"
+            className="text-emerald-600 hover:underline"
+          >
+            Página inicial
+          </Link>
+        </div>
       </main>
     );
   }
