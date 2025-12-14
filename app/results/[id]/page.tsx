@@ -87,7 +87,7 @@ export default async function ResultsPage({
             href="/"
             className="text-emerald-600 hover:underline"
           >
-            Página inicial
+            Auditável
           </Link>
         </div>
       </main>
