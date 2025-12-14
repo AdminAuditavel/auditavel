@@ -24,6 +24,30 @@ export default async function AdminPage(props: {
     redirect("/");
   }
 
+function getPublicVisibility(
+  status: "draft" | "open" | "paused" | "closed",
+  showPartial: boolean
+) {
+  if (status === "closed") {
+    return {
+      label: "Final",
+      className: "bg-emerald-100 text-emerald-800",
+    };
+  }
+
+  if ((status === "open" || status === "paused") && showPartial) {
+    return {
+      label: "Parcial",
+      className: "bg-amber-100 text-amber-800",
+    };
+  }
+
+  return {
+    label: "Oculto",
+    className: "bg-gray-200 text-gray-700",
+  };
+}
+  
   /* =======================
      FETCH
   ======================= */
