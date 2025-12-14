@@ -26,7 +26,9 @@ export default async function ResultsPage({
   ======================= */
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
-    .select("title, voting_type, status, show_partial_results, allow_multiple")
+    .select(
+      "title, voting_type, status, show_partial_results, allow_multiple"
+    )
     .eq("id", safeId)
     .maybeSingle();
 
@@ -74,12 +76,7 @@ export default async function ResultsPage({
     );
   }
 
-  const statusMessage =
-    status === "paused"
-      ? "Pesquisa pausada — resultados parciais"
-      : status === "open"
-      ? "Resultados parciais"
-      : "Resultado final";
+  const isPartial = status === "open" || status === "paused";
 
   /* =======================
      NAVEGAÇÃO
@@ -110,12 +107,16 @@ export default async function ResultsPage({
 
     const { data: votes } = await supabase
       .from("votes")
-      .select("option_id")
+      .select("option_id, user_hash")
       .eq("poll_id", safeId);
 
-    const totalVotes = votes?.length || 0;
-    const count: Record<string, number> = {};
+    const totalSubmissions = votes?.length || 0;
 
+    const totalParticipants = new Set(
+      (votes ?? []).map(v => v.user_hash)
+    ).size;
+
+    const count: Record<string, number> = {};
     votes?.forEach(v => {
       if (!v.option_id) return;
       count[v.option_id] = (count[v.option_id] || 0) + 1;
@@ -133,15 +134,13 @@ export default async function ResultsPage({
       <main className="p-6 max-w-xl mx-auto space-y-5">
         <Navigation />
 
-        <div>
-          <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
-          <p className="text-xs text-muted-foreground">{statusMessage}</p>
-        </div>
+        <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
 
+        {/* RESULTADOS */}
         <div className="space-y-4">
           {sortedOptions.map(o => {
-            const pct = totalVotes
-              ? Math.round((o.votes / totalVotes) * 100)
+            const pct = totalSubmissions
+              ? Math.round((o.votes / totalSubmissions) * 100)
               : 0;
 
             return (
@@ -164,20 +163,29 @@ export default async function ResultsPage({
           })}
         </div>
 
-        <div className="text-right text-xs text-gray-500">
-          Total de votos: {totalVotes}
+        {/* MÉTRICAS */}
+        <div className="flex justify-between text-xs text-gray-500">
+          {isPartial && <span>Resultados parciais</span>}
+
+          {allow_multiple ? (
+            <span>
+              Participantes: {totalParticipants} · Participações:{" "}
+              {totalSubmissions}
+            </span>
+          ) : (
+            <span>Total de votos: {totalSubmissions}</span>
+          )}
         </div>
       </main>
     );
   }
 
   /* =======================
-     RANKING (AUDITÁVEL)
+     RANKING
   ======================= */
   const json = await getResults(safeId);
   const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
 
-  // 👤 PARTICIPANTES ÚNICOS
   const { data: participantsData } = await supabase
     .from("votes")
     .select("user_hash")
@@ -187,7 +195,6 @@ export default async function ResultsPage({
     (participantsData ?? []).map(v => v.user_hash)
   ).size;
 
-  // 🔁 TOTAL DE PARTICIPAÇÕES
   const { count: totalSubmissions } = await supabase
     .from("votes")
     .select("*", { count: "exact", head: true })
@@ -197,11 +204,9 @@ export default async function ResultsPage({
     <main className="p-6 max-w-xl mx-auto space-y-5">
       <Navigation />
 
-      <div>
-        <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
-        <p className="text-xs text-muted-foreground">{statusMessage}</p>
-      </div>
+      <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
 
+      {/* RESULTADOS */}
       <div className="space-y-4">
         {json.result.map((row: any, index: number) => {
           const pct = Math.round((row.score / maxScore) * 100);
@@ -226,13 +231,14 @@ export default async function ResultsPage({
         })}
       </div>
 
-      {/* MÉTRICAS CLARAS E TRANSPARENTES */}
-      <div className="text-right text-xs text-gray-500 space-y-1">
-        <div>Total de participantes: {totalParticipants}</div>
+      {/* MÉTRICAS */}
+      <div className="flex justify-between text-xs text-gray-500">
+        {isPartial && <span>Resultados parciais</span>}
 
-        {allow_multiple && (
-          <div>Total de participações: {totalSubmissions ?? 0}</div>
-        )}
+        <span>
+          Participantes: {totalParticipants}
+          {allow_multiple && ` · Participações: ${totalSubmissions ?? 0}`}
+        </span>
       </div>
     </main>
   );
