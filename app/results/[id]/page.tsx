@@ -177,14 +177,17 @@ export default async function ResultsPage({
   const json = await getResults(safeId);
   const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
 
-  // ✅ PARTICIPANTES ÚNICOS (DISTINCT)
-  const { count: totalParticipants } = await supabase
+  // 👤 PARTICIPANTES ÚNICOS
+  const { data: participantsData } = await supabase
     .from("votes")
-    .select("user_hash", { count: "exact", head: true })
-    .eq("poll_id", safeId)
-    .distinct();
+    .select("user_hash")
+    .eq("poll_id", safeId);
 
-  // ✅ TOTAL DE PARTICIPAÇÕES (SUBMISSÕES)
+  const totalParticipants = new Set(
+    (participantsData ?? []).map(v => v.user_hash)
+  ).size;
+
+  // 🔁 TOTAL DE PARTICIPAÇÕES
   const { count: totalSubmissions } = await supabase
     .from("votes")
     .select("*", { count: "exact", head: true })
@@ -223,9 +226,9 @@ export default async function ResultsPage({
         })}
       </div>
 
-      {/* MÉTRICAS TRANSPARENTES */}
+      {/* MÉTRICAS CLARAS E TRANSPARENTES */}
       <div className="text-right text-xs text-gray-500 space-y-1">
-        <div>Total de participantes: {totalParticipants ?? 0}</div>
+        <div>Total de participantes: {totalParticipants}</div>
 
         {allow_multiple && (
           <div>Total de participações: {totalSubmissions ?? 0}</div>
