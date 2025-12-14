@@ -2,7 +2,11 @@ import Link from "next/link";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
 
-export default async function ResultsPage({ params }: { params: Promise<{ id: string }> | any }) {
+export default async function ResultsPage({
+  params,
+}: {
+  params: Promise<{ id: string }> | any;
+}) {
   const resolvedParams =
     params && typeof params.then === "function" ? await params : params;
   const { id } = resolvedParams ?? {};
@@ -22,7 +26,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   ======================= */
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
-    .select("title, voting_type, status, show_partial_results")
+    .select("title, voting_type, status, show_partial_results, allow_multiple")
     .eq("id", safeId)
     .maybeSingle();
 
@@ -34,7 +38,13 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const { title, voting_type, status, show_partial_results } = pollData;
+  const {
+    title,
+    voting_type,
+    status,
+    show_partial_results,
+    allow_multiple,
+  } = pollData;
 
   /* 🔒 DRAFT */
   if (status === "draft") {
@@ -72,7 +82,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       : "Resultado final";
 
   /* =======================
-     BOTÕES DE NAVEGAÇÃO
+     NAVEGAÇÃO
   ======================= */
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
@@ -84,13 +94,13 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       </Link>
 
       <Link href="/" className="text-emerald-600 hover:underline">
-        Auditavél
+        Auditável
       </Link>
     </div>
   );
 
   /* =======================
-     VOTO ÚNICO
+     VOTO SIMPLES
   ======================= */
   if (voting_type === "single") {
     const { data: options } = await supabase
@@ -111,7 +121,6 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       count[v.option_id] = (count[v.option_id] || 0) + 1;
     });
 
-    // 🔢 Ordenar do mais votado para o menos votado
     const sortedOptions =
       options
         ?.map(o => ({
@@ -124,13 +133,11 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
       <main className="p-6 max-w-xl mx-auto space-y-5">
         <Navigation />
 
-        {/* HEADER */}
         <div>
           <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
           <p className="text-xs text-muted-foreground">{statusMessage}</p>
         </div>
 
-        {/* RESULTS */}
         <div className="space-y-4">
           {sortedOptions.map(o => {
             const pct = totalVotes
@@ -157,7 +164,6 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
           })}
         </div>
 
-        {/* TOTAL */}
         <div className="text-right text-xs text-gray-500">
           Total de votos: {totalVotes}
         </div>
@@ -166,22 +172,32 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
   }
 
   /* =======================
-     RANKING (BORDA)
+     RANKING (AUDITÁVEL)
   ======================= */
   const json = await getResults(safeId);
   const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
+
+  // 🔎 Participantes únicos
+  const { count: totalParticipants } = await supabase
+    .from("votes")
+    .select("user_hash", { count: "exact", head: true })
+    .eq("poll_id", safeId);
+
+  // 🔎 Total de participações (submissões)
+  const { count: totalSubmissions } = await supabase
+    .from("votes")
+    .select("*", { count: "exact", head: true })
+    .eq("poll_id", safeId);
 
   return (
     <main className="p-6 max-w-xl mx-auto space-y-5">
       <Navigation />
 
-      {/* HEADER */}
       <div>
         <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
         <p className="text-xs text-muted-foreground">{statusMessage}</p>
       </div>
 
-      {/* RESULTS */}
       <div className="space-y-4">
         {json.result.map((row: any, index: number) => {
           const pct = Math.round((row.score / maxScore) * 100);
@@ -206,9 +222,13 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
         })}
       </div>
 
-      {/* TOTAL */}
-      <div className="text-right text-xs text-gray-500">
-        Total de votos: {json.result.length}
+      {/* MÉTRICAS AUDITÁVEIS */}
+      <div className="text-right text-xs text-gray-500 space-y-1">
+        <div>Total de participantes: {totalParticipants ?? 0}</div>
+
+        {allow_multiple && (
+          <div>Total de participações: {totalSubmissions ?? 0}</div>
+        )}
       </div>
     </main>
   );
