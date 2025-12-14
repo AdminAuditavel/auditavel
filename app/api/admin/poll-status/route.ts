@@ -2,18 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
-  /* =======================
-     PROTEÇÃO ADMIN (B4.3)
-  ======================= */
-  const adminToken = req.headers.get("x-admin-token");
-
-  if (adminToken !== process.env.ADMIN_TOKEN) {
-    return NextResponse.json(
-      { error: "unauthorized" },
-      { status: 401 }
-    );
-  }
-
   try {
     const body = await req.json();
     const { poll_id, status } = body as {
@@ -29,19 +17,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔄 Update no banco
-    const { error } = await supabase
+    // 1️⃣ Buscar status atual
+    const { data: poll, error: fetchError } = await supabase
+      .from("polls")
+      .select("status")
+      .eq("id", poll_id)
+      .single();
+
+    if (fetchError || !poll) {
+      return NextResponse.json(
+        { error: "poll_not_found" },
+        { status: 404 }
+      );
+    }
+
+    const oldStatus = poll.status;
+
+    // 2️⃣ Atualizar status
+    const { error: updateError } = await supabase
       .from("polls")
       .update({ status })
       .eq("id", poll_id);
 
-    if (error) {
-      console.error("Erro ao atualizar status:", error);
+    if (updateError) {
       return NextResponse.json(
-        { error: "db_error", details: error.message },
+        { error: "db_error", details: updateError.message },
         { status: 500 }
       );
     }
+
+    // 3️⃣ Registrar auditoria
+    await supabase
+      .from("admin_audit_logs")
+      .insert({
+        poll_id,
+        action: "status_change",
+        old_value: oldStatus,
+        new_value: status,
+      });
 
     return NextResponse.json({ success: true });
 
