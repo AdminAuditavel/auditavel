@@ -262,9 +262,11 @@ export default function PollPage() {
                   userHash = crypto.randomUUID();
                   localStorage.setItem('auditavel_uid', userHash);
                 }
-
+                
+                const participantId = getOrCreateParticipantId();
+                
                 const orderedIds = options.map(o => o.id);
-
+                
                 const res = await fetch('/api/vote', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -272,6 +274,7 @@ export default function PollPage() {
                     poll_id: safeId,
                     option_ids: orderedIds,
                     user_hash: userHash,
+                    participant_id: participantId,
                   }),
                 });
 
