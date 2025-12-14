@@ -101,6 +101,9 @@ export default async function AdminPage(props: {
                 Visibilidade pública
               </th>
               <th className="px-4 py-3 text-left font-semibold">
+                Auditoria
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">
                 Criada em
               </th>
             </tr>
@@ -145,13 +148,23 @@ export default async function AdminPage(props: {
                       />
                     </td>
 
-                    {/* VISIBILIDADE PÚBLICA (AUDITORIA) */}
+                    {/* VISIBILIDADE PÚBLICA */}
                     <td className="px-4 py-3 text-center">
                       <span
                         className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${visibility.className}`}
                       >
                         {visibility.label}
                       </span>
+                    </td>
+
+                    {/* AUDITORIA */}
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/audit?token=${token}&poll_id=${poll.id}`}
+                        className="text-sm text-emerald-600 hover:underline"
+                      >
+                        Ver auditoria
+                      </Link>
                     </td>
 
                     {/* CREATED AT */}
@@ -164,7 +177,7 @@ export default async function AdminPage(props: {
             ) : (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-4 py-6 text-center text-gray-500"
                 >
                   Nenhuma pesquisa encontrada.
