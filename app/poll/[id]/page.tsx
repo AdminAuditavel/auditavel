@@ -49,7 +49,6 @@ export default function PollPage() {
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Ranking errors / cooldown
   const [rankingMessage, setRankingMessage] = useState<string | null>(null);
 
   /* =======================
@@ -173,7 +172,7 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* ===== STATUS ===== */}
+      {/* STATUS */}
       {isPaused && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
           <strong>Pesquisa pausada.</strong> As opções estão visíveis, mas novas
@@ -187,7 +186,7 @@ export default function PollPage() {
         </div>
       )}
 
-      {/* ===== ALERTAS (SOMENTE OPEN) ===== */}
+      {/* ALERTAS (APENAS OPEN) */}
       {isOpen && userHasVoted && votingType !== 'ranking' && !allowMultiple && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
           <strong>Atenção:</strong> você já votou nesta pesquisa. Ao escolher uma
@@ -204,12 +203,11 @@ export default function PollPage() {
 
       {isOpen && userHasVoted && votingType === 'ranking' && (
         <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> você já enviou uma classificação. Você pode
-          reorganizar as opções e reenviar se desejar.
+          <strong>Informação:</strong> você já enviou uma classificação.
         </div>
       )}
 
-      {/* ===== RANKING ===== */}
+      {/* RANKING */}
       {votingType === 'ranking' ? (
         <>
           <p className="text-sm text-gray-600">
@@ -304,7 +302,6 @@ export default function PollPage() {
               text={o.option_text}
               allowMultiple={allowMultiple}
               userHasVoted={userHasVoted}
-              disabled={!isOpen}
             />
           ))}
         </div>
