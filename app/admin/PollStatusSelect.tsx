@@ -16,6 +16,34 @@ export default function PollStatusSelect({ pollId, currentStatus }: Props) {
   async function updateStatus(newStatus: PollStatus) {
     if (newStatus === status) return;
 
+    // 🔒 CONFIRMAÇÃO AO FECHAR
+    if (newStatus === "closed") {
+      const confirmed = window.confirm(
+        "Tem certeza que deseja ENCERRAR esta pesquisa?\n\n" +
+        "• A votação será bloqueada definitivamente.\n" +
+        "• Os resultados passarão a ser finais.\n\n" +
+        "Essa ação pode ser revertida, mas deve ser feita com cautela."
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    // ⚠️ ALERTA AO REABRIR PESQUISA ENCERRADA
+    if (status === "closed" && newStatus !== "closed") {
+      const confirmed = window.confirm(
+        "Você está REABRINDO uma pesquisa já encerrada.\n\n" +
+        "• Novos votos poderão ser registrados.\n" +
+        "• Os resultados deixarão de ser finais.\n\n" +
+        "Deseja continuar?"
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setLoading(true);
     setStatus(newStatus);
 
@@ -29,7 +57,7 @@ export default function PollStatusSelect({ pollId, currentStatus }: Props) {
     });
 
     if (!res.ok) {
-      alert("Erro ao atualizar status");
+      alert("Erro ao atualizar status da pesquisa.");
       setStatus(currentStatus);
     }
 
