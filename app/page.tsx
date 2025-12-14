@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 type Poll = {
   id: string;
   title: string;
+  description?: string | null;
   start_date?: string | null;
   end_date?: string | null;
   voting_type: "single" | "ranking";
@@ -52,13 +53,10 @@ function statusColor(status: Poll["status"]) {
 }
 
 export default async function Home() {
-  /* =======================
-     POLLS
-  ======================= */
   const { data: pollsData } = await supabase
     .from("polls")
     .select(
-      "id, title, start_date, end_date, voting_type, allow_multiple, status, show_partial_results"
+      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results"
     )
     .order("created_at", { ascending: false });
 
@@ -69,9 +67,6 @@ export default async function Home() {
 
   const pollIds = polls.map(p => p.id);
 
-  /* =======================
-     OPTIONS
-  ======================= */
   const { data: optionsData } = await supabase
     .from("poll_options")
     .select("id, poll_id, option_text")
@@ -79,9 +74,6 @@ export default async function Home() {
 
   const options: PollOption[] = optionsData || [];
 
-  /* =======================
-     VOTES
-  ======================= */
   const { data: votesData } = await supabase
     .from("votes")
     .select("poll_id, option_id, user_hash")
@@ -89,18 +81,12 @@ export default async function Home() {
 
   const votes: Vote[] = votesData || [];
 
-  /* =======================
-     RANKINGS
-  ======================= */
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
     .select("vote_id, option_id, ranking");
 
   const rankings: VoteRanking[] = rankingsData || [];
 
-  /* =======================
-     AGRUPAMENTOS
-  ======================= */
   const optionsByPoll = new Map<string, PollOption[]>();
   options.forEach(o => {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
@@ -129,9 +115,6 @@ export default async function Home() {
     rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
   });
 
-  /* =======================
-     RENDER
-  ======================= */
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-10">
       {/* HERO */}
@@ -142,14 +125,11 @@ export default async function Home() {
         <p className="text-lg font-medium text-gray-800">
           Onde decisões públicas podem ser verificadas.
         </p>
-        <p className="text-sm text-gray-600 max-w-xl mx-auto">
-          Uma plataforma para coletar dados, gerar informação e produzir
-          conhecimento público confiável.
-        </p>
       </section>
 
       <hr className="border-gray-200" />
 
+      {/* CARDS */}
       <section className="space-y-6">
         {polls.map(p => {
           if (p.status === "draft") return null;
@@ -165,31 +145,26 @@ export default async function Home() {
           const isVotingOpen = p.status === "open";
 
           let totalVotes = 0;
-
-          /* ===== SINGLE ===== */
           let topSingle: { text: string; percent: number }[] = [];
+          let topRanking: { text: string; score: number }[] = [];
 
           if (!isRanking) {
             const pollVotes = votesByPoll.get(p.id) || [];
-
             totalVotes = p.allow_multiple
               ? pollVotes.length
               : new Set(pollVotes.map(v => v.user_hash)).size;
 
             if (canShowResults && totalVotes > 0) {
-              const countByOption = new Map<string, number>();
+              const count = new Map<string, number>();
               pollVotes.forEach(v => {
                 if (!v.option_id) return;
-                countByOption.set(
-                  v.option_id,
-                  (countByOption.get(v.option_id) || 0) + 1
-                );
+                count.set(v.option_id, (count.get(v.option_id) || 0) + 1);
               });
 
               topSingle = opts
                 .map(o => ({
                   text: o.option_text,
-                  votes: countByOption.get(o.id) || 0,
+                  votes: count.get(o.id) || 0,
                 }))
                 .filter(o => o.votes > 0)
                 .sort((a, b) => b.votes - a.votes)
@@ -200,9 +175,6 @@ export default async function Home() {
                 }));
             }
           }
-
-          /* ===== RANKING ===== */
-          let topRanking: { text: string; score: number }[] = [];
 
           if (isRanking && canShowResults) {
             const summaries = opts
@@ -229,7 +201,7 @@ export default async function Home() {
           return (
             <div
               key={p.id}
-              className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md transition"
+              className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-sm"
             >
               <span
                 className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
@@ -249,9 +221,20 @@ export default async function Home() {
                 {isRanking ? "Ranking" : "Voto simples"}
               </div>
 
-              {/* MINI GRÁFICOS — V1 */}
+              {p.description && (
+                <p className="mt-3 text-sm text-gray-700">
+                  {p.description}
+                </p>
+              )}
+
               {canShowResults && (
                 <div className="mt-4 space-y-2">
+                  <p className="text-xs font-semibold text-gray-600 uppercase">
+                    {isRanking
+                      ? "Classificação parcial"
+                      : "Tendência atual"}
+                  </p>
+
                   {!isRanking &&
                     topSingle.map((o, i) => (
                       <div key={i} className="text-xs">
@@ -259,9 +242,9 @@ export default async function Home() {
                           <span>{o.text}</span>
                           <span>{o.percent}%</span>
                         </div>
-                        <div className="h-2 bg-gray-200 rounded">
+                        <div className="h-1.5 bg-gray-200 rounded">
                           <div
-                            className="h-2 bg-emerald-500 rounded"
+                            className="h-1.5 bg-emerald-500 rounded"
                             style={{ width: `${o.percent}%` }}
                           />
                         </div>
@@ -276,9 +259,9 @@ export default async function Home() {
                             <strong>{i + 1}º</strong> — {o.text}
                           </span>
                         </div>
-                        <div className="h-2 bg-gray-200 rounded">
+                        <div className="h-1.5 bg-gray-200 rounded">
                           <div
-                            className="h-2 bg-emerald-500 rounded"
+                            className="h-1.5 bg-emerald-500 rounded"
                             style={{ width: `${o.score}%` }}
                           />
                         </div>
@@ -310,6 +293,12 @@ export default async function Home() {
           );
         })}
       </section>
+
+      {/* RODAPÉ CONCEITUAL */}
+      <footer className="pt-6 border-t text-center text-sm text-gray-600">
+        Uma plataforma para coletar dados, gerar informação e produzir
+        conhecimento público confiável.
+      </footer>
     </main>
   );
 }
