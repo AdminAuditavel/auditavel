@@ -1,3 +1,5 @@
+// app/admin/audit/page.tsx
+
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -13,10 +15,10 @@ type AuditLog = {
   old_value: string | null;
   new_value: string | null;
   created_at: string;
-  polls: {
-    title: string;
-  }[];
+  poll_id: string | null;
 };
+
+type PollMap = Record<string, string>;
 
 /* =======================
    HELPERS
@@ -55,18 +57,14 @@ export default async function AdminAuditPage(props: {
     redirect("/");
   }
 
+  /* =======================
+     BUSCAR LOGS
+  ======================= */
   let query = supabase
     .from("admin_audit_logs")
-    .select(`
-      id,
-      action,
-      old_value,
-      new_value,
-      created_at,
-      polls (
-        title
-      )
-    `)
+    .select(
+      "id, action, old_value, new_value, created_at, poll_id"
+    )
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -84,10 +82,33 @@ export default async function AdminAuditPage(props: {
     );
   }
 
+  /* =======================
+     MAPEAR TÍTULOS DAS POLLS
+  ======================= */
+  const pollIds = Array.from(
+    new Set(logs?.map(l => l.poll_id).filter(Boolean))
+  ) as string[];
+
+  let pollMap: PollMap = {};
+
+  if (pollIds.length > 0) {
+    const { data: polls } = await supabase
+      .from("polls")
+      .select("id, title")
+      .in("id", pollIds);
+
+    polls?.forEach(p => {
+      pollMap[p.id] = p.title;
+    });
+  }
+
   const pageTitle = pollId
-    ? `Auditoria da pesquisa`
+    ? "Auditoria da pesquisa"
     : "Admin — Auditoria";
 
+  /* =======================
+     RENDER
+  ======================= */
   return (
     <main className="p-6 max-w-5xl mx-auto space-y-6">
       {/* HEADER */}
@@ -134,7 +155,7 @@ export default async function AdminAuditPage(props: {
 
           <tbody>
             {logs && logs.length > 0 ? (
-              logs.map((log: AuditLog) => {
+              logs.map(log => {
                 const badge = getActionBadge(log.action);
 
                 return (
@@ -147,7 +168,9 @@ export default async function AdminAuditPage(props: {
                     </td>
 
                     <td className="px-4 py-3 font-medium">
-                      {log.polls?.[0]?.title ?? "—"}
+                      {log.poll_id && pollMap[log.poll_id]
+                        ? pollMap[log.poll_id]
+                        : "—"}
                     </td>
 
                     <td className="px-4 py-3">
@@ -159,7 +182,8 @@ export default async function AdminAuditPage(props: {
                     </td>
 
                     <td className="px-4 py-3 text-gray-700">
-                      {log.old_value !== null && log.new_value !== null ? (
+                      {log.old_value !== null &&
+                      log.new_value !== null ? (
                         <>
                           <span className="text-gray-500">
                             {log.old_value}
