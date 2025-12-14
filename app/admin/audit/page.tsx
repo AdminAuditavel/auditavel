@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+/* =======================
+   TIPOS
+======================= */
 type AuditLog = {
   id: string;
   action: string;
@@ -15,6 +18,34 @@ type AuditLog = {
   }[];
 };
 
+/* =======================
+   HELPERS
+======================= */
+function getActionBadge(action: string) {
+  switch (action) {
+    case "status_change":
+      return {
+        label: "Status alterado",
+        className: "bg-blue-100 text-blue-800",
+      };
+
+    case "visibility_change":
+      return {
+        label: "Visibilidade dos resultados",
+        className: "bg-purple-100 text-purple-800",
+      };
+
+    default:
+      return {
+        label: action,
+        className: "bg-gray-200 text-gray-700",
+      };
+  }
+}
+
+/* =======================
+   PAGE
+======================= */
 export default async function AdminAuditPage(props: {
   searchParams: Promise<{ token?: string }>;
 }) {
@@ -91,40 +122,48 @@ export default async function AdminAuditPage(props: {
 
           <tbody>
             {logs && logs.length > 0 ? (
-              logs.map((log: AuditLog) => (
-                <tr
-                  key={log.id}
-                  className="border-b last:border-b-0 hover:bg-gray-50"
-                >
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {new Date(log.created_at).toLocaleString("pt-BR")}
-                  </td>
+              logs.map((log: AuditLog) => {
+                const badge = getActionBadge(log.action);
 
-                  <td className="px-4 py-3 font-medium">
-                    {log.polls?.[0]?.title ?? "—"}
-                  </td>
+                return (
+                  <tr
+                    key={log.id}
+                    className="border-b last:border-b-0 hover:bg-gray-50"
+                  >
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleString("pt-BR")}
+                    </td>
 
-                  <td className="px-4 py-3 text-gray-700">
-                    {log.action}
-                  </td>
+                    <td className="px-4 py-3 font-medium">
+                      {log.polls?.[0]?.title ?? "—"}
+                    </td>
 
-                  <td className="px-4 py-3 text-gray-700">
-                    {log.old_value !== null && log.new_value !== null ? (
-                      <>
-                        <span className="text-gray-500">
-                          {log.old_value}
-                        </span>{" "}
-                        →{" "}
-                        <span className="font-semibold">
-                          {log.new_value}
-                        </span>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              ))
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${badge.className}`}
+                      >
+                        {badge.label}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3 text-gray-700">
+                      {log.old_value !== null && log.new_value !== null ? (
+                        <>
+                          <span className="text-gray-500">
+                            {log.old_value}
+                          </span>{" "}
+                          →{" "}
+                          <span className="font-semibold">
+                            {log.new_value}
+                          </span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td
