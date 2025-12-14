@@ -28,13 +28,11 @@ function getActionBadge(action: string) {
         label: "Status alterado",
         className: "bg-blue-100 text-blue-800",
       };
-
     case "visibility_change":
       return {
         label: "Visibilidade dos resultados",
         className: "bg-purple-100 text-purple-800",
       };
-
     default:
       return {
         label: action,
@@ -47,16 +45,17 @@ function getActionBadge(action: string) {
    PAGE
 ======================= */
 export default async function AdminAuditPage(props: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; poll_id?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const token = searchParams?.token;
+  const pollId = searchParams?.poll_id;
 
   if (token !== process.env.ADMIN_TOKEN) {
     redirect("/");
   }
 
-  const { data: logs, error } = await supabase
+  let query = supabase
     .from("admin_audit_logs")
     .select(`
       id,
@@ -71,6 +70,12 @@ export default async function AdminAuditPage(props: {
     .order("created_at", { ascending: false })
     .limit(100);
 
+  if (pollId) {
+    query = query.eq("poll_id", pollId);
+  }
+
+  const { data: logs, error } = await query;
+
   if (error) {
     return (
       <main className="p-6 max-w-4xl mx-auto text-red-600">
@@ -79,12 +84,16 @@ export default async function AdminAuditPage(props: {
     );
   }
 
+  const pageTitle = pollId
+    ? `Auditoria da pesquisa`
+    : "Admin — Auditoria";
+
   return (
     <main className="p-6 max-w-5xl mx-auto space-y-6">
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-emerald-700">
-          Admin — Auditoria
+          {pageTitle}
         </h1>
 
         <div className="flex gap-4 text-sm">
@@ -94,7 +103,10 @@ export default async function AdminAuditPage(props: {
           >
             Admin
           </Link>
-          <Link href="/" className="text-emerald-600 hover:underline">
+          <Link
+            href="/"
+            className="text-emerald-600 hover:underline"
+          >
             Site
           </Link>
         </div>
