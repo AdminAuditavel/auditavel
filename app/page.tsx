@@ -53,6 +53,9 @@ function statusColor(status: Poll["status"]) {
 }
 
 export default async function Home() {
+  /* =======================
+     POLLS
+  ======================= */
   const { data: pollsData } = await supabase
     .from("polls")
     .select(
@@ -67,6 +70,9 @@ export default async function Home() {
 
   const pollIds = polls.map(p => p.id);
 
+  /* =======================
+     OPTIONS
+  ======================= */
   const { data: optionsData } = await supabase
     .from("poll_options")
     .select("id, poll_id, option_text")
@@ -74,6 +80,9 @@ export default async function Home() {
 
   const options: PollOption[] = optionsData || [];
 
+  /* =======================
+     VOTES
+  ======================= */
   const { data: votesData } = await supabase
     .from("votes")
     .select("poll_id, option_id, user_hash")
@@ -81,12 +90,18 @@ export default async function Home() {
 
   const votes: Vote[] = votesData || [];
 
+  /* =======================
+     RANKINGS
+  ======================= */
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
     .select("vote_id, option_id, ranking");
 
   const rankings: VoteRanking[] = rankingsData || [];
 
+  /* =======================
+     AGRUPAMENTOS
+  ======================= */
   const optionsByPoll = new Map<string, PollOption[]>();
   options.forEach(o => {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
@@ -115,6 +130,9 @@ export default async function Home() {
     rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
   });
 
+  /* =======================
+     RENDER
+  ======================= */
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-10">
       {/* HERO */}
@@ -148,8 +166,10 @@ export default async function Home() {
           let topSingle: { text: string; percent: number }[] = [];
           let topRanking: { text: string; score: number }[] = [];
 
+          /* ===== SINGLE ===== */
           if (!isRanking) {
             const pollVotes = votesByPoll.get(p.id) || [];
+
             totalVotes = p.allow_multiple
               ? pollVotes.length
               : new Set(pollVotes.map(v => v.user_hash)).size;
@@ -176,6 +196,7 @@ export default async function Home() {
             }
           }
 
+          /* ===== RANKING ===== */
           if (isRanking && canShowResults) {
             const summaries = opts
               .map(o => {
@@ -203,6 +224,7 @@ export default async function Home() {
               key={p.id}
               className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-sm"
             >
+              {/* STATUS */}
               <span
                 className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                   p.status
@@ -211,65 +233,72 @@ export default async function Home() {
                 {statusLabel(p.status)}
               </span>
 
+              {/* TITLE */}
               <h2 className="text-lg font-semibold text-emerald-700 pr-24">
                 {p.title}
               </h2>
 
+              {/* META */}
               <div className="text-sm text-gray-600 mt-1">
                 Início: {formatDate(p.start_date)} · Fim:{" "}
                 {formatDate(p.end_date)} · Tipo:{" "}
                 {isRanking ? "Ranking" : "Voto simples"}
               </div>
 
-              {p.description && (
-                <p className="mt-3 text-sm text-gray-700">
-                  {p.description}
-                </p>
-              )}
-
+              {/* CONTENT + GRAPH */}
               {canShowResults && (
-                <div className="mt-4 space-y-2">
-                  <p className="text-xs font-semibold text-gray-600 uppercase">
-                    {isRanking
-                      ? "Classificação parcial"
-                      : "Tendência atual"}
-                  </p>
+                <div className="mt-4 flex gap-4 items-start">
+                  {/* TEXTO — DESCRIPTION */}
+                  <div className="flex-1 text-sm text-gray-700">
+                    {p.description ? (
+                      <p>{p.description}</p>
+                    ) : (
+                      <p className="text-gray-600">
+                        Participe desta decisão e acompanhe como outras pessoas
+                        estão se posicionando.
+                      </p>
+                    )}
+                  </div>
 
-                  {!isRanking &&
-                    topSingle.map((o, i) => (
-                      <div key={i} className="text-xs">
-                        <div className="flex justify-between">
-                          <span>{o.text}</span>
-                          <span>{o.percent}%</span>
+                  {/* MINI GRÁFICO */}
+                  <div className="w-40 space-y-2">
+                    {!isRanking &&
+                      topSingle.map((o, i) => (
+                        <div key={i} className="text-xs">
+                          <div className="flex justify-between">
+                            <span className="truncate">{o.text}</span>
+                            <span>{o.percent}%</span>
+                          </div>
+                          <div className="h-1.5 bg-gray-200 rounded">
+                            <div
+                              className="h-1.5 bg-emerald-500 rounded"
+                              style={{ width: `${o.percent}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="h-1.5 bg-gray-200 rounded">
-                          <div
-                            className="h-1.5 bg-emerald-500 rounded"
-                            style={{ width: `${o.percent}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
 
-                  {isRanking &&
-                    topRanking.map((o, i) => (
-                      <div key={i} className="text-xs">
-                        <div className="flex justify-between">
-                          <span>
-                            <strong>{i + 1}º</strong> — {o.text}
-                          </span>
+                    {isRanking &&
+                      topRanking.map((o, i) => (
+                        <div key={i} className="text-xs">
+                          <div className="flex justify-between">
+                            <span className="truncate">
+                              <strong>{i + 1}º</strong> {o.text}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-gray-200 rounded">
+                            <div
+                              className="h-1.5 bg-emerald-500 rounded"
+                              style={{ width: `${o.score}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="h-1.5 bg-gray-200 rounded">
-                          <div
-                            className="h-1.5 bg-emerald-500 rounded"
-                            style={{ width: `${o.score}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                  </div>
                 </div>
               )}
 
+              {/* CTA */}
               <div className="mt-4 space-y-1">
                 <Link
                   href={`/poll/${p.id}`}
@@ -294,7 +323,7 @@ export default async function Home() {
         })}
       </section>
 
-      {/* RODAPÉ CONCEITUAL */}
+      {/* RODAPÉ */}
       <footer className="pt-6 border-t text-center text-sm text-gray-600">
         Uma plataforma para coletar dados, gerar informação e produzir
         conhecimento público confiável.
