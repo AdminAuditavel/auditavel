@@ -307,16 +307,20 @@ export default async function Home() {
                   {isVotingOpen ? "Ir para votação →" : "Ver opções →"}
                 </Link>
 
-                {canShowResults && (
-                  <div>
+                <div>
+                  {canShowResults ? (
                     <Link
                       href={`/results/${p.id}`}
                       className="text-sm text-emerald-700 hover:underline"
                     >
                       Ver resultados
                     </Link>
-                  </div>
-                )}
+                  ) : (
+                    <span className="text-sm text-gray-500">
+                      Resultados indisponíveis — serão divulgados ao final da pesquisa.
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );
