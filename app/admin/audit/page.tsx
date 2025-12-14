@@ -6,14 +6,13 @@ export const dynamic = "force-dynamic";
 
 type AuditLog = {
   id: string;
-  poll_id: string;
   action: string;
   old_value: string | null;
   new_value: string | null;
   created_at: string;
-  polls?: {
+  polls: {
     title: string;
-  };
+  }[];
 };
 
 export default async function AdminAuditPage(props: {
@@ -58,7 +57,10 @@ export default async function AdminAuditPage(props: {
         </h1>
 
         <div className="flex gap-4 text-sm">
-          <Link href={`/admin?token=${token}`} className="text-emerald-600 hover:underline">
+          <Link
+            href={`/admin?token=${token}`}
+            className="text-emerald-600 hover:underline"
+          >
             Admin
           </Link>
           <Link href="/" className="text-emerald-600 hover:underline">
@@ -99,7 +101,7 @@ export default async function AdminAuditPage(props: {
                   </td>
 
                   <td className="px-4 py-3 font-medium">
-                    {log.polls?.title ?? "—"}
+                    {log.polls?.[0]?.title ?? "—"}
                   </td>
 
                   <td className="px-4 py-3 text-gray-700">
