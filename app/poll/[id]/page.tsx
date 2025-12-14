@@ -1,3 +1,4 @@
+// app/poll/[id]/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -48,11 +49,11 @@ export default function PollPage() {
   const [votingType, setVotingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 👉 NOVO: mensagem de erro do ranking (cooldown etc.)
+  // Ranking errors / cooldown
   const [rankingMessage, setRankingMessage] = useState<string | null>(null);
 
   /* =======================
-     SENSORS (DESKTOP + MOBILE)
+     SENSORS
   ======================= */
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -139,6 +140,10 @@ export default function PollPage() {
     );
   }
 
+  const isOpen = poll.status === 'open';
+  const isPaused = poll.status === 'paused';
+  const isClosed = poll.status === 'closed';
+
   /* =======================
      NAV
   ======================= */
@@ -148,7 +153,7 @@ export default function PollPage() {
         Auditável
       </Link>
 
-      {poll.status === 'closed' && (
+      {isClosed && (
         <Link
           href={`/results/${safeId}`}
           className="text-emerald-600 hover:underline"
@@ -160,7 +165,7 @@ export default function PollPage() {
   );
 
   /* =======================
-     OPEN — VOTAÇÃO
+     RENDER
   ======================= */
   return (
     <main className="p-6 max-w-xl mx-auto space-y-5">
@@ -168,25 +173,39 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* ===== ALERTAS GERAIS ===== */}
-      {userHasVoted && votingType !== 'ranking' && !allowMultiple && (
+      {/* ===== STATUS ===== */}
+      {isPaused && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          <strong>Atenção:</strong> você já votou nesta pesquisa.  
-          Ao escolher uma nova opção, seu voto anterior será substituído.
+          <strong>Pesquisa pausada.</strong> As opções estão visíveis, mas novas
+          votações estão temporariamente desabilitadas.
         </div>
       )}
 
-      {userHasVoted && votingType !== 'ranking' && allowMultiple && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> você já votou nesta pesquisa e pode votar novamente.  
-          Cada novo voto será somado ao total.
+      {isClosed && (
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <strong>Pesquisa encerrada.</strong> Não é mais possível votar.
         </div>
       )}
 
-      {userHasVoted && votingType === 'ranking' && (
+      {/* ===== ALERTAS (SOMENTE OPEN) ===== */}
+      {isOpen && userHasVoted && votingType !== 'ranking' && !allowMultiple && (
+        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
+          <strong>Atenção:</strong> você já votou nesta pesquisa. Ao escolher uma
+          nova opção, seu voto anterior será substituído.
+        </div>
+      )}
+
+      {isOpen && userHasVoted && votingType !== 'ranking' && allowMultiple && (
         <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> você já enviou uma classificação.  
-          Você pode reorganizar as opções e reenviar se desejar.
+          <strong>Informação:</strong> você já votou nesta pesquisa e pode votar
+          novamente. Cada novo voto será somado ao total.
+        </div>
+      )}
+
+      {isOpen && userHasVoted && votingType === 'ranking' && (
+        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <strong>Informação:</strong> você já enviou uma classificação. Você pode
+          reorganizar as opções e reenviar se desejar.
         </div>
       )}
 
@@ -228,51 +247,52 @@ export default function PollPage() {
             </SortableContext>
           </DndContext>
 
-          {/* 👉 MENSAGEM DE COOLDOWN / ERRO DO RANKING */}
           {rankingMessage && (
             <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
               {rankingMessage}
             </div>
           )}
 
-          <button
-            onClick={async () => {
-              setRankingMessage(null);
+          {isOpen && (
+            <button
+              onClick={async () => {
+                setRankingMessage(null);
 
-              let userHash = localStorage.getItem('auditavel_uid');
-              if (!userHash) {
-                userHash = crypto.randomUUID();
-                localStorage.setItem('auditavel_uid', userHash);
-              }
+                let userHash = localStorage.getItem('auditavel_uid');
+                if (!userHash) {
+                  userHash = crypto.randomUUID();
+                  localStorage.setItem('auditavel_uid', userHash);
+                }
 
-              const orderedIds = options.map(o => o.id);
+                const orderedIds = options.map(o => o.id);
 
-              const res = await fetch('/api/vote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  poll_id: safeId,
-                  option_ids: orderedIds,
-                  user_hash: userHash,
-                }),
-              });
+                const res = await fetch('/api/vote', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    poll_id: safeId,
+                    option_ids: orderedIds,
+                    user_hash: userHash,
+                  }),
+                });
 
-              if (!res.ok) {
-                const data = await res.json();
-                setRankingMessage(
-                  data.message ??
-                  data.error ??
-                  'Não foi possível registrar sua classificação no momento.'
-                );
-                return;
-              }
+                if (!res.ok) {
+                  const data = await res.json();
+                  setRankingMessage(
+                    data.message ??
+                      data.error ??
+                      'Não foi possível registrar sua classificação no momento.'
+                  );
+                  return;
+                }
 
-              window.location.href = `/results/${safeId}`;
-            }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
-          >
-            Enviar classificação
-          </button>
+                window.location.href = `/results/${safeId}`;
+              }}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+            >
+              Enviar classificação
+            </button>
+          )}
         </>
       ) : (
         <div className="space-y-3">
@@ -284,6 +304,7 @@ export default function PollPage() {
               text={o.option_text}
               allowMultiple={allowMultiple}
               userHasVoted={userHasVoted}
+              disabled={!isOpen}
             />
           ))}
         </div>
