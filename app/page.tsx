@@ -1,3 +1,4 @@
+// app/page.tsx
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
@@ -52,9 +53,6 @@ function statusColor(status: Poll["status"]) {
 }
 
 export default async function Home() {
-  /* =======================
-     POLLS
-  ======================= */
   const { data: pollsData } = await supabase
     .from("polls")
     .select(
@@ -69,9 +67,6 @@ export default async function Home() {
 
   const pollIds = polls.map(p => p.id);
 
-  /* =======================
-     OPTIONS
-  ======================= */
   const { data: optionsData } = await supabase
     .from("poll_options")
     .select("id, poll_id, option_text")
@@ -79,9 +74,6 @@ export default async function Home() {
 
   const options: PollOption[] = optionsData || [];
 
-  /* =======================
-     VOTES
-  ======================= */
   const { data: votesData } = await supabase
     .from("votes")
     .select("poll_id, option_id, user_hash")
@@ -89,18 +81,12 @@ export default async function Home() {
 
   const votes: Vote[] = votesData || [];
 
-  /* =======================
-     RANKINGS
-  ======================= */
   const { data: rankingsData } = await supabase
     .from("vote_rankings")
     .select("vote_id, option_id, ranking");
 
   const rankings: VoteRanking[] = rankingsData || [];
 
-  /* =======================
-     AGRUPAMENTOS
-  ======================= */
   const optionsByPoll = new Map<string, PollOption[]>();
   options.forEach(o => {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
@@ -128,9 +114,6 @@ export default async function Home() {
     rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
   });
 
-  /* =======================
-     RENDER
-  ======================= */
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold text-center text-emerald-700">
@@ -145,21 +128,19 @@ export default async function Home() {
 
         const canShowResults =
           p.status === "closed" ||
-          p.status === "paused" ||
-          (p.status === "open" && p.show_partial_results);
+          ((p.status === "open" || p.status === "paused") &&
+            p.show_partial_results);
 
         let totalVotes = 0;
         let leaders: { text: string; percent: number }[] = [];
 
-        /* ===== SINGLE ===== */
         if (!isRanking) {
           const pollVotes = votesByPoll.get(p.id) || [];
-
           totalVotes = p.allow_multiple
             ? pollVotes.length
             : new Set(pollVotes.map(v => v.user_hash)).size;
 
-          if (totalVotes > 0) {
+          if (canShowResults && totalVotes > 0) {
             const countByOption = new Map<string, number>();
             pollVotes.forEach(v => {
               if (!v.option_id) return;
@@ -181,11 +162,10 @@ export default async function Home() {
           }
         }
 
-        /* ===== RANKING ===== */
         if (isRanking) {
           totalVotes = rankingVotesByPoll.get(p.id)?.size || 0;
 
-          if (totalVotes > 0) {
+          if (canShowResults && totalVotes > 0) {
             const summaries = opts
               .map(o => {
                 const rs = rankingsByOption.get(o.id) || [];
@@ -206,13 +186,13 @@ export default async function Home() {
         }
 
         const leaderLabel = leaders.length > 1 ? "Líderes" : "Líder";
+        const isVotingOpen = p.status === "open";
 
         return (
           <div
             key={p.id}
             className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-md transition"
           >
-            {/* STATUS */}
             <span
               className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                 p.status
@@ -221,54 +201,47 @@ export default async function Home() {
               {statusLabel(p.status)}
             </span>
 
-            {/* TITLE */}
             <h2 className="text-lg font-semibold text-emerald-700 pr-24">
               {p.title}
             </h2>
 
-            {/* META */}
             <div className="text-sm text-gray-600 mt-1">
               Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} ·
               Tipo: {isRanking ? " Ranking" : " Voto simples"}
             </div>
 
-            {/* INFO */}
-            <div className="mt-3 text-sm">
-              <b className="text-gray-700">Total de votos:</b>{" "}
-              <span className="text-emerald-700 font-semibold">
-                {totalVotes}
-              </span>
+            {canShowResults && (
+              <div className="mt-3 text-sm">
+                <b className="text-gray-700">Total de votos:</b>{" "}
+                <span className="text-emerald-700 font-semibold">
+                  {totalVotes}
+                </span>
 
-              {leaders.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  <div className="flex items-center gap-2">
+                {leaders.length > 0 && (
+                  <div className="mt-3 space-y-1">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800">
                       {leaderLabel}
                     </span>
-                  </div>
 
-                  <div className="flex flex-wrap gap-4">
-                    {leaders.map((l, idx) => (
-                      <span
-                        key={idx}
-                        className="font-bold text-emerald-700"
-                      >
-                        {l.text}
-                        {!isRanking && ` (${l.percent}%)`}
-                      </span>
-                    ))}
+                    <div className="flex flex-wrap gap-4">
+                      {leaders.map((l, idx) => (
+                        <span key={idx} className="font-bold text-emerald-700">
+                          {l.text}
+                          {!isRanking && ` (${l.percent}%)`}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
-            {/* CTA */}
             <div className="mt-4 space-y-1">
               <Link
                 href={`/poll/${p.id}`}
                 className="inline-block px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
               >
-                Ir para votação →
+                {isVotingOpen ? "Ir para votação →" : "Ver opções →"}
               </Link>
 
               {canShowResults && (
