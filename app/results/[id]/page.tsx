@@ -191,7 +191,7 @@ export default async function ResultsPage({
         </div>
 
         {/* 🔹 CONVITE DE ATRIBUTOS (CLIENT) */}
-        <AttributesInvite />
+        <AttributesInviteClient />
       </main>
     );
   }
