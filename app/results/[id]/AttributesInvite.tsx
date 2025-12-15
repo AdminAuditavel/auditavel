@@ -1,4 +1,3 @@
-//app/results/[id]/AttributesInvite.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16,6 +15,7 @@ export default function AttributesInvite({
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasPrefill, setHasPrefill] = useState(false);
 
   const [form, setForm] = useState({
     age_range: "",
@@ -25,7 +25,7 @@ export default function AttributesInvite({
   });
 
   /* =======================
-     VERIFICAR SE JÁ RESPONDEU
+     VERIFICAR SE JÁ RESPONDEU (POR PESQUISA)
   ======================= */
   useEffect(() => {
     async function check() {
@@ -41,6 +41,33 @@ export default function AttributesInvite({
 
     if (participantId && pollId) check();
   }, [participantId, pollId]);
+
+  /* =======================
+     PRÉ-PREENCHIMENTO (PERFIL GLOBAL)
+  ======================= */
+  useEffect(() => {
+    async function loadProfile() {
+      const res = await fetch(
+        `/api/participant-profile?participant_id=${participantId}`
+      );
+
+      if (!res.ok) return;
+
+      const json = await res.json();
+
+      if (json.profile) {
+        setForm({
+          age_range: json.profile.age_range ?? "",
+          education_level: json.profile.education_level ?? "",
+          region: json.profile.region ?? "",
+          income_range: json.profile.income_range ?? "",
+        });
+        setHasPrefill(true);
+      }
+    }
+
+    if (participantId) loadProfile();
+  }, [participantId]);
 
   if (!visible) return null;
 
@@ -113,6 +140,13 @@ export default function AttributesInvite({
           Suas respostas são anônimas e usadas apenas para análise estatística.
         </p>
       </div>
+
+      {hasPrefill && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          Algumas informações estatísticas já foram usadas anteriormente.
+          Você pode confirmar ou alterar antes de enviar.
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md bg-red-50 p-3 text-xs text-red-700">
