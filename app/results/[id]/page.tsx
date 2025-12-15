@@ -191,7 +191,7 @@ export default async function ResultsPage({
         </div>
 
         {/* 🔹 CONVITE DE ATRIBUTOS (CLIENT) */}
-        <AttributesInviteClient />
+        <AttributesInviteClient pollId={safeId} />
       </main>
     );
   }
@@ -255,7 +255,7 @@ export default async function ResultsPage({
       </div>
 
       {/* 🔹 CONVITE DE ATRIBUTOS (CLIENT) */}
-      <AttributesInviteClient />
+      <AttributesInviteClient pollId={safeId} />
     </main>
   );
 }
