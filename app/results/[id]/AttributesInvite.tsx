@@ -53,7 +53,7 @@ export default function AttributesInvite({ participantId }: Props) {
       }),
     });
 
-    setVisible(false);
+    window.location.href = "/";
   }
 
   return (
