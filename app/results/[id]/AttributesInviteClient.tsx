@@ -1,9 +1,14 @@
+//app/results/[id] /AttributesInviteClient.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import AttributesInvite from "./AttributesInvite";
 
-export default function AttributesInviteClient() {
+type Props = {
+  pollId: string;
+};
+
+export default function AttributesInviteClient({ pollId }: Props) {
   const [participantId, setParticipantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -13,5 +18,11 @@ export default function AttributesInviteClient() {
 
   if (!participantId) return null;
 
-  return <AttributesInvite participantId={participantId} />;
+  return (
+    <AttributesInvite
+      participantId={participantId}
+      pollId={pollId}
+    />
+  );
 }
+
