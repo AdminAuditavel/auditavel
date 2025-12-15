@@ -1,3 +1,5 @@
+//app/results/[id]/AttributesInvite.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +11,8 @@ type Props = {
 export default function AttributesInvite({ participantId }: Props) {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     age_range: "",
@@ -38,12 +42,42 @@ export default function AttributesInvite({ participantId }: Props) {
   if (!visible) return null;
 
   /* =======================
+     APÓS ENVIO
+  ======================= */
+  if (submitted) {
+    return (
+      <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
+        <h3 className="font-semibold mb-1">
+          Obrigado pela sua contribuição
+        </h3>
+        <p>
+          Suas informações foram registradas com sucesso e serão usadas apenas
+          para análise estatística, de forma anônima.
+        </p>
+      </div>
+    );
+  }
+
+  /* =======================
      SALVAR
   ======================= */
   async function handleSubmit() {
+    setError(null);
+
+    // Validação obrigatória
+    if (
+      !form.age_range ||
+      !form.education_level ||
+      !form.region ||
+      !form.income_range
+    ) {
+      setError("Por favor, responda todas as perguntas antes de continuar.");
+      return;
+    }
+
     setLoading(true);
 
-    await fetch("/api/participant-attributes", {
+    const res = await fetch("/api/participant-attributes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -52,7 +86,15 @@ export default function AttributesInvite({ participantId }: Props) {
       }),
     });
 
-    window.location.href = "/";
+    setLoading(false);
+
+    if (res.ok) {
+      setSubmitted(true);
+    } else {
+      setError(
+        "Não foi possível salvar suas respostas. Tente novamente."
+      );
+    }
   }
 
   /* =======================
@@ -69,10 +111,16 @@ export default function AttributesInvite({ participantId }: Props) {
         </p>
       </div>
 
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-xs text-red-700">
+          {error}
+        </div>
+      )}
+
       {/* FAIXA ETÁRIA */}
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-gray-700">
-          Faixa etária (opcional)
+          Faixa etária
         </legend>
         {["-18", "18-24", "25-34", "35-44", "45-59", "60+"].map(v => (
           <label key={v} className="flex items-center gap-2 text-sm">
@@ -81,7 +129,9 @@ export default function AttributesInvite({ participantId }: Props) {
               name="age_range"
               value={v}
               checked={form.age_range === v}
-              onChange={() => setForm(f => ({ ...f, age_range: v }))}
+              onChange={() =>
+                setForm(f => ({ ...f, age_range: v }))
+              }
             />
             {v === "-18" ? "Menor de 18" : v}
           </label>
@@ -91,7 +141,7 @@ export default function AttributesInvite({ participantId }: Props) {
       {/* ESCOLARIDADE */}
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-gray-700">
-          Escolaridade (opcional)
+          Escolaridade
         </legend>
         {[
           ["fundamental", "Ensino fundamental"],
@@ -106,7 +156,10 @@ export default function AttributesInvite({ participantId }: Props) {
               value={value}
               checked={form.education_level === value}
               onChange={() =>
-                setForm(f => ({ ...f, education_level: value }))
+                setForm(f => ({
+                  ...f,
+                  education_level: value,
+                }))
               }
             />
             {label}
@@ -117,7 +170,7 @@ export default function AttributesInvite({ participantId }: Props) {
       {/* REGIÃO */}
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-gray-700">
-          Região (opcional)
+          Região
         </legend>
         {[
           ["norte", "Norte"],
@@ -132,7 +185,9 @@ export default function AttributesInvite({ participantId }: Props) {
               name="region"
               value={value}
               checked={form.region === value}
-              onChange={() => setForm(f => ({ ...f, region: value }))}
+              onChange={() =>
+                setForm(f => ({ ...f, region: value }))
+              }
             />
             {label}
           </label>
@@ -142,7 +197,7 @@ export default function AttributesInvite({ participantId }: Props) {
       {/* RENDA */}
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-gray-700">
-          Faixa de renda (opcional)
+          Faixa de renda
         </legend>
         {[
           ["ate_2", "Até 2 salários mínimos"],
@@ -157,7 +212,10 @@ export default function AttributesInvite({ participantId }: Props) {
               value={value}
               checked={form.income_range === value}
               onChange={() =>
-                setForm(f => ({ ...f, income_range: value }))
+                setForm(f => ({
+                  ...f,
+                  income_range: value,
+                }))
               }
             />
             {label}
