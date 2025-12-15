@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
-import AttributesInvite from "./AttributesInvite";
+import AttributesInviteClient from "./AttributesInviteClient";
 
 export default async function ResultsPage({
   params,
