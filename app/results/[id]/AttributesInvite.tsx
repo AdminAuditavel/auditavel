@@ -1,4 +1,3 @@
-// app/results/[id]/AttributesInvite.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -53,7 +52,7 @@ export default function AttributesInvite({ participantId }: Props) {
       }),
     });
 
-    window.location.href = "/";
+    window.location.href = "/"; // Redireciona para o home após salvar
   }
 
   return (
