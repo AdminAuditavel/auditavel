@@ -1,4 +1,3 @@
-// app/api/participant-attributes/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
@@ -29,7 +28,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { error } = await supabase
+    /* =======================
+       1. SNAPSHOT DA PESQUISA
+    ======================= */
+    const { error: snapshotError } = await supabase
       .from("participant_attributes")
       .upsert(
         {
@@ -39,19 +41,44 @@ export async function POST(req: NextRequest) {
           education_level,
           region,
           income_range,
-          updated_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         },
         {
           onConflict: "participant_id,poll_id",
         }
       );
 
-    if (error) {
-      console.error("Erro ao salvar atributos:", error);
+    if (snapshotError) {
+      console.error("Erro snapshot:", snapshotError);
       return NextResponse.json(
-        { error: "db_error", details: error.message },
+        { error: "snapshot_error", details: snapshotError.message },
         { status: 500 }
       );
+    }
+
+    /* =======================
+       2. PERFIL GLOBAL
+       (UPSERT SILENCIOSO)
+    ======================= */
+    const { error: profileError } = await supabase
+      .from("participant_profile")
+      .upsert(
+        {
+          participant_id,
+          age_range,
+          education_level,
+          region,
+          income_range,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "participant_id",
+        }
+      );
+
+    if (profileError) {
+      // ⚠️ não quebra o fluxo do usuário
+      console.error("Erro perfil:", profileError);
     }
 
     return NextResponse.json({ success: true });
