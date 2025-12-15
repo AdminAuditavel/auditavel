@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
+import AttributesInvite from "./AttributesInvite";
 
 export default async function ResultsPage({
   params,
@@ -69,12 +70,12 @@ export default async function ResultsPage({
     return (
       <main className="p-6 max-w-xl mx-auto space-y-5 text-center">
         <h1 className="text-xl font-semibold">Resultados</h1>
-  
+
         <p className="text-sm text-muted-foreground">
           Os resultados desta pesquisa estão ocultos no momento e serão
           divulgados ao final da votação.
         </p>
-  
+
         <div className="flex justify-center gap-4 text-sm">
           <Link
             href={`/poll/${safeId}`}
@@ -82,11 +83,8 @@ export default async function ResultsPage({
           >
             ← Voltar para a pesquisa
           </Link>
-  
-          <Link
-            href="/"
-            className="text-emerald-600 hover:underline"
-          >
+
+          <Link href="/" className="text-emerald-600 hover:underline">
             Auditável
           </Link>
         </div>
@@ -129,7 +127,6 @@ export default async function ResultsPage({
       .eq("poll_id", safeId);
 
     const totalSubmissions = votes?.length || 0;
-
     const totalParticipants = new Set(
       (votes ?? []).map(v => v.user_hash)
     ).size;
@@ -154,7 +151,6 @@ export default async function ResultsPage({
 
         <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
 
-        {/* RESULTADOS */}
         <div className="space-y-4">
           {sortedOptions.map(o => {
             const pct = totalSubmissions
@@ -181,7 +177,6 @@ export default async function ResultsPage({
           })}
         </div>
 
-        {/* MÉTRICAS */}
         <div className="flex justify-between text-xs text-gray-500">
           {isPartial && <span>Resultados parciais</span>}
 
@@ -194,6 +189,9 @@ export default async function ResultsPage({
             <span>Total de votos: {totalSubmissions}</span>
           )}
         </div>
+
+        {/* 🔹 CONVITE DE ATRIBUTOS (CLIENT) */}
+        <AttributesInvite />
       </main>
     );
   }
@@ -224,7 +222,6 @@ export default async function ResultsPage({
 
       <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
 
-      {/* RESULTADOS */}
       <div className="space-y-4">
         {json.result.map((row: any, index: number) => {
           const pct = Math.round((row.score / maxScore) * 100);
@@ -249,15 +246,16 @@ export default async function ResultsPage({
         })}
       </div>
 
-      {/* MÉTRICAS */}
       <div className="flex justify-between text-xs text-gray-500">
         {isPartial && <span>Resultados parciais</span>}
-
         <span>
           Participantes: {totalParticipants}
           {allow_multiple && ` · Participações: ${totalSubmissions ?? 0}`}
         </span>
       </div>
+
+      {/* 🔹 CONVITE DE ATRIBUTOS (CLIENT) */}
+      <AttributesInvite />
     </main>
   );
 }
