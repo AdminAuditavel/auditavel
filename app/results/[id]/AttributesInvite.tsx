@@ -1,14 +1,17 @@
 //app/results/[id]/AttributesInvite.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
 
 type Props = {
   participantId: string;
+  pollId: string;
 };
 
-export default function AttributesInvite({ participantId }: Props) {
+export default function AttributesInvite({
+  participantId,
+  pollId,
+}: Props) {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -27,7 +30,7 @@ export default function AttributesInvite({ participantId }: Props) {
   useEffect(() => {
     async function check() {
       const res = await fetch(
-        `/api/participant-attributes/check?participant_id=${participantId}`
+        `/api/participant-attributes/check?participant_id=${participantId}&poll_id=${pollId}`
       );
 
       if (res.ok) {
@@ -36,8 +39,8 @@ export default function AttributesInvite({ participantId }: Props) {
       }
     }
 
-    if (participantId) check();
-  }, [participantId]);
+    if (participantId && pollId) check();
+  }, [participantId, pollId]);
 
   if (!visible) return null;
 
@@ -64,7 +67,6 @@ export default function AttributesInvite({ participantId }: Props) {
   async function handleSubmit() {
     setError(null);
 
-    // Validação obrigatória
     if (
       !form.age_range ||
       !form.education_level ||
@@ -82,6 +84,7 @@ export default function AttributesInvite({ participantId }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         participant_id: participantId,
+        poll_id: pollId,
         ...form,
       }),
     });
@@ -223,7 +226,6 @@ export default function AttributesInvite({ participantId }: Props) {
         ))}
       </fieldset>
 
-      {/* BOTÃO */}
       <button
         onClick={handleSubmit}
         disabled={loading}
