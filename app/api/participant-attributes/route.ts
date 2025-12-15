@@ -8,21 +8,23 @@ export async function POST(req: NextRequest) {
 
     const {
       participant_id,
+      poll_id,
       age_range,
       education_level,
       region,
       income_range,
     } = body as {
       participant_id?: string;
+      poll_id?: string;
       age_range?: string;
       education_level?: string;
       region?: string;
       income_range?: string;
     };
 
-    if (!participant_id) {
+    if (!participant_id || !poll_id) {
       return NextResponse.json(
-        { error: "missing_participant_id" },
+        { error: "missing_participant_or_poll" },
         { status: 400 }
       );
     }
@@ -32,13 +34,16 @@ export async function POST(req: NextRequest) {
       .upsert(
         {
           participant_id,
+          poll_id,
           age_range,
           education_level,
           region,
           income_range,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "participant_id" }
+        {
+          onConflict: "participant_id,poll_id",
+        }
       );
 
     if (error) {
