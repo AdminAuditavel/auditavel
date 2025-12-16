@@ -139,6 +139,17 @@ export default function PollRegistration() {
               <option value="closed">Encerrada</option>
             </select>
           </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Máximo de Votos por Usuário:</label>
+            <input
+              type="number"
+              name="max_votes_per_user"
+              value={formData.max_votes_per_user}
+              onChange={handleInputChange}
+              style={styles.input}
+            />
+          </div>
         </div>
 
         <div style={styles.inlineFieldGroup}>
@@ -163,17 +174,6 @@ export default function PollRegistration() {
             />
             Permitir opções personalizadas
           </label>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Máximo de Votos por Usuário:</label>
-          <input
-            type="number"
-            name="max_votes_per_user"
-            value={formData.max_votes_per_user}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
         </div>
 
         <div style={styles.inlineFieldGroup}>
@@ -212,17 +212,19 @@ export default function PollRegistration() {
           />
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tipo de Votação:</label>
-          <select
-            name="voting_type"
-            value={formData.voting_type}
-            onChange={handleInputChange}
-            style={styles.select}
-          >
-            <option value="single">Única Escolha</option>
-            <option value="ranking">Ranking</option>
-          </select>
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Votação:</label>
+            <select
+              name="voting_type"
+              value={formData.voting_type}
+              onChange={handleInputChange}
+              style={styles.select}
+            >
+              <option value="single">Única Escolha</option>
+              <option value="ranking">Ranking</option>
+            </select>
+          </div>
         </div>
 
         <div style={styles.inlineFieldGroup}>
