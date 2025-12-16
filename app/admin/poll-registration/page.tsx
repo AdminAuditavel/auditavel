@@ -108,68 +108,83 @@ export default function PollRegistration() {
           />
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tipo de Pesquisa:</label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={handleInputChange}
-            style={styles.select}
-          >
-            <option value="binary">Binária</option>
-            <option value="ranking">Ranking</option>
-            <option value="single">Única Escolha</option>
-          </select>
-        </div>
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Pesquisa:</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              style={styles.select}
+            >
+              <option value="binary">Binária</option>
+              <option value="ranking">Ranking</option>
+              <option value="single">Única Escolha</option>
+            </select>
+          </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Status:</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleInputChange}
-            style={styles.select}
-          >
-            <option value="draft">Rascunho</option>
-            <option value="open">Aberta</option>
-            <option value="paused">Pausada</option>
-            <option value="closed">Encerrada</option>
-          </select>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Status:</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              style={styles.select}
+            >
+              <option value="draft">Rascunho</option>
+              <option value="open">Aberta</option>
+              <option value="paused">Pausada</option>
+              <option value="closed">Encerrada</option>
+            </select>
+          </div>
         </div>
 
         <div style={styles.inlineFieldGroup}>
-          <label style={styles.checkboxLabel}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Máximo de Votos por Usuário:</label>
             <input
-              type="checkbox"
-              name="allow_multiple"
-              checked={formData.allow_multiple}
+              type="number"
+              name="max_votes_per_user"
+              value={formData.max_votes_per_user}
               onChange={handleInputChange}
-              style={styles.checkbox}
+              style={styles.input}
             />
-            Permitir múltiplas escolhas
-          </label>
+          </div>
 
-          <label style={styles.checkboxLabel}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tempo para o próximo Voto (segundos):</label>
             <input
-              type="checkbox"
-              name="allow_custom_option"
-              checked={formData.allow_custom_option}
+              type="number"
+              name="vote_cooldown_seconds"
+              value={formData.vote_cooldown_seconds}
               onChange={handleInputChange}
-              style={styles.checkbox}
+              style={styles.input}
             />
-            Permitir opções personalizadas
-          </label>
+          </div>
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Máximo de Votos por Usuário:</label>
-          <input
-            type="number"
-            name="max_votes_per_user"
-            value={formData.max_votes_per_user}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Início:</label>
+            <input
+              type="datetime-local"
+              name="start_date"
+              value={formData.start_date}
+              onChange={handleInputChange}
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Término:</label>
+            <input
+              type="datetime-local"
+              name="end_date"
+              value={formData.end_date}
+              onChange={handleInputChange}
+              style={styles.input}
+            />
+          </div>
         </div>
 
         <div style={styles.inlineFieldGroup}>
@@ -195,52 +210,6 @@ export default function PollRegistration() {
               style={styles.input}
             />
           </div>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
-          <input
-            type="number"
-            name="vote_cooldown_seconds"
-            value={formData.vote_cooldown_seconds}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tipo de Votação:</label>
-          <select
-            name="voting_type"
-            value={formData.voting_type}
-            onChange={handleInputChange}
-            style={styles.select}
-          >
-            <option value="single">Única Escolha</option>
-            <option value="ranking">Ranking</option>
-          </select>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Início:</label>
-          <input
-            type="datetime-local"
-            name="start_date"
-            value={formData.start_date}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Término:</label>
-          <input
-            type="datetime-local"
-            name="end_date"
-            value={formData.end_date}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
         </div>
 
         <div style={styles.fieldGroup}>
