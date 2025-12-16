@@ -1,26 +1,18 @@
-"use client"; // Declara que este é um componente Client-side
+"use client";
 
-// Não é necessário import React no Next.js moderno
 export default function Dashboard() {
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Painel Administrativo - Auditável</h1>
       <div style={styles.menu}>
-        <a href="/admin/poll-registration" style={styles.link}>
-          Cadastro de Pesquisas
-        </a>
-        <a href="/admin/options-management" style={styles.link}>
-          Gerenciar Opções
-        </a>
-        <a href="/admin/audit-logs" style={styles.link}>
-          Logs de Auditoria
-        </a>
+        <a href="/admin/poll-registration" style={styles.link}>Cadastro de Pesquisas</a>
+        <a href="/admin/options-management" style={styles.link}>Gerenciar Opções</a>
+        <a href="/admin/audit-logs" style={styles.link}>Logs de Auditoria</a>
       </div>
     </div>
   );
 }
 
-// Objeto de estilos inline
 const styles = {
   container: {
     display: "flex",
