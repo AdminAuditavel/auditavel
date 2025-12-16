@@ -8,6 +8,8 @@ export default async function AdminDashboard(props: {
   const searchParams = await props.searchParams;
   const token = searchParams?.token || "demo";
 
+  const menuCardClassName = "block w-full p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-blue-200 hover:border-blue-400";
+
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 px-4">
       <div className="w-full max-w-2xl">
@@ -20,7 +22,7 @@ export default async function AdminDashboard(props: {
         <div className="space-y-4">
           <Link
             href={`/admin?token=${token}`}
-            className="block w-full p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-blue-200 hover:border-blue-400"
+            className={menuCardClassName}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -49,7 +51,7 @@ export default async function AdminDashboard(props: {
 
           <Link
             href={`/admin?token=${token}`}
-            className="block w-full p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-blue-200 hover:border-blue-400"
+            className={menuCardClassName}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -78,7 +80,7 @@ export default async function AdminDashboard(props: {
 
           <Link
             href={`/admin/audit?token=${token}`}
-            className="block w-full p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-blue-200 hover:border-blue-400"
+            className={menuCardClassName}
           >
             <div className="flex items-center justify-between">
               <div>
