@@ -212,6 +212,13 @@ const styles = {
     minHeight: "80px",
     resize: "none" as const,
   },
+  select: {
+    padding: "10px",
+    fontSize: "14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "5px",
+    backgroundColor: "#fff",
+  },
   checkboxLabel: {
     fontSize: "14px",
     color: "#374151",
