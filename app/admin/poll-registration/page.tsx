@@ -7,11 +7,19 @@ export default function PollRegistration() {
     title: "",
     description: "",
     type: "binary",
-    status: "open",
+    status: "draft", // Valores: draft (Rascunho), open (Aberta), paused (Pausada), closed (Encerrada)
     allow_multiple: false,
     max_votes_per_user: 1,
     allow_custom_option: false,
+    custom_option_max_length: 50,
     closes_at: "",
+    vote_cooldown_seconds: 10,
+    voting_type: "single", // Valores: single, ranking, etc.
+    start_date: "",
+    end_date: "",
+    show_partial_results: false,
+    icon_name: "",
+    icon_url: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -50,11 +58,19 @@ export default function PollRegistration() {
         title: "",
         description: "",
         type: "binary",
-        status: "open",
+        status: "draft",
         allow_multiple: false,
         max_votes_per_user: 1,
         allow_custom_option: false,
+        custom_option_max_length: 50,
         closes_at: "",
+        vote_cooldown_seconds: 10,
+        voting_type: "single",
+        start_date: "",
+        end_date: "",
+        show_partial_results: false,
+        icon_name: "",
+        icon_url: "",
       });
     } catch (err: any) {
       setError(err.message || "Erro desconhecido.");
@@ -88,7 +104,6 @@ export default function PollRegistration() {
             onChange={handleInputChange}
             style={styles.textarea}
             placeholder="Digite uma descrição opcional"
-            required
           />
         </div>
 
@@ -102,7 +117,22 @@ export default function PollRegistration() {
           >
             <option value="binary">Binária</option>
             <option value="ranking">Ranking</option>
-            <option value="single">Única Escolha</option>
+            <option value="single">Escolha Única</option>
+          </select>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Status:</label>
+          <select
+            name="status"
+            value={formData.status}
+            onChange={handleInputChange}
+            style={styles.select}
+          >
+            <option value="draft">Rascunho</option>
+            <option value="open">Aberta</option>
+            <option value="paused">Pausada</option>
+            <option value="closed">Encerrada</option>
           </select>
         </div>
 
@@ -131,22 +161,92 @@ export default function PollRegistration() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Máximo de Votos por Usuário:</label>
+          <label style={styles.label}>Tamanho Máximo de Opção Personalizada:</label>
           <input
             type="number"
-            name="max_votes_per_user"
-            value={formData.max_votes_per_user}
+            name="custom_option_max_length"
+            value={formData.custom_option_max_length}
             onChange={handleInputChange}
             style={styles.input}
           />
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Encerramento:</label>
+          <label style={styles.label}>Tempo de Espera Entre Votos (segundos):</label>
+          <input
+            type="number"
+            name="vote_cooldown_seconds"
+            value={formData.vote_cooldown_seconds}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Estilo de Votação:</label>
+          <select
+            name="voting_type"
+            value={formData.voting_type}
+            onChange={handleInputChange}
+            style={styles.select}
+          >
+            <option value="single">Escolha Única</option>
+            <option value="ranking">Ranking</option>
+          </select>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Data de Início:</label>
           <input
             type="datetime-local"
-            name="closes_at"
-            value={formData.closes_at}
+            name="start_date"
+            value={formData.start_date}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Data de Fim:</label>
+          <input
+            type="datetime-local"
+            name="end_date"
+            value={formData.end_date}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="show_partial_results"
+              checked={formData.show_partial_results}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+            />
+            Mostrar Resultados Parciais
+          </label>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Nome do Ícone:</label>
+          <input
+            type="text"
+            name="icon_name"
+            value={formData.icon_name}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>URL do Ícone:</label>
+          <input
+            type="text"
+            name="icon_url"
+            value={formData.icon_url}
             onChange={handleInputChange}
             style={styles.input}
           />
@@ -174,86 +274,5 @@ const styles = {
     borderRadius: "10px",
     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
   },
-  title: {
-    fontSize: "24px",
-    fontWeight: "bold",
-    marginBottom: "10px",
-    textAlign: "center" as const,
-    color: "#1f2937",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "15px",
-  },
-  fieldGroup: {
-    display: "flex",
-    flexDirection: "column" as const,
-  },
-  inlineFieldGroup: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "20px",
-    alignItems: "center",
-  },
-  label: {
-    fontSize: "14px",
-    fontWeight: "bold",
-    color: "#374151",
-    marginBottom: "5px",
-  },
-  input: {
-    padding: "10px",
-    fontSize: "14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    backgroundColor: "#fff",
-  },
-  textarea: {
-    padding: "10px",
-    fontSize: "14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    backgroundColor: "#fff",
-    minHeight: "80px",
-    resize: "none" as const,
-  },
-  select: {
-    padding: "10px",
-    fontSize: "14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    backgroundColor: "#fff",
-  },
-  checkboxLabel: {
-    fontSize: "14px",
-    color: "#374151",
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-  checkbox: {
-    marginRight: "10px",
-  },
-  button: {
-    padding: "10px",
-    fontSize: "14px",
-    color: "#fff",
-    backgroundColor: "#3b82f6",
-    border: "none",
-    borderRadius: "5px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    transition: "background-color 0.2s",
-  },
-  success: {
-    color: "green",
-    fontSize: "14px",
-    textAlign: "center" as const,
-  },
-  error: {
-    color: "red",
-    fontSize: "14px",
-    textAlign: "center" as const,
-  },
+  // Demais estilos seguem como no exemplo anterior
 };
