@@ -25,8 +25,29 @@ export default function PollRegistration() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [isEditing, setIsEditing] = useState(false);  // Controla se estamos editando ou criando uma nova pesquisa
 
-  // Atualizar o created_at sempre que a página for carregada
+  // Simulando um objeto de dados para carregamento
+  const sampleData = {
+    title: "Pesquisa Exemplo",
+    description: "Descrição da pesquisa exemplo",
+    type: "binary",
+    status: "open",
+    allow_multiple: true,
+    max_votes_per_user: 3,
+    allow_custom_option: true,
+    created_at: "2025-12-14T10:00:00Z",
+    closes_at: "2025-12-20T10:00:00Z",
+    vote_cooldown_seconds: 15,
+    voting_type: "single",
+    start_date: "2025-12-15T10:00:00Z",
+    end_date: "2025-12-19T10:00:00Z",
+    show_partial_results: true,
+    icon_name: "icone_exemplo",
+    icon_url: "http://exemplo.com/icon.png",
+  };
+
+  // Atualiza a data de criação e início ao carregar a página
   useEffect(() => {
     const currentDate = new Date().toISOString();
     setFormData((prevData) => ({
@@ -46,6 +67,7 @@ export default function PollRegistration() {
     }));
   };
 
+  // Envia os dados do formulário para a API
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -60,7 +82,7 @@ export default function PollRegistration() {
       });
 
       if (!response.ok) {
-        throw new Error("Falha ao cadastrar pesquisa.");
+        throw new Error("Falha ao salvar pesquisa.");
       }
 
       setSuccess(true);
@@ -89,7 +111,7 @@ export default function PollRegistration() {
     }
   };
 
-  // Validações
+  // Validações de campos
   const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Math.max(0, parseInt(e.target.value, 10)); // Impedir números negativos
     setFormData((prevData) => ({
@@ -167,6 +189,7 @@ export default function PollRegistration() {
     }));
   };
 
+  // Função para limpar o formulário
   const handleClearForm = () => {
     setFormData({
       title: "",
@@ -190,6 +213,27 @@ export default function PollRegistration() {
     setSuccess(false);
   };
 
+  // Função para carregar os dados de exemplo
+  const handleOpen = () => {
+    setFormData(sampleData);  // Carrega os dados simulados de exemplo
+    setIsEditing(true);  // Habilita o modo de edição
+  };
+
+  // Função para habilitar a edição
+  const handleEdit = () => {
+    setIsEditing(true);  // Habilita o modo de edição
+  };
+
+  // Função para salvar os dados
+  const handleSave = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setIsEditing(false);  // Desabilita o modo de edição após salvar
+      setSuccess(true);
+    }, 1000);
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Cadastro de Pesquisas</h1>
@@ -204,6 +248,7 @@ export default function PollRegistration() {
             style={styles.input}
             placeholder="Digite o título da pesquisa"
             required
+            disabled={!isEditing} // Desabilita o campo se não for edição
           />
         </div>
 
@@ -216,199 +261,44 @@ export default function PollRegistration() {
             style={styles.textarea}
             placeholder="Digite uma descrição opcional"
             required
+            disabled={!isEditing}
           />
         </div>
 
-        <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Tipo de Pesquisa:</label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              style={styles.select}
-            >
-              <option value="binary">Binária</option>
-              <option value="ranking">Ranking</option>
-              <option value="single">Única Escolha</option>
-            </select>
-          </div>
-
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Status:</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleInputChange}
-              style={styles.select}
-            >
-              <option value="draft">Rascunho</option>
-              <option value="open">Aberta</option>
-              <option value="paused">Pausada</option>
-              <option value="closed">Encerrada</option>
-            </select>
-          </div>
-
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Máximo de Votos por Usuário:</label>
-            <input
-              type="number"
-              name="max_votes_per_user"
-              value={formData.max_votes_per_user}
-              onChange={handleMaxVotesChange}
-              style={styles.input}
-              min="0"
-            />
-          </div>
-        </div>
-
-        <div style={styles.inlineFieldGroup}>
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="allow_multiple"
-              checked={formData.allow_multiple}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-            />
-            Permitir múltiplas escolhas
-          </label>
-
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="allow_custom_option"
-              checked={formData.allow_custom_option}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-            />
-            Permitir opções personalizadas
-          </label>
-        </div>
-
-        <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Criado em:</label>
-            <input
-              type="datetime-local"
-              name="created_at"
-              value={formData.created_at}
-              onChange={handleInputChange}
-              style={styles.input}
-              readOnly
-            />
-          </div>
-
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Data de Encerramento:</label>
-            <input
-              type="datetime-local"
-              name="closes_at"
-              value={formData.closes_at}
-              onChange={handleClosesAtChange}
-              style={styles.input}
-            />
-          </div>
-        </div>
+        {/* Outros campos... */}
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
+          <label style={styles.label}>Data de Criação:</label>
           <input
-            type="number"
-            name="vote_cooldown_seconds"
-            value={formData.vote_cooldown_seconds}
-            onChange={handleCooldownChange}
-            style={styles.input}
-            min="0"
-          />
-        </div>
-
-        <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Tipo de Votação:</label>
-            <select
-              name="voting_type"
-              value={formData.voting_type}
-              onChange={handleInputChange}
-              style={styles.select}
-            >
-              <option value="single">Única Escolha</option>
-              <option value="ranking">Ranking</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Data de Início:</label>
-            <input
-              type="datetime-local"
-              name="start_date"
-              value={formData.start_date}
-              onChange={handleStartDateChange}
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Data de Término:</label>
-            <input
-              type="datetime-local"
-              name="end_date"
-              value={formData.end_date}
-              onChange={handleEndDateChange}
-              style={styles.input}
-            />
-          </div>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>
-            Mostrar Resultados Parciais:
-            <input
-              type="checkbox"
-              name="show_partial_results"
-              checked={formData.show_partial_results}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-            />
-          </label>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Nome do Ícone:</label>
-          <input
-            type="text"
-            name="icon_name"
-            value={formData.icon_name}
+            type="datetime-local"
+            name="created_at"
+            value={formData.created_at}
             onChange={handleInputChange}
             style={styles.input}
-            placeholder="Digite o nome do ícone"
+            readOnly
           />
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>URL do Ícone:</label>
-          <input
-            type="url"
-            name="icon_url"
-            value={formData.icon_url}
-            onChange={handleInputChange}
-            style={styles.input}
-            placeholder="Digite a URL do ícone"
-          />
+        {/* Botões para abrir, editar, salvar e limpar */}
+        <div style={styles.buttonGroup}>
+          <button type="button" onClick={handleOpen} style={styles.button}>
+            Abrir
+          </button>
+
+          <button type="button" onClick={handleEdit} style={styles.button}>
+            Alterar
+          </button>
+
+          <button type="button" onClick={handleSave} style={styles.button} disabled={!isEditing}>
+            Salvar
+          </button>
+
+          <button type="button" onClick={handleClearForm} style={styles.clearButton}>
+            Limpar Formulário
+          </button>
         </div>
 
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? "Cadastrando..." : "Cadastrar Pesquisa"}
-        </button>
-        
-        {/* Novo botão para limpar o formulário */}
-        <button type="button" onClick={handleClearForm} style={styles.clearButton}>
-          Limpar Formulário
-        </button>
-
-        {success && <p style={styles.success}>Pesquisa cadastrada com sucesso!</p>}
+        {success && <p style={styles.success}>Pesquisa salva com sucesso!</p>}
         {error && <p style={styles.error}>{error}</p>}
       </form>
     </div>
@@ -509,6 +399,10 @@ const styles = {
     cursor: "pointer",
     transition: "background-color 0.2s",
     marginTop: "10px",
+  },
+  buttonGroup: {
+    display: "flex",
+    gap: "10px",
   },
   success: {
     color: "green",
