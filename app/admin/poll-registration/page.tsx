@@ -13,6 +13,7 @@ export default function PollRegistration() {
     allow_multiple: false,
     max_votes_per_user: 1,
     allow_custom_option: false,
+    created_at: new Date().toISOString(),
     closes_at: "",
     vote_cooldown_seconds: 10,
     voting_type: "single",
@@ -63,6 +64,7 @@ export default function PollRegistration() {
         allow_multiple: false,
         max_votes_per_user: 1,
         allow_custom_option: false,
+        created_at: new Date().toISOString(),
         closes_at: "",
         vote_cooldown_seconds: 10,
         voting_type: "single",
@@ -108,33 +110,35 @@ export default function PollRegistration() {
           />
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tipo de Pesquisa:</label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={handleInputChange}
-            style={styles.select}
-          >
-            <option value="binary">Binária</option>
-            <option value="ranking">Ranking</option>
-            <option value="single">Única Escolha</option>
-          </select>
-        </div>
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Pesquisa:</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              style={styles.select}
+            >
+              <option value="binary">Binária</option>
+              <option value="ranking">Ranking</option>
+              <option value="single">Única Escolha</option>
+            </select>
+          </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Status:</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleInputChange}
-            style={styles.select}
-          >
-            <option value="draft">Rascunho</option>
-            <option value="open">Aberta</option>
-            <option value="paused">Pausada</option>
-            <option value="closed">Encerrada</option>
-          </select>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Status:</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              style={styles.select}
+            >
+              <option value="draft">Rascunho</option>
+              <option value="open">Aberta</option>
+              <option value="paused">Pausada</option>
+              <option value="closed">Encerrada</option>
+            </select>
+          </div>
         </div>
 
         <div style={styles.inlineFieldGroup}>
@@ -172,15 +176,29 @@ export default function PollRegistration() {
           />
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Encerramento:</label>
-          <input
-            type="datetime-local"
-            name="closes_at"
-            value={formData.closes_at}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Criado em:</label>
+            <input
+              type="datetime-local"
+              name="created_at"
+              value={formData.created_at}
+              onChange={handleInputChange}
+              style={styles.input}
+              readOnly
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Encerramento:</label>
+            <input
+              type="datetime-local"
+              name="closes_at"
+              value={formData.closes_at}
+              onChange={handleInputChange}
+              style={styles.input}
+            />
+          </div>
         </div>
 
         <div style={styles.fieldGroup}>
@@ -207,26 +225,28 @@ export default function PollRegistration() {
           </select>
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Início:</label>
-          <input
-            type="datetime-local"
-            name="start_date"
-            value={formData.start_date}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Início:</label>
+            <input
+              type="datetime-local"
+              name="start_date"
+              value={formData.start_date}
+              onChange={handleInputChange}
+              style={styles.input}
+            />
+          </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Término:</label>
-          <input
-            type="datetime-local"
-            name="end_date"
-            value={formData.end_date}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Término:</label>
+            <input
+              type="datetime-local"
+              name="end_date"
+              value={formData.end_date}
+              onChange={handleInputChange}
+              style={styles.input}
+            />
+          </div>
         </div>
 
         <div style={styles.fieldGroup}>
