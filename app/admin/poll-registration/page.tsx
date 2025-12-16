@@ -25,9 +25,9 @@ export default function PollRegistration() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [isEditing, setIsEditing] = useState(false);  // Controla se estamos editando ou criando uma nova pesquisa
+  const [isEditing, setIsEditing] = useState(false); // Controle de edição
 
-  // Simulando um objeto de dados para carregamento
+  // Dados simulados para carregamento
   const sampleData = {
     title: "Pesquisa Exemplo",
     description: "Descrição da pesquisa exemplo",
@@ -47,7 +47,7 @@ export default function PollRegistration() {
     icon_url: "http://exemplo.com/icon.png",
   };
 
-  // Atualiza a data de criação e início ao carregar a página
+  // Atualiza created_at e start_date com a data atual
   useEffect(() => {
     const currentDate = new Date().toISOString();
     setFormData((prevData) => ({
@@ -57,6 +57,7 @@ export default function PollRegistration() {
     }));
   }, []);
 
+  // Função de mudança nos campos do formulário
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const isCheckbox = type === "checkbox";
@@ -67,7 +68,7 @@ export default function PollRegistration() {
     }));
   };
 
-  // Envia os dados do formulário para a API
+  // Função para enviar os dados para a API
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -111,7 +112,7 @@ export default function PollRegistration() {
     }
   };
 
-  // Validações de campos
+  // Validações para os campos
   const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Math.max(0, parseInt(e.target.value, 10)); // Impedir números negativos
     setFormData((prevData) => ({
@@ -189,7 +190,7 @@ export default function PollRegistration() {
     }));
   };
 
-  // Função para limpar o formulário
+  // Limpa o formulário
   const handleClearForm = () => {
     setFormData({
       title: "",
@@ -213,7 +214,7 @@ export default function PollRegistration() {
     setSuccess(false);
   };
 
-  // Função para carregar os dados de exemplo
+  // Função para carregar os dados simulados
   const handleOpen = () => {
     setFormData(sampleData);  // Carrega os dados simulados de exemplo
     setIsEditing(true);  // Habilita o modo de edição
@@ -248,7 +249,7 @@ export default function PollRegistration() {
             style={styles.input}
             placeholder="Digite o título da pesquisa"
             required
-            disabled={!isEditing} // Desabilita o campo se não for edição
+            disabled={!isEditing}
           />
         </div>
 
@@ -265,21 +266,200 @@ export default function PollRegistration() {
           />
         </div>
 
-        {/* Outros campos... */}
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Pesquisa:</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing}
+            >
+              <option value="binary">Binária</option>
+              <option value="ranking">Ranking</option>
+              <option value="single">Única Escolha</option>
+            </select>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Status:</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing}
+            >
+              <option value="draft">Rascunho</option>
+              <option value="open">Aberta</option>
+              <option value="paused">Pausada</option>
+              <option value="closed">Encerrada</option>
+            </select>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Máximo de Votos por Usuário:</label>
+            <input
+              type="number"
+              name="max_votes_per_user"
+              value={formData.max_votes_per_user}
+              onChange={handleMaxVotesChange}
+              style={styles.input}
+              min="0"
+              disabled={!isEditing}
+            />
+          </div>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_multiple"
+              checked={formData.allow_multiple}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+              disabled={!isEditing}
+            />
+            Permitir múltiplas escolhas
+          </label>
+
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_custom_option"
+              checked={formData.allow_custom_option}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+              disabled={!isEditing}
+            />
+            Permitir opções personalizadas
+          </label>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Criado em:</label>
+            <input
+              type="datetime-local"
+              name="created_at"
+              value={formData.created_at}
+              onChange={handleInputChange}
+              style={styles.input}
+              readOnly
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Encerramento:</label>
+            <input
+              type="datetime-local"
+              name="closes_at"
+              value={formData.closes_at}
+              onChange={handleClosesAtChange}
+              style={styles.input}
+              disabled={!isEditing}
+            />
+          </div>
+        </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Criação:</label>
+          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
           <input
-            type="datetime-local"
-            name="created_at"
-            value={formData.created_at}
-            onChange={handleInputChange}
+            type="number"
+            name="vote_cooldown_seconds"
+            value={formData.vote_cooldown_seconds}
+            onChange={handleCooldownChange}
             style={styles.input}
-            readOnly
+            min="0"
+            disabled={!isEditing}
           />
         </div>
 
-        {/* Botões para abrir, editar, salvar e limpar */}
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Votação:</label>
+            <select
+              name="voting_type"
+              value={formData.voting_type}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing}
+            >
+              <option value="single">Única Escolha</option>
+              <option value="ranking">Ranking</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Início:</label>
+            <input
+              type="datetime-local"
+              name="start_date"
+              value={formData.start_date}
+              onChange={handleStartDateChange}
+              style={styles.input}
+              disabled={!isEditing}
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Término:</label>
+            <input
+              type="datetime-local"
+              name="end_date"
+              value={formData.end_date}
+              onChange={handleEndDateChange}
+              style={styles.input}
+              disabled={!isEditing}
+            />
+          </div>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>
+            Mostrar Resultados Parciais:
+            <input
+              type="checkbox"
+              name="show_partial_results"
+              checked={formData.show_partial_results}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+              disabled={!isEditing}
+            />
+          </label>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Nome do Ícone:</label>
+          <input
+            type="text"
+            name="icon_name"
+            value={formData.icon_name}
+            onChange={handleInputChange}
+            style={styles.input}
+            placeholder="Digite o nome do ícone"
+            disabled={!isEditing}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>URL do Ícone:</label>
+          <input
+            type="url"
+            name="icon_url"
+            value={formData.icon_url}
+            onChange={handleInputChange}
+            style={styles.input}
+            placeholder="Digite a URL do ícone"
+            disabled={!isEditing}
+          />
+        </div>
+
+        {/* Botões de ação */}
         <div style={styles.buttonGroup}>
           <button type="button" onClick={handleOpen} style={styles.button}>
             Abrir
