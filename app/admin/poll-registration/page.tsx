@@ -1,6 +1,5 @@
 //app/admin/poll-registration/page.tsx
 
-
 "use client";
 
 import { useState } from "react";
