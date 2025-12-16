@@ -131,7 +131,7 @@ export default function PollRegistration() {
             <option value="draft">Rascunho</option>
             <option value="open">Aberta</option>
             <option value="paused">Pausada</option>
-             <option value="closed">Encerrada</option>
+            <option value="closed">Encerrada</option>
           </select>
         </div>
 
