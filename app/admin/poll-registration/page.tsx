@@ -131,7 +131,7 @@ export default function PollRegistration() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Máximo de votos por usuário:</label>
+          <label style={styles.label}>Máximo de Votos por Usuário:</label>
           <input
             type="number"
             name="max_votes_per_user"
@@ -142,7 +142,7 @@ export default function PollRegistration() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de encerramento:</label>
+          <label style={styles.label}>Data de Encerramento:</label>
           <input
             type="datetime-local"
             name="closes_at"
@@ -189,6 +189,12 @@ const styles = {
   fieldGroup: {
     display: "flex",
     flexDirection: "column" as const,
+  },
+  inlineFieldGroup: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "20px",
+    alignItems: "center",
   },
   label: {
     fontSize: "14px",
