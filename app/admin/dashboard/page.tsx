@@ -48,7 +48,7 @@ const styles = {
     minHeight: "100vh",
     color: "#333",
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "column", // Definindo o valor como string literal diretamente compatível com o tipo.
   },
   header: {
     marginBottom: "20px",
@@ -78,8 +78,8 @@ const styles = {
     borderRadius: "8px",
     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
     display: "flex",
-    flexDirection: "column" as "column",
-    alignItems: "center" as "center",
+    flexDirection: "column", // Mesma ideia de compatibilidade com o tipo.
+    alignItems: "center", // Compatível diretamente com o tipo.
     transition: "transform 0.2s, box-shadow 0.2s",
     cursor: "pointer",
   },
@@ -92,9 +92,5 @@ const styles = {
     fontSize: "1rem",
     color: "#7f8c8d",
     textAlign: "center" as "center",
-  },
-  cardHover: {
-    transform: "scale(1.05)",
-    boxShadow: "0 6px 8px rgba(0, 0, 0, 0.2)",
   },
 };
