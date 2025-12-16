@@ -12,6 +12,13 @@ export default function PollRegistration() {
     max_votes_per_user: 1,
     allow_custom_option: false,
     closes_at: "",
+    vote_cooldown_seconds: 10,
+    voting_type: "single",
+    start_date: new Date().toISOString(),
+    end_date: "",
+    show_partial_results: true,
+    icon_name: "",
+    icon_url: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -55,6 +62,13 @@ export default function PollRegistration() {
         max_votes_per_user: 1,
         allow_custom_option: false,
         closes_at: "",
+        vote_cooldown_seconds: 10,
+        voting_type: "single",
+        start_date: new Date().toISOString(),
+        end_date: "",
+        show_partial_results: true,
+        icon_name: "",
+        icon_url: "",
       });
     } catch (err: any) {
       setError(err.message || "Erro desconhecido.");
@@ -106,6 +120,20 @@ export default function PollRegistration() {
           </select>
         </div>
 
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Status:</label>
+          <select
+            name="status"
+            value={formData.status}
+            onChange={handleInputChange}
+            style={styles.select}
+          >
+            <option value="open">Aberta</option>
+            <option value="paused">Pausada</option>
+            <option value="closed">Fechada</option>
+          </select>
+        </div>
+
         <div style={styles.inlineFieldGroup}>
           <label style={styles.checkboxLabel}>
             <input
@@ -149,6 +177,89 @@ export default function PollRegistration() {
             value={formData.closes_at}
             onChange={handleInputChange}
             style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
+          <input
+            type="number"
+            name="vote_cooldown_seconds"
+            value={formData.vote_cooldown_seconds}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Tipo de Votação:</label>
+          <select
+            name="voting_type"
+            value={formData.voting_type}
+            onChange={handleInputChange}
+            style={styles.select}
+          >
+            <option value="single">Única Escolha</option>
+            <option value="ranking">Ranking</option>
+          </select>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Data de Início:</label>
+          <input
+            type="datetime-local"
+            name="start_date"
+            value={formData.start_date}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Data de Término:</label>
+          <input
+            type="datetime-local"
+            name="end_date"
+            value={formData.end_date}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>
+            Mostrar Resultados Parciais:
+            <input
+              type="checkbox"
+              name="show_partial_results"
+              checked={formData.show_partial_results}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+            />
+          </label>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Nome do Ícone:</label>
+          <input
+            type="text"
+            name="icon_name"
+            value={formData.icon_name}
+            onChange={handleInputChange}
+            style={styles.input}
+            placeholder="Digite o nome do ícone"
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>URL do Ícone:</label>
+          <input
+            type="url"
+            name="icon_url"
+            value={formData.icon_url}
+            onChange={handleInputChange}
+            style={styles.input}
+            placeholder="Digite a URL do ícone"
           />
         </div>
 
