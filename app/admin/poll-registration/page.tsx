@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function PollRegistration() {
   const [formData, setFormData] = useState({
@@ -25,6 +25,16 @@ export default function PollRegistration() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  // Atualizar o created_at sempre que a página for carregada
+  useEffect(() => {
+    const currentDate = new Date().toISOString();
+    setFormData((prevData) => ({
+      ...prevData,
+      created_at: currentDate,
+      start_date: currentDate, // Definir start_date igual a created_at
+    }));
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -77,6 +87,63 @@ export default function PollRegistration() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Validações
+  const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Math.max(0, parseInt(e.target.value, 10)); // Impedir números negativos
+    setFormData((prevData) => ({
+      ...prevData,
+      max_votes_per_user: value,
+    }));
+  };
+
+  const handleCooldownChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Math.max(0, parseInt(e.target.value, 10)); // Impedir números negativos
+    setFormData((prevData) => ({
+      ...prevData,
+      vote_cooldown_seconds: value,
+    }));
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const startDate = new Date(e.target.value);
+    const endDate = new Date(formData.end_date);
+
+    if (startDate < new Date(formData.created_at)) {
+      setError("A data de início não pode ser anterior à data de criação.");
+      return;
+    }
+
+    if (startDate > endDate) {
+      setError("A data de início não pode ser posterior à data de término.");
+      return;
+    }
+
+    setFormData((prevData) => ({
+      ...prevData,
+      start_date: e.target.value,
+    }));
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const endDate = new Date(e.target.value);
+    const startDate = new Date(formData.start_date);
+
+    if (endDate < new Date(formData.created_at)) {
+      setError("A data de término não pode ser anterior à data de criação.");
+      return;
+    }
+
+    if (startDate > endDate) {
+      setError("A data de término não pode ser anterior à data de início.");
+      return;
+    }
+
+    setFormData((prevData) => ({
+      ...prevData,
+      end_date: e.target.value,
+    }));
   };
 
   return (
@@ -144,8 +211,9 @@ export default function PollRegistration() {
               type="number"
               name="max_votes_per_user"
               value={formData.max_votes_per_user}
-              onChange={handleInputChange}
+              onChange={handleMaxVotesChange}
               style={styles.input}
+              min="0"
             />
           </div>
         </div>
@@ -205,8 +273,9 @@ export default function PollRegistration() {
             type="number"
             name="vote_cooldown_seconds"
             value={formData.vote_cooldown_seconds}
-            onChange={handleInputChange}
+            onChange={handleCooldownChange}
             style={styles.input}
+            min="0"
           />
         </div>
 
@@ -232,7 +301,7 @@ export default function PollRegistration() {
               type="datetime-local"
               name="start_date"
               value={formData.start_date}
-              onChange={handleInputChange}
+              onChange={handleStartDateChange}
               style={styles.input}
             />
           </div>
@@ -243,7 +312,7 @@ export default function PollRegistration() {
               type="datetime-local"
               name="end_date"
               value={formData.end_date}
-              onChange={handleInputChange}
+              onChange={handleEndDateChange}
               style={styles.input}
             />
           </div>
