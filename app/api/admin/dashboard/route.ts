@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  console.log("Rota do Dashboard foi chamada.");
+
   const dashboardData = {
     title: "Painel Administrativo - Auditável",
     menu: [
