@@ -131,10 +131,9 @@ export default function PollRegistration() {
               onChange={handleInputChange}
               style={styles.select}
             >
-              <option value="draft">Rascunho</option>
               <option value="open">Aberta</option>
               <option value="paused">Pausada</option>
-              <option value="closed">Encerrada</option>
+              <option value="closed">Fechada</option>
             </select>
           </div>
         </div>
@@ -152,7 +151,7 @@ export default function PollRegistration() {
           </div>
 
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Tempo para o próximo Voto (segundos):</label>
+            <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
             <input
               type="number"
               name="vote_cooldown_seconds"
