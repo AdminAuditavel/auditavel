@@ -92,6 +92,66 @@ export default function PollRegistration() {
           />
         </div>
 
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Tipo de Pesquisa:</label>
+          <select
+            name="type"
+            value={formData.type}
+            onChange={handleInputChange}
+            style={styles.select}
+          >
+            <option value="binary">Binária</option>
+            <option value="ranking">Ranking</option>
+            <option value="single">Única Escolha</option>
+          </select>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_multiple"
+              checked={formData.allow_multiple}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+            />
+            Permitir múltiplas escolhas
+          </label>
+
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_custom_option"
+              checked={formData.allow_custom_option}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+            />
+            Permitir opções personalizadas
+          </label>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Máximo de votos por usuário:</label>
+          <input
+            type="number"
+            name="max_votes_per_user"
+            value={formData.max_votes_per_user}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Data de encerramento:</label>
+          <input
+            type="datetime-local"
+            name="closes_at"
+            value={formData.closes_at}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
         <button type="submit" style={styles.button} disabled={loading}>
           {loading ? "Cadastrando..." : "Cadastrar Pesquisa"}
         </button>
@@ -151,6 +211,16 @@ const styles = {
     backgroundColor: "#fff",
     minHeight: "80px",
     resize: "none" as const,
+  },
+  checkboxLabel: {
+    fontSize: "14px",
+    color: "#374151",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  checkbox: {
+    marginRight: "10px",
   },
   button: {
     padding: "10px",
