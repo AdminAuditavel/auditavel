@@ -146,6 +146,50 @@ export default function PollRegistration() {
     }));
   };
 
+  const handleClosesAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const closesAt = new Date(e.target.value);
+    const createdAt = new Date(formData.created_at);
+    const endDate = new Date(formData.end_date);
+
+    if (closesAt < createdAt) {
+      setError("A data de encerramento não pode ser anterior à data de criação.");
+      return;
+    }
+
+    if (closesAt < endDate) {
+      setError("A data de encerramento não pode ser anterior à data de término.");
+      return;
+    }
+
+    setFormData((prevData) => ({
+      ...prevData,
+      closes_at: e.target.value,
+    }));
+  };
+
+  const handleClearForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      type: "binary",
+      status: "open",
+      allow_multiple: false,
+      max_votes_per_user: 1,
+      allow_custom_option: false,
+      created_at: new Date().toISOString(),
+      closes_at: "",
+      vote_cooldown_seconds: 10,
+      voting_type: "single",
+      start_date: new Date().toISOString(),
+      end_date: "",
+      show_partial_results: true,
+      icon_name: "",
+      icon_url: "",
+    });
+    setError("");
+    setSuccess(false);
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Cadastro de Pesquisas</h1>
@@ -261,7 +305,7 @@ export default function PollRegistration() {
               type="datetime-local"
               name="closes_at"
               value={formData.closes_at}
-              onChange={handleInputChange}
+              onChange={handleClosesAtChange}
               style={styles.input}
             />
           </div>
@@ -358,6 +402,11 @@ export default function PollRegistration() {
         <button type="submit" style={styles.button} disabled={loading}>
           {loading ? "Cadastrando..." : "Cadastrar Pesquisa"}
         </button>
+        
+        {/* Novo botão para limpar o formulário */}
+        <button type="button" onClick={handleClearForm} style={styles.clearButton}>
+          Limpar Formulário
+        </button>
 
         {success && <p style={styles.success}>Pesquisa cadastrada com sucesso!</p>}
         {error && <p style={styles.error}>{error}</p>}
@@ -448,6 +497,18 @@ const styles = {
     fontWeight: "bold",
     cursor: "pointer",
     transition: "background-color 0.2s",
+  },
+  clearButton: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#fff",
+    backgroundColor: "#f43f5e",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    transition: "background-color 0.2s",
+    marginTop: "10px",
   },
   success: {
     color: "green",
