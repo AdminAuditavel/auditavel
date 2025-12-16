@@ -7,14 +7,14 @@ export default function PollRegistration() {
     title: "",
     description: "",
     type: "binary",
-    status: "draft", // Valores: draft (Rascunho), open (Aberta), paused (Pausada), closed (Encerrada)
+    status: "draft",
     allow_multiple: false,
     max_votes_per_user: 1,
     allow_custom_option: false,
     custom_option_max_length: 50,
     closes_at: "",
     vote_cooldown_seconds: 10,
-    voting_type: "single", // Valores: single, ranking, etc.
+    voting_type: "single",
     start_date: "",
     end_date: "",
     show_partial_results: false,
@@ -26,9 +26,7 @@ export default function PollRegistration() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const isCheckbox = type === "checkbox";
 
@@ -138,7 +136,7 @@ export default function PollRegistration() {
           </select>
         </div>
 
-        <div style={styles.inlineFieldGroup}>
+        <div style={styles.fieldGroup}>
           <label style={styles.checkboxLabel}>
             <input
               type="checkbox"
@@ -149,28 +147,6 @@ export default function PollRegistration() {
             />
             Permitir múltiplas escolhas
           </label>
-
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="allow_custom_option"
-              checked={formData.allow_custom_option}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-            />
-            Permitir opções personalizadas
-          </label>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tamanho Máximo de Opção Personalizada:</label>
-          <input
-            type="number"
-            name="custom_option_max_length"
-            value={formData.custom_option_max_length}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
         </div>
 
         <div style={styles.fieldGroup}>
@@ -182,63 +158,6 @@ export default function PollRegistration() {
             onChange={handleInputChange}
             style={styles.input}
           />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Início:</label>
-          <input
-            type="datetime-local"
-            name="start_date"
-            value={formData.start_date}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Encerramento:</label>
-          <input
-            type="datetime-local"
-            name="closes_at"
-            value={formData.closes_at}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Nome do Ícone:</label>
-          <input
-            type="text"
-            name="icon_name"
-            value={formData.icon_name}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>URL do Ícone:</label>
-          <input
-            type="text"
-            name="icon_url"
-            value={formData.icon_url}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.labelInline}>
-            <input
-              type="checkbox"
-              name="show_partial_results"
-              checked={formData.show_partial_results}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-            />
-            Mostrar Resultados Parciais
-          </label>
         </div>
 
         <button type="submit" style={styles.button} disabled={loading}>
@@ -254,22 +173,87 @@ export default function PollRegistration() {
 
 const styles = {
   container: {
-    maxWidth: "900px",
+    maxWidth: "600px",
     margin: "0 auto",
     padding: "20px",
     fontFamily: "'Segoe UI', sans-serif",
+    backgroundColor: "#f9fafb",
     border: "1px solid #ddd",
-    backgroundColor: "#fff",
     borderRadius: "10px",
   },
   title: {
-    fontWeight: "bold",
     fontSize: "24px",
-    marginBottom: "10px",
+    fontWeight: "bold",
+    marginBottom: "20px",
+    color: "#333",
+    textAlign: "center" as const,
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "20px",
+  },
+  fieldGroup: {
+    display: "flex",
+    flexDirection: "column" as const,
+  },
+  label: {
+    fontSize: "14px",
+    fontWeight: "600",
+    marginBottom: "5px",
+    color: "#555",
   },
   input: {
-    padding: "8px",
+    padding: "10px",
+    fontSize: "14px",
     border: "1px solid #ddd",
+    borderRadius: "5px",
+    backgroundColor: "#fff",
   },
-  button: { padding: "10px" },
+  textarea: {
+    padding: "10px",
+    fontSize: "14px",
+    border: "1px solid #ddd",
+    borderRadius: "5px",
+    backgroundColor: "#fff",
+    minHeight: "80px",
+  },
+  select: {
+    padding: "10px",
+    fontSize: "14px",
+    border: "1px solid #ddd",
+    borderRadius: "5px",
+    backgroundColor: "#fff",
+  },
+  checkbox: {
+    marginRight: "10px",
+  },
+  checkboxLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    fontSize: "14px",
+    color: "#555",
+  },
+  button: {
+    padding: "10px",
+    fontSize: "16px",
+    color: "#fff",
+    backgroundColor: "#007bff",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    transition: "background-color 0.2s",
+  },
+  success: {
+    color: "green",
+    fontSize: "14px",
+    textAlign: "center" as const,
+  },
+  error: {
+    color: "red",
+    fontSize: "14px",
+    textAlign: "center" as const,
+  },
 };
