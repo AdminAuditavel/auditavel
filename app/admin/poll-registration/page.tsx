@@ -110,14 +110,135 @@ export default function PollRegistration() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Fim:</label>
+          <label style={styles.label}>Tipo de Pesquisa:</label>
+          <select
+            name="type"
+            value={formData.type}
+            onChange={handleInputChange}
+            style={styles.select}
+          >
+            <option value="binary">Binária</option>
+            <option value="ranking">Ranking</option>
+            <option value="single">Escolha Única</option>
+          </select>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Status:</label>
+          <select
+            name="status"
+            value={formData.status}
+            onChange={handleInputChange}
+            style={styles.select}
+          >
+            <option value="draft">Rascunho</option>
+            <option value="open">Aberta</option>
+            <option value="paused">Pausada</option>
+            <option value="closed">Encerrada</option>
+          </select>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_multiple"
+              checked={formData.allow_multiple}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+            />
+            Permitir múltiplas escolhas
+          </label>
+
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_custom_option"
+              checked={formData.allow_custom_option}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+            />
+            Permitir opções personalizadas
+          </label>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Tamanho Máximo de Opção Personalizada:</label>
           <input
-            type="datetime-local"
-            name="end_date"
-            value={formData.end_date}
+            type="number"
+            name="custom_option_max_length"
+            value={formData.custom_option_max_length}
             onChange={handleInputChange}
             style={styles.input}
           />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Tempo de Espera Entre Votos (segundos):</label>
+          <input
+            type="number"
+            name="vote_cooldown_seconds"
+            value={formData.vote_cooldown_seconds}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Data de Início:</label>
+          <input
+            type="datetime-local"
+            name="start_date"
+            value={formData.start_date}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Data de Encerramento:</label>
+          <input
+            type="datetime-local"
+            name="closes_at"
+            value={formData.closes_at}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Nome do Ícone:</label>
+          <input
+            type="text"
+            name="icon_name"
+            value={formData.icon_name}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>URL do Ícone:</label>
+          <input
+            type="text"
+            name="icon_url"
+            value={formData.icon_url}
+            onChange={handleInputChange}
+            style={styles.input}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.labelInline}>
+            <input
+              type="checkbox"
+              name="show_partial_results"
+              checked={formData.show_partial_results}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+            />
+            Mostrar Resultados Parciais
+          </label>
         </div>
 
         <button type="submit" style={styles.button} disabled={loading}>
@@ -131,82 +252,24 @@ export default function PollRegistration() {
   );
 }
 
-// Objeto de Estilos (Completo e Revisado)
 const styles = {
   container: {
-    maxWidth: "600px",
+    maxWidth: "900px",
     margin: "0 auto",
     padding: "20px",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    backgroundColor: "#f9fafb",
-    border: "1px solid #e5e7eb",
+    fontFamily: "'Segoe UI', sans-serif",
+    border: "1px solid #ddd",
+    backgroundColor: "#fff",
     borderRadius: "10px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
   },
   title: {
+    fontWeight: "bold",
     fontSize: "24px",
-    fontWeight: "bold",
-    marginBottom: "20px",
-    textAlign: "center" as const,
-    color: "#1f2937",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "20px",
-  },
-  fieldGroup: {
-    display: "flex",
-    flexDirection: "column" as const,
-  },
-  label: {
-    fontSize: "14px",
-    fontWeight: "bold",
-    color: "#374151",
-    marginBottom: "5px",
+    marginBottom: "10px",
   },
   input: {
-    padding: "10px",
-    fontSize: "14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    backgroundColor: "#fff",
+    padding: "8px",
+    border: "1px solid #ddd",
   },
-  textarea: {
-    padding: "10px",
-    fontSize: "14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    backgroundColor: "#fff",
-    minHeight: "80px",
-    resize: "none" as const,
-  },
-  select: {
-    padding: "10px",
-    fontSize: "14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    backgroundColor: "#fff",
-  },
-  button: {
-    padding: "10px",
-    fontSize: "14px",
-    color: "#fff",
-    backgroundColor: "#3b82f6",
-    border: "none",
-    borderRadius: "8px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    transition: "background-color 0.2s",
-  },
-  success: {
-    color: "green",
-    fontSize: "14px",
-    textAlign: "center" as const,
-  },
-  error: {
-    color: "red",
-    fontSize: "14px",
-    textAlign: "center" as const,
-  },
+  button: { padding: "10px" },
 };
