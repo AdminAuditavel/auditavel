@@ -128,9 +128,10 @@ export default function PollRegistration() {
             onChange={handleInputChange}
             style={styles.select}
           >
+            <option value="draft">Rascunho</option>
             <option value="open">Aberta</option>
             <option value="paused">Pausada</option>
-            <option value="closed">Fechada</option>
+             <option value="closed">Encerrada</optio
           </select>
         </div>
 
