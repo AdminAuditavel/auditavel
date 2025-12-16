@@ -11,6 +11,7 @@ export default function PollRegistration() {
     allow_multiple: false,
     max_votes_per_user: 1,
     allow_custom_option: false,
+    created_at: new Date().toISOString(),
     closes_at: "",
     vote_cooldown_seconds: 10,
     voting_type: "single",
@@ -61,6 +62,7 @@ export default function PollRegistration() {
         allow_multiple: false,
         max_votes_per_user: 1,
         allow_custom_option: false,
+        created_at: new Date().toISOString(),
         closes_at: "",
         vote_cooldown_seconds: 10,
         voting_type: "single",
@@ -170,15 +172,29 @@ export default function PollRegistration() {
           />
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Encerramento:</label>
-          <input
-            type="datetime-local"
-            name="closes_at"
-            value={formData.closes_at}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Criado em:</label>
+            <input
+              type="datetime-local"
+              name="created_at"
+              value={formData.created_at}
+              onChange={handleInputChange}
+              style={styles.input}
+              readOnly
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Encerramento:</label>
+            <input
+              type="datetime-local"
+              name="closes_at"
+              value={formData.closes_at}
+              onChange={handleInputChange}
+              style={styles.input}
+            />
+          </div>
         </div>
 
         <div style={styles.fieldGroup}>
