@@ -1,171 +1,10 @@
-"use client";
-
-import { useState } from "react";
-
-export default function PollRegistration() {
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    type: "binary",
-    status: "open",
-    allow_multiple: false,
-    max_votes_per_user: 1,
-    allow_custom_option: false,
-    closes_at: "",
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const isCheckbox = type === "checkbox";
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
-    }));
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setSuccess(false);
-
-    try {
-      const response = await fetch("/api/admin/create-poll", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Falha ao cadastrar pesquisa.");
-      }
-
-      setFormData({
-        title: "",
-        description: "",
-        type: "binary",
-        status: "open",
-        allow_multiple: false,
-        max_votes_per_user: 1,
-        allow_custom_option: false,
-        closes_at: "",
-      });
-      setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || "Erro desconhecido.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Cadastro de Pesquisas</h1>
-      <p style={styles.description}>
-        Preencha as informações abaixo para adicionar uma nova pesquisa ao sistema.
-      </p>
-
-      <form onSubmit={handleFormSubmit} style={styles.form}>
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Título:</label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleInputChange}
-            style={styles.input}
-            placeholder="Digite o título da pesquisa"
-            required
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Descrição:</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            style={styles.textarea}
-            placeholder="Digite uma descrição opcional"
-            required
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tipo de Pesquisa:</label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={handleInputChange}
-            style={styles.select}
-          >
-            <option value="binary">Binária</option>
-            <option value="ranking">Ranking</option>
-            <option value="single">Única Escolha</option>
-          </select>
-        </div>
-
-        <div style={styles.inlineFieldGroup}>
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="allow_multiple"
-              checked={formData.allow_multiple}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-            />
-            Permitir múltiplas escolhas
-          </label>
-
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="allow_custom_option"
-              checked={formData.allow_custom_option}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-            />
-            Permitir opções personalizadas
-          </label>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Máximo de votos por usuário:</label>
-          <input
-            type="number"
-            name="max_votes_per_user"
-            value={formData.max_votes_per_user}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de encerramento:</label>
-          <input
-            type="datetime-local"
-            name="closes_at"
-            value={formData.closes_at}
-            onChange={handleInputChange}
-            style={styles.input}
-          />
-        </div>
-
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? "Cadastrando..." : "Cadastrar Pesquisa"}
-        </button>
-
-        {success && <p style={styles.success}>Pesquisa cadastrada com sucesso!</p>}
-        {error && <p style={styles.error}>{error}</p>}
-      </form>
-    </div>
-  );
-}
+const baseInputStyle = {
+  padding: "10px",
+  fontSize: "14px",
+  border: "1px solid #d1d5db",
+  borderRadius: "5px",
+  backgroundColor: "#fff",
+};
 
 const styles = {
   container: {
@@ -220,19 +59,15 @@ const styles = {
     gap: "10px",
   },
   input: {
-    padding: "10px",
-    fontSize: "14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    backgroundColor: "#fff",
+    ...baseInputStyle, // Reaproveita o estilo base para inputs
   },
   textarea: {
-    ...this.input,
+    ...baseInputStyle, // Reaproveita o estilo base para textareas
     minHeight: "80px",
     resize: "none" as const,
   },
   select: {
-    ...this.input,
+    ...baseInputStyle, // Reaproveita o estilo base para selects
   },
   checkbox: {
     marginRight: "10px",
