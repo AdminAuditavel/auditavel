@@ -1,5 +1,3 @@
-//app/admin/page.tsx
-
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import Link from "next/link";
 import PollStatusSelect from "./PollStatusSelect";
@@ -26,36 +24,19 @@ export default async function AdminPage(props: {
     redirect("/");
   }
 
-  /* =======================
-     AUDITORIA — VISIBILIDADE PÚBLICA
-  ======================= */
   function getPublicVisibility(
     status: "draft" | "open" | "paused" | "closed",
     showPartial: boolean
   ) {
     if (status === "closed") {
-      return {
-        label: "Final",
-        className: "bg-emerald-100 text-emerald-800",
-      };
+      return { label: "Final", className: "bg-emerald-100 text-emerald-800" };
     }
-
     if ((status === "open" || status === "paused") && showPartial) {
-      return {
-        label: "Parcial",
-        className: "bg-amber-100 text-amber-800",
-      };
+      return { label: "Parcial", className: "bg-amber-100 text-amber-800" };
     }
-
-    return {
-      label: "Oculto",
-      className: "bg-gray-200 text-gray-700",
-    };
+    return { label: "Oculto", className: "bg-gray-200 text-gray-700" };
   }
 
-  /* =======================
-     FETCH
-  ======================= */
   const { data: polls, error } = await supabase
     .from("polls")
     .select("id, title, status, show_partial_results, created_at")
@@ -77,12 +58,21 @@ export default async function AdminPage(props: {
           Admin — Pesquisas
         </h1>
 
-        <Link
-          href="/"
-          className="text-sm text-emerald-600 hover:underline"
-        >
-          Voltar ao site
-        </Link>
+        <div className="flex items-center gap-4">
+          {/* NOVO: criar pesquisa (mantém token) */}
+          <Link
+            href={`/admin/poll-registration?token=${encodeURIComponent(
+              token ?? ""
+            )}`}
+            className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            Nova pesquisa
+          </Link>
+
+          <Link href="/" className="text-sm text-emerald-600 hover:underline">
+            Voltar ao site
+          </Link>
+        </div>
       </div>
 
       {/* TABELA */}
@@ -90,24 +80,20 @@ export default async function AdminPage(props: {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold">
-                Pesquisa
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                Status
-              </th>
+              <th className="px-4 py-3 text-left font-semibold">Pesquisa</th>
+              <th className="px-4 py-3 text-left font-semibold">Status</th>
               <th className="px-4 py-3 text-center font-semibold">
                 Resultados parciais
               </th>
               <th className="px-4 py-3 text-center font-semibold">
                 Visibilidade pública
               </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                Auditoria
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                Criada em
-              </th>
+
+              {/* NOVO */}
+              <th className="px-4 py-3 text-left font-semibold">Editar</th>
+
+              <th className="px-4 py-3 text-left font-semibold">Auditoria</th>
+              <th className="px-4 py-3 text-left font-semibold">Criada em</th>
             </tr>
           </thead>
 
@@ -124,17 +110,13 @@ export default async function AdminPage(props: {
                     key={poll.id}
                     className="border-b last:border-b-0 hover:bg-gray-50"
                   >
-                    {/* TITLE */}
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">
                         {poll.title}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        ID: {poll.id}
-                      </div>
+                      <div className="text-xs text-gray-500">ID: {poll.id}</div>
                     </td>
 
-                    {/* STATUS */}
                     <td className="px-4 py-3">
                       <PollStatusSelect
                         pollId={poll.id}
@@ -142,7 +124,6 @@ export default async function AdminPage(props: {
                       />
                     </td>
 
-                    {/* SHOW PARTIAL RESULTS */}
                     <td className="px-4 py-3 text-center">
                       <PollVisibilityToggle
                         pollId={poll.id}
@@ -150,7 +131,6 @@ export default async function AdminPage(props: {
                       />
                     </td>
 
-                    {/* VISIBILIDADE PÚBLICA */}
                     <td className="px-4 py-3 text-center">
                       <span
                         className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${visibility.className}`}
@@ -159,17 +139,29 @@ export default async function AdminPage(props: {
                       </span>
                     </td>
 
-                    {/* AUDITORIA */}
+                    {/* NOVO: abrir no formulário */}
                     <td className="px-4 py-3">
                       <Link
-                        href={`/admin/audit?token=${token}&poll_id=${poll.id}`}
+                        href={`/admin/poll-registration?token=${encodeURIComponent(
+                          token ?? ""
+                        )}&poll_id=${encodeURIComponent(poll.id)}`}
+                        className="text-sm text-emerald-600 hover:underline"
+                      >
+                        Abrir no formulário
+                      </Link>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/audit?token=${encodeURIComponent(
+                          token ?? ""
+                        )}&poll_id=${encodeURIComponent(poll.id)}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
                         Ver auditoria
                       </Link>
                     </td>
 
-                    {/* CREATED AT */}
                     <td className="px-4 py-3 text-gray-600">
                       {new Date(poll.created_at).toLocaleDateString("pt-BR")}
                     </td>
@@ -178,10 +170,7 @@ export default async function AdminPage(props: {
               })
             ) : (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-gray-500"
-                >
+                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
                   Nenhuma pesquisa encontrada.
                 </td>
               </tr>
