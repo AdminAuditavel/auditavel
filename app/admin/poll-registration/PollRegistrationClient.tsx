@@ -506,7 +506,6 @@ export default function PollRegistrationClient() {
             >
               <option value="binary">Binária</option>
               <option value="ranking">Ranking</option>
-              <option value="single">Única Escolha</option>
             </select>
           </div>
 
