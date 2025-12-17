@@ -1,20 +1,65 @@
 "use client";
 
+import { useState } from "react";
+import PollRegistration from "./poll-registration/page"; // Importa o formulário de Cadastrar Pesquisas
+// Importe outros conteúdos no futuro, como opções e gerenciamento
+
 export default function Dashboard() {
+  const [activePage, setActivePage] = useState("home"); // Gerenciar a página ativa (ex.: "home", "poll-registration")
+
+  // Função para renderizar o conteúdo dinamicamente com base na página ativa
+  const renderContent = () => {
+    switch (activePage) {
+      case "poll-registration":
+        return <PollRegistration />; // Renderiza o formulário de Cadastrar Pesquisas
+      case "options-management":
+        return <p>Gerenciar Opções - Conteúdo em Construção</p>;
+      case "audit-logs":
+        return <p>Logs de Auditoria - Conteúdo em Construção</p>;
+      default:
+        return <p>Bem-vindo! Escolha uma das opções no menu.</p>;
+    }
+  };
+
   return (
     <div style={styles.wrapper}>
+      {/* Menu Lateral */}
       <aside style={styles.sidebar}>
         <h2 style={styles.sidebarTitle}>Menu</h2>
         <nav style={styles.nav}>
-          <a href="/admin/poll-registration" style={styles.navLink}>Cadastrar Pesquisas</a>
-          <a href="/admin/poll-registration" style={styles.navLink}>Cadastrar Opções</a>
-          <a href="/admin/options-management" style={styles.navLink}>Gerenciar Opções</a>
-          <a href="/admin/audit-logs" style={styles.navLink}>Logs de Auditoria</a>
+          <button
+            onClick={() => setActivePage("poll-registration")} // Define que "Cadastrar Pesquisas" será mostrado
+            style={{
+              ...styles.navLink,
+              backgroundColor: activePage === "poll-registration" ? "#005bb5" : "transparent",
+            }}
+          >
+            Cadastrar Pesquisas
+          </button>
+          <button
+            onClick={() => setActivePage("options-management")}
+            style={{
+              ...styles.navLink,
+              backgroundColor: activePage === "options-management" ? "#005bb5" : "transparent",
+            }}
+          >
+            Gerenciar Opções
+          </button>
+          <button
+            onClick={() => setActivePage("audit-logs")}
+            style={{
+              ...styles.navLink,
+              backgroundColor: activePage === "audit-logs" ? "#005bb5" : "transparent",
+            }}
+          >
+            Logs de Auditoria
+          </button>
         </nav>
       </aside>
+
+      {/* Conteúdo Dinâmico */}
       <main style={styles.main}>
-        <h1 style={styles.title}>Painel Administrativo</h1>
-        <p style={styles.description}>Bem-vindo ao painel administrativo da plataforma Auditável. Use o menu ao lado para acessar as funcionalidades disponíveis.</p>
+        {renderContent()} {/* Renderiza o conteúdo com base na página ativa */}
       </main>
     </div>
   );
@@ -53,9 +98,8 @@ const styles = {
     borderRadius: "5px",
     transition: "background-color 0.3s",
     backgroundColor: "transparent",
-  },
-  navLinkHover: {
-    backgroundColor: "#005bb5",
+    cursor: "pointer",
+    border: "none",
   },
   main: {
     flex: "1",
@@ -63,14 +107,5 @@ const styles = {
     backgroundColor: "#f5f5f5",
     color: "#333",
     overflowY: "auto" as const,
-  },
-  title: {
-    fontSize: "2rem",
-    marginBottom: "1rem",
-  },
-  description: {
-    fontSize: "1rem",
-    lineHeight: "1.5",
-    color: "#666",
   },
 };
