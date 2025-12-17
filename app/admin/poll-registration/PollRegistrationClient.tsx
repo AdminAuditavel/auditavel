@@ -505,7 +505,7 @@ export default function PollRegistrationClient() {
               disabled={!isEditing || isBusy}
             >
               <option value="binary">Binária</option>
-              <option value="ranking">Ranking</option>
+              <option value="multiple">Ranking</option>
             </select>
           </div>
 
