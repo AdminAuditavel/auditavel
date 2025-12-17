@@ -246,7 +246,7 @@ export default function PollRegistrationClient() {
       console.log("create-poll response:", JSON.stringify(data, null, 2));
       
       if (!response.ok) {
-        throw new Error(data?.error || "Falha ao salvar pesquisa.");
+        throw new Error(data?.error || "Falha ao  pesquisa.");
       }
 
       setSuccess(true);
@@ -693,15 +693,17 @@ export default function PollRegistrationClient() {
         </div>
 
         <div style={styles.buttonGroup}>
-          <button
-            type="button"
-            onClick={handleSave}
-            style={styles.button}
-            disabled={!isEditing || isBusy}
-          >
-            {loading ? "Salvando..." : "Salvar"}
-          </button>
-
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={handleSave}
+              style={styles.button}
+              disabled={!isEditing || isBusy}
+            >
+              {loading ? "Salvando..." : "Salvar"}
+            </button>
+          )}
+        
           <button
             type="button"
             onClick={handleClearForm}
@@ -710,7 +712,7 @@ export default function PollRegistrationClient() {
           >
             Limpar
           </button>
-
+        
           {!isEditMode && (
             <button type="submit" style={styles.primaryButton} disabled={isBusy}>
               {loading ? "Cadastrando..." : "Cadastrar"}
