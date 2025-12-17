@@ -1,108 +1,148 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-type PollFormData = {
-  title: string;
-  description: string;
-  type: string;
-  status: string;
-  allow_multiple: boolean;
-  max_votes_per_user: number;
-  allow_custom_option: boolean;
-  created_at: string;
-  closes_at: string;
-  vote_cooldown_seconds: number;
-  voting_type: string;
-  start_date: string;
-  end_date: string;
-  show_partial_results: boolean;
-  icon_name: string;
-  icon_url: string;
-};
-
-type PollOptionRow = {
-  id?: string; // pode vir da API; localmente pode ficar vazio
-  poll_id: string;
-  option_text: string;
-  votes_count: number;
+type PollPayload = {
+  id?: string;
+  title?: string | null;
+  description?: string | null;
+  type?: string | null;
+  status?: string | null;
+  allow_multiple?: boolean | null;
+  max_votes_per_user?: number | null;
+  allow_custom_option?: boolean | null;
+  created_at?: string | null;
+  closes_at?: string | null;
+  vote_cooldown_seconds?: number | null;
+  voting_type?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  show_partial_results?: boolean | null;
+  icon_name?: string | null;
+  icon_url?: string | null;
 };
 
 export default function PollRegistration() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const emptyPollForm: PollFormData = useMemo(
-    () => ({
-      title: "",
-      description: "",
-      type: "binary",
-      status: "open",
-      allow_multiple: false,
-      max_votes_per_user: 1,
-      allow_custom_option: false,
-      created_at: new Date().toISOString(),
-      closes_at: "",
-      vote_cooldown_seconds: 10,
-      voting_type: "single",
-      start_date: new Date().toISOString(),
-      end_date: "",
-      show_partial_results: true,
-      icon_name: "",
-      icon_url: "",
-    }),
-    []
-  );
+  const tokenFromUrl = searchParams.get("token") ?? "";
+  const pollIdFromUrl = searchParams.get("poll_id") ?? "";
+  const isEditMode = Boolean(pollIdFromUrl);
 
-  const [formData, setFormData] = useState<PollFormData>(emptyPollForm);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    type: "binary",
+    status: "open",
+    allow_multiple: false,
+    max_votes_per_user: 1,
+    allow_custom_option: false,
+    created_at: new Date().toISOString(),
+    closes_at: "",
+    vote_cooldown_seconds: 10,
+    voting_type: "single",
+    start_date: new Date().toISOString(),
+    end_date: "",
+    show_partial_results: true,
+    icon_name: "",
+    icon_url: "",
+  });
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // usado no submit create (e no "Salvar" atual, que continua simulado)
+  const [loadingPoll, setLoadingPoll] = useState(false); // usado no load por id
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(true);
 
-  // ID da poll criada (necessário para cadastrar opções)
-  const [createdPollId, setCreatedPollId] = useState<string>("");
-
-  // Form de opção
-  const [optionText, setOptionText] = useState("");
-  const [optionsLoading, setOptionsLoading] = useState(false);
-  const [optionsError, setOptionsError] = useState("");
-  const [optionsSuccess, setOptionsSuccess] = useState(false);
-
-  // Lista local (para exibir embaixo)
-  const [createdOptions, setCreatedOptions] = useState<PollOptionRow[]>([]);
-
-  // Dados simulados para carregamento
-  const sampleData: PollFormData = {
-    title: "Pesquisa Exemplo",
-    description: "Descrição da pesquisa exemplo",
-    type: "binary",
-    status: "open",
-    allow_multiple: true,
-    max_votes_per_user: 3,
-    allow_custom_option: true,
-    created_at: "2025-12-14T10:00:00Z",
-    closes_at: "2025-12-20T10:00:00Z",
-    vote_cooldown_seconds: 15,
-    voting_type: "single",
-    start_date: "2025-12-15T10:00:00Z",
-    end_date: "2025-12-19T10:00:00Z",
-    show_partial_results: true,
-    icon_name: "icone_exemplo",
-    icon_url: "http://exemplo.com/icon.png",
-  };
-
-  // Atualiza created_at e start_date com a data atual
+  // Atualiza created_at e start_date com a data atual (somente quando NÃO estiver editando)
   useEffect(() => {
+    if (isEditMode) return;
+
     const currentDate = new Date().toISOString();
     setFormData((prevData) => ({
       ...prevData,
       created_at: currentDate,
       start_date: currentDate,
     }));
-  }, []);
+  }, [isEditMode]);
 
+  // Se vier poll_id, carregar do BD e preencher
+  useEffect(() => {
+    const loadPoll = async () => {
+      if (!pollIdFromUrl) return;
+
+      setLoadingPoll(true);
+      setError("");
+      setSuccess(false);
+
+      try {
+        const res = await fetch(
+          `/api/admin/polls/${encodeURIComponent(
+            pollIdFromUrl
+          )}?token=${encodeURIComponent(tokenFromUrl)}`,
+          { method: "GET" }
+        );
+
+        const json = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(
+            json?.error
+              ? `Falha ao carregar pesquisa: ${json.error}`
+              : "Falha ao carregar pesquisa."
+          );
+        }
+
+        const poll: PollPayload | undefined = json?.poll;
+        if (!poll) {
+          throw new Error("Resposta inválida do servidor (poll ausente).");
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          title: poll.title ?? "",
+          description: poll.description ?? "",
+          type: poll.type ?? prev.type,
+          status: poll.status ?? prev.status,
+          allow_multiple: Boolean(poll.allow_multiple ?? prev.allow_multiple),
+          max_votes_per_user:
+            typeof poll.max_votes_per_user === "number"
+              ? poll.max_votes_per_user
+              : prev.max_votes_per_user,
+          allow_custom_option: Boolean(
+            poll.allow_custom_option ?? prev.allow_custom_option
+          ),
+          created_at: poll.created_at ?? prev.created_at,
+          closes_at: poll.closes_at ?? "",
+          vote_cooldown_seconds:
+            typeof poll.vote_cooldown_seconds === "number"
+              ? poll.vote_cooldown_seconds
+              : prev.vote_cooldown_seconds,
+          voting_type: poll.voting_type ?? prev.voting_type,
+          start_date: poll.start_date ?? prev.start_date,
+          end_date: poll.end_date ?? "",
+          show_partial_results:
+            typeof poll.show_partial_results === "boolean"
+              ? poll.show_partial_results
+              : prev.show_partial_results,
+          icon_name: poll.icon_name ?? "",
+          icon_url: poll.icon_url ?? "",
+        }));
+
+        setIsEditing(true);
+      } catch (err: any) {
+        setError(err.message || "Erro desconhecido.");
+      } finally {
+        setLoadingPoll(false);
+      }
+    };
+
+    loadPoll();
+  }, [pollIdFromUrl, tokenFromUrl]);
+
+  // Função de mudança nos campos do formulário
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -115,16 +155,12 @@ export default function PollRegistration() {
     }));
   };
 
-  // Criar poll
+  // Função para enviar os dados para a API (CREATE - mantém sua funcionalidade atual)
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess(false);
-    setCreatedPollId("");
-    setCreatedOptions([]);
-    setOptionsError("");
-    setOptionsSuccess(false);
 
     try {
       const response = await fetch("/api/admin/create-poll", {
@@ -133,89 +169,37 @@ export default function PollRegistration() {
         body: JSON.stringify(formData),
       });
 
-      // Se sua API retorna JSON com id, vamos ler.
-      // Se não retornar, me diga o formato e eu ajusto.
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        const msg = data?.message || "Falha ao salvar pesquisa.";
-        throw new Error(msg);
+        throw new Error(data?.error || "Falha ao salvar pesquisa.");
       }
 
-      // Esperado: data.id ou data.poll?.id (ajuste se necessário)
-      const pollId: string =
-        data?.id || data?.poll?.id || data?.data?.id || "";
-
-      if (!pollId) {
-        // a poll foi criada mas não recebemos o id
-        // (ainda dá para cadastrar opções se você digitar o poll_id manualmente,
-        // mas aqui vamos pedir para ajustar API)
-        throw new Error(
-          "Pesquisa salva, mas não recebi o ID da pesquisa. Ajuste a API para retornar { id }."
-        );
-      }
-
-      setCreatedPollId(pollId);
       setSuccess(true);
-      setIsEditing(false);
+
+      // comportamento original: limpa após criar
+      setFormData({
+        title: "",
+        description: "",
+        type: "binary",
+        status: "open",
+        allow_multiple: false,
+        max_votes_per_user: 1,
+        allow_custom_option: false,
+        created_at: new Date().toISOString(),
+        closes_at: "",
+        vote_cooldown_seconds: 10,
+        voting_type: "single",
+        start_date: new Date().toISOString(),
+        end_date: "",
+        show_partial_results: true,
+        icon_name: "",
+        icon_url: "",
+      });
     } catch (err: any) {
       setError(err.message || "Erro desconhecido.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Form de opção: cadastrar opção para createdPollId
-  const handleCreateOption = async () => {
-    setOptionsLoading(true);
-    setOptionsError("");
-    setOptionsSuccess(false);
-
-    try {
-      if (!createdPollId) {
-        throw new Error("Crie a pesquisa primeiro para obter o poll_id.");
-      }
-      const trimmed = optionText.trim();
-      if (!trimmed) {
-        throw new Error("Digite o texto da opção.");
-      }
-
-      const payload = {
-        poll_id: createdPollId,
-        option_text: trimmed,
-        votes_count: 0,
-      };
-
-      // Você precisa criar esse endpoint (ou ajustar para o que você já tem):
-      // POST /api/admin/create-poll-option
-      const response = await fetch("/api/admin/create-poll-option", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        const msg = data?.message || "Falha ao salvar opção.";
-        throw new Error(msg);
-      }
-
-      // Se a API retornar a opção criada, ótimo; se não, a gente usa o payload.
-      const created: PollOptionRow = {
-        id: data?.id || data?.option?.id,
-        poll_id: createdPollId,
-        option_text: data?.option_text || data?.option?.option_text || trimmed,
-        votes_count: data?.votes_count ?? data?.option?.votes_count ?? 0,
-      };
-
-      setCreatedOptions((prev) => [created, ...prev]);
-      setOptionText("");
-      setOptionsSuccess(true);
-    } catch (err: any) {
-      setOptionsError(err.message || "Erro desconhecido.");
-    } finally {
-      setOptionsLoading(false);
     }
   };
 
@@ -251,7 +235,6 @@ export default function PollRegistration() {
       return;
     }
 
-    setError("");
     setFormData((prevData) => ({
       ...prevData,
       start_date: e.target.value,
@@ -261,19 +244,18 @@ export default function PollRegistration() {
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const endDate = new Date(e.target.value);
     const createdAt = new Date(formData.created_at);
-    const startDate = formData.start_date ? new Date(formData.start_date) : null;
+    const startDate = new Date(formData.start_date);
 
     if (endDate < createdAt) {
       setError("A data de término não pode ser anterior à data de criação.");
       return;
     }
 
-    if (startDate && startDate > endDate) {
+    if (startDate > endDate) {
       setError("A data de término não pode ser anterior à data de início.");
       return;
     }
 
-    setError("");
     setFormData((prevData) => ({
       ...prevData,
       end_date: e.target.value,
@@ -295,46 +277,38 @@ export default function PollRegistration() {
       return;
     }
 
-    setError("");
     setFormData((prevData) => ({
       ...prevData,
       closes_at: e.target.value,
     }));
   };
 
+  // Limpa o formulário
   const handleClearForm = () => {
     setFormData({
-      ...emptyPollForm,
+      title: "",
+      description: "",
+      type: "binary",
+      status: "open",
+      allow_multiple: false,
+      max_votes_per_user: 1,
+      allow_custom_option: false,
       created_at: new Date().toISOString(),
+      closes_at: "",
+      vote_cooldown_seconds: 10,
+      voting_type: "single",
       start_date: new Date().toISOString(),
+      end_date: "",
+      show_partial_results: true,
+      icon_name: "",
+      icon_url: "",
     });
     setError("");
     setSuccess(false);
     setIsEditing(true);
-
-    setCreatedPollId("");
-    setCreatedOptions([]);
-    setOptionText("");
-    setOptionsError("");
-    setOptionsSuccess(false);
   };
 
-  const handleOpen = () => {
-    setFormData(sampleData);
-    setIsEditing(true);
-
-    setCreatedPollId("");
-    setCreatedOptions([]);
-    setOptionText("");
-    setOptionsError("");
-    setOptionsSuccess(false);
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  // (simulado)
+  // Salvar (mantido como simulado, como você tinha)
   const handleSave = () => {
     setLoading(true);
     setTimeout(() => {
@@ -344,19 +318,39 @@ export default function PollRegistration() {
     }, 1000);
   };
 
+  const isBusy = loading || loadingPoll;
+
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>Cadastro de Pesquisas</h1>
+      <h1 style={styles.title}>
+        {isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}
+      </h1>
 
+      {isEditMode && (
+        <p style={styles.modeInfo}>
+          ID da pesquisa: <strong>{pollIdFromUrl}</strong>
+        </p>
+      )}
+
+      {/* Botão para voltar para a tabela do Admin (preservando token) */}
       <div style={styles.topActions}>
         <button
           type="button"
-          onClick={() => router.push("/admin/dashboard")}
+          onClick={() =>
+            router.push(
+              tokenFromUrl
+                ? `/admin?token=${encodeURIComponent(tokenFromUrl)}`
+                : "/admin"
+            )
+          }
           style={styles.backButton}
+          disabled={isBusy}
         >
-          Voltar ao Dashboard
+          Admin
         </button>
       </div>
+
+      {loadingPoll && <p style={styles.info}>Carregando dados da pesquisa...</p>}
 
       <form onSubmit={handleFormSubmit} style={styles.form}>
         <div style={styles.fieldGroup}>
@@ -369,7 +363,7 @@ export default function PollRegistration() {
             style={styles.input}
             placeholder="Digite o título da pesquisa"
             required
-            disabled={!isEditing || loading}
+            disabled={!isEditing || isBusy}
           />
         </div>
 
@@ -382,7 +376,7 @@ export default function PollRegistration() {
             style={styles.textarea}
             placeholder="Digite uma descrição opcional"
             required
-            disabled={!isEditing || loading}
+            disabled={!isEditing || isBusy}
           />
         </div>
 
@@ -394,7 +388,7 @@ export default function PollRegistration() {
               value={formData.type}
               onChange={handleInputChange}
               style={styles.select}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             >
               <option value="binary">Binária</option>
               <option value="ranking">Ranking</option>
@@ -409,7 +403,7 @@ export default function PollRegistration() {
               value={formData.status}
               onChange={handleInputChange}
               style={styles.select}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             >
               <option value="draft">Rascunho</option>
               <option value="open">Aberta</option>
@@ -427,7 +421,7 @@ export default function PollRegistration() {
               onChange={handleMaxVotesChange}
               style={styles.input}
               min="0"
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             />
           </div>
         </div>
@@ -440,7 +434,7 @@ export default function PollRegistration() {
               checked={formData.allow_multiple}
               onChange={handleInputChange}
               style={styles.checkbox}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             />
             Permitir múltiplas escolhas
           </label>
@@ -452,7 +446,7 @@ export default function PollRegistration() {
               checked={formData.allow_custom_option}
               onChange={handleInputChange}
               style={styles.checkbox}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             />
             Permitir opções personalizadas
           </label>
@@ -479,15 +473,13 @@ export default function PollRegistration() {
               value={formData.closes_at}
               onChange={handleClosesAtChange}
               style={styles.input}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             />
           </div>
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>
-            Tempo de Cooldown de Voto (em segundos):
-          </label>
+          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
           <input
             type="number"
             name="vote_cooldown_seconds"
@@ -495,7 +487,7 @@ export default function PollRegistration() {
             onChange={handleCooldownChange}
             style={styles.input}
             min="0"
-            disabled={!isEditing || loading}
+            disabled={!isEditing || isBusy}
           />
         </div>
 
@@ -507,7 +499,7 @@ export default function PollRegistration() {
               value={formData.voting_type}
               onChange={handleInputChange}
               style={styles.select}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             >
               <option value="single">Única Escolha</option>
               <option value="ranking">Ranking</option>
@@ -524,7 +516,7 @@ export default function PollRegistration() {
               value={formData.start_date}
               onChange={handleStartDateChange}
               style={styles.input}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             />
           </div>
 
@@ -536,7 +528,7 @@ export default function PollRegistration() {
               value={formData.end_date}
               onChange={handleEndDateChange}
               style={styles.input}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             />
           </div>
         </div>
@@ -550,7 +542,7 @@ export default function PollRegistration() {
               checked={formData.show_partial_results}
               onChange={handleInputChange}
               style={styles.checkbox}
-              disabled={!isEditing || loading}
+              disabled={!isEditing || isBusy}
             />
           </label>
         </div>
@@ -564,7 +556,7 @@ export default function PollRegistration() {
             onChange={handleInputChange}
             style={styles.input}
             placeholder="Digite o nome do ícone"
-            disabled={!isEditing || loading}
+            disabled={!isEditing || isBusy}
           />
         </div>
 
@@ -577,110 +569,48 @@ export default function PollRegistration() {
             onChange={handleInputChange}
             style={styles.input}
             placeholder="Digite a URL do ícone"
-            disabled={!isEditing || loading}
+            disabled={!isEditing || isBusy}
           />
         </div>
 
+        {/* Botões de ação (removidos Abrir/Alterar). Mantido Salvar e Limpar */}
         <div style={styles.buttonGroup}>
-          <button type="button" onClick={handleOpen} style={styles.button} disabled={loading}>
-            Abrir
+          <button
+            type="button"
+            onClick={handleSave}
+            style={styles.button}
+            disabled={!isEditing || isBusy}
+          >
+            {loading ? "Salvando..." : "Salvar"}
           </button>
 
-          <button type="button" onClick={handleEdit} style={styles.button} disabled={loading}>
-            Alterar
+          <button
+            type="button"
+            onClick={handleClearForm}
+            style={styles.clearButton}
+            disabled={isBusy}
+          >
+            Limpar
           </button>
 
-          <button type="button" onClick={handleSave} style={styles.button} disabled={!isEditing || loading}>
-            {loading ? "Salvando..." : "Salvar (simulado)"}
-          </button>
-
-          <button type="submit" style={styles.primaryButton} disabled={!isEditing || loading}>
-            {loading ? "Criando..." : "Criar Pesquisa (API)"}
-          </button>
-
-          <button type="button" onClick={handleClearForm} style={styles.clearButton} disabled={loading}>
-            Limpar Formulário
-          </button>
+          {/* Mantém o submit CREATE para não perder funcionalidade */}
+          {!isEditMode && (
+            <button type="submit" style={styles.primaryButton} disabled={isBusy}>
+              {loading ? "Cadastrando..." : "Cadastrar"}
+            </button>
+          )}
         </div>
 
-        {success && createdPollId && (
-          <p style={styles.success}>
-            Pesquisa criada com sucesso! <br />
-            <strong>poll_id:</strong> {createdPollId}
-          </p>
-        )}
+        {success && <p style={styles.success}>Operação realizada com sucesso!</p>}
         {error && <p style={styles.error}>{error}</p>}
       </form>
-
-      {/* Seção de opções */}
-      <div style={styles.divider} />
-
-      <h2 style={styles.sectionTitle}>Opções da Pesquisa</h2>
-      <p style={styles.sectionHint}>
-        Primeiro crie a pesquisa para obter o <strong>poll_id</strong>. Depois cadastre as opções abaixo.
-      </p>
-
-      <div style={styles.fieldGroup}>
-        <label style={styles.label}>poll_id (automático):</label>
-        <input type="text" value={createdPollId || ""} style={styles.input} readOnly />
-      </div>
-
-      <div style={styles.inlineOptionForm}>
-        <div style={{ ...styles.fieldGroup, flex: 1 }}>
-          <label style={styles.label}>Texto da opção:</label>
-          <input
-            type="text"
-            value={optionText}
-            onChange={(e) => setOptionText(e.target.value)}
-            style={styles.input}
-            placeholder="Ex.: Sim, Não, Talvez..."
-            disabled={!createdPollId || optionsLoading}
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleCreateOption}
-          style={styles.primaryButton}
-          disabled={!createdPollId || optionsLoading}
-        >
-          {optionsLoading ? "Adicionando..." : "Adicionar Opção"}
-        </button>
-      </div>
-
-      {optionsSuccess && <p style={styles.success}>Opção cadastrada com sucesso!</p>}
-      {optionsError && <p style={styles.error}>{optionsError}</p>}
-
-      {createdOptions.length > 0 && (
-        <div style={styles.optionsTableWrapper}>
-          <h3 style={styles.subTitle}>Opções cadastradas nesta sessão</h3>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>poll_id</th>
-                <th style={styles.th}>option_text</th>
-                <th style={styles.th}>votes_count</th>
-              </tr>
-            </thead>
-            <tbody>
-              {createdOptions.map((opt, idx) => (
-                <tr key={opt.id || `${opt.poll_id}-${idx}`}>
-                  <td style={styles.td}>{opt.poll_id}</td>
-                  <td style={styles.td}>{opt.option_text}</td>
-                  <td style={styles.td}>{opt.votes_count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }
 
 const styles = {
   container: {
-    maxWidth: "800px",
+    maxWidth: "600px",
     margin: "0 auto",
     padding: "20px",
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
@@ -695,6 +625,18 @@ const styles = {
     marginBottom: "10px",
     textAlign: "center" as const,
     color: "#1f2937",
+  },
+  modeInfo: {
+    fontSize: "13px",
+    color: "#374151",
+    marginBottom: "8px",
+    textAlign: "center" as const,
+  },
+  info: {
+    fontSize: "14px",
+    color: "#374151",
+    textAlign: "center" as const,
+    marginBottom: "10px",
   },
   topActions: {
     display: "flex",
@@ -719,6 +661,7 @@ const styles = {
   fieldGroup: {
     display: "flex",
     flexDirection: "column" as const,
+    minWidth: 0,
   },
   inlineFieldGroup: {
     display: "flex",
@@ -808,65 +751,10 @@ const styles = {
     color: "green",
     fontSize: "14px",
     textAlign: "center" as const,
-    marginTop: "10px",
   },
   error: {
     color: "red",
     fontSize: "14px",
     textAlign: "center" as const,
-    marginTop: "10px",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#e5e7eb",
-    margin: "24px 0",
-  },
-  sectionTitle: {
-    fontSize: "18px",
-    fontWeight: "bold",
-    marginBottom: "6px",
-    color: "#111827",
-  },
-  sectionHint: {
-    fontSize: "14px",
-    color: "#4b5563",
-    marginBottom: "14px",
-  },
-  inlineOptionForm: {
-    display: "flex",
-    gap: "10px",
-    alignItems: "flex-end",
-    flexWrap: "wrap" as const,
-  },
-  optionsTableWrapper: {
-    marginTop: "16px",
-    backgroundColor: "#fff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "8px",
-    padding: "12px",
-  },
-  subTitle: {
-    margin: "0 0 10px 0",
-    fontSize: "14px",
-    fontWeight: "bold",
-    color: "#374151",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse" as const,
-  },
-  th: {
-    textAlign: "left" as const,
-    fontSize: "13px",
-    padding: "8px",
-    borderBottom: "1px solid #e5e7eb",
-    color: "#374151",
-  },
-  td: {
-    fontSize: "13px",
-    padding: "8px",
-    borderBottom: "1px solid #f3f4f6",
-    color: "#111827",
-    wordBreak: "break-word" as const,
   },
 };
