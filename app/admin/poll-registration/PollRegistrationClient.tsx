@@ -23,6 +23,12 @@ type PollPayload = {
   icon_url?: string | null;
 };
 
+type PollOption = {
+  id: string;
+  poll_id: string;
+  option_text: string;
+};
+
 export default function PollRegistrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,6 +61,13 @@ export default function PollRegistrationClient() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(true);
+
+  // ===== Opções =====
+  const [options, setOptions] = useState<PollOption[]>([]);
+  const [optionText, setOptionText] = useState("");
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsError, setOptionsError] = useState("");
+  const [optionsSuccess, setOptionsSuccess] = useState(false);
 
   useEffect(() => {
     if (isEditMode) return;
@@ -94,9 +107,7 @@ export default function PollRegistrationClient() {
         }
 
         const poll: PollPayload | undefined = json?.poll;
-        if (!poll) {
-          throw new Error("Resposta inválida do servidor (poll ausente).");
-        }
+        if (!poll) throw new Error("Resposta inválida do servidor (poll ausente).");
 
         setFormData((prev) => ({
           ...prev,
@@ -140,10 +151,46 @@ export default function PollRegistrationClient() {
     loadPoll();
   }, [pollIdFromUrl, tokenFromUrl]);
 
+  // Carregar opções quando estiver editando
+  useEffect(() => {
+    const loadOptions = async () => {
+      if (!pollIdFromUrl) return;
+
+      setOptionsLoading(true);
+      setOptionsError("");
+      setOptionsSuccess(false);
+
+      try {
+        const res = await fetch(
+          `/api/admin/polls/${encodeURIComponent(
+            pollIdFromUrl
+          )}/options?token=${encodeURIComponent(tokenFromUrl)}`,
+          { method: "GET" }
+        );
+
+        const json = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(
+            json?.error
+              ? `Falha ao carregar opções: ${json.error}`
+              : "Falha ao carregar opções."
+          );
+        }
+
+        setOptions(Array.isArray(json?.options) ? json.options : []);
+      } catch (err: any) {
+        setOptionsError(err.message || "Erro desconhecido.");
+      } finally {
+        setOptionsLoading(false);
+      }
+    };
+
+    loadOptions();
+  }, [pollIdFromUrl, tokenFromUrl]);
+
   const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
     const isCheckbox = type === "checkbox";
@@ -310,6 +357,54 @@ export default function PollRegistrationClient() {
       setIsEditing(false);
       setSuccess(true);
     }, 1000);
+  };
+
+  const handleCreateOption = async () => {
+    setOptionsError("");
+    setOptionsSuccess(false);
+
+    try {
+      if (!pollIdFromUrl) {
+        throw new Error("Abra uma pesquisa existente para cadastrar opções.");
+      }
+
+      const text = optionText.trim();
+      if (!text) {
+        throw new Error("Digite o texto da opção.");
+      }
+
+      setOptionsLoading(true);
+
+      const res = await fetch(
+        `/api/admin/polls/${encodeURIComponent(
+          pollIdFromUrl
+        )}/options?token=${encodeURIComponent(tokenFromUrl)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ option_text: text }),
+        }
+      );
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          json?.error ? `Falha ao criar opção: ${json.error}` : "Falha ao criar opção."
+        );
+      }
+
+      const created: PollOption | undefined = json?.option;
+      if (!created) throw new Error("Resposta inválida do servidor (option ausente).");
+
+      setOptions((prev) => [...prev, created]);
+      setOptionText("");
+      setOptionsSuccess(true);
+    } catch (err: any) {
+      setOptionsError(err.message || "Erro desconhecido.");
+    } finally {
+      setOptionsLoading(false);
+    }
   };
 
   const isBusy = loading || loadingPoll;
@@ -588,21 +683,81 @@ export default function PollRegistrationClient() {
           </button>
 
           {!isEditMode && (
-            <button
-              type="submit"
-              style={styles.primaryButton}
-              disabled={isBusy}
-            >
+            <button type="submit" style={styles.primaryButton} disabled={isBusy}>
               {loading ? "Cadastrando..." : "Cadastrar"}
             </button>
           )}
         </div>
 
-        {success && (
-          <p style={styles.success}>Operação realizada com sucesso!</p>
-        )}
+        {success && <p style={styles.success}>Operação realizada com sucesso!</p>}
         {error && <p style={styles.error}>{error}</p>}
       </form>
+
+      {/* ======= OPÇÕES ======= */}
+      <div style={styles.divider} />
+
+      <h2 style={styles.sectionTitle}>Opções da Pesquisa</h2>
+
+      {!isEditMode ? (
+        <p style={styles.sectionHint}>
+          Para cadastrar opções, abra uma pesquisa existente (modo edição).
+        </p>
+      ) : (
+        <>
+          <div style={styles.inlineOptionForm}>
+            <div style={{ ...styles.fieldGroup, flex: 1 }}>
+              <label style={styles.label}>Texto da opção:</label>
+              <input
+                type="text"
+                value={optionText}
+                onChange={(e) => setOptionText(e.target.value)}
+                style={styles.input}
+                placeholder="Ex.: Sim, Não, Talvez..."
+                disabled={optionsLoading}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCreateOption}
+              style={styles.primaryButton}
+              disabled={optionsLoading || !optionText.trim()}
+            >
+              {optionsLoading ? "Adicionando..." : "Adicionar Opção"}
+            </button>
+          </div>
+
+          {optionsSuccess && (
+            <p style={styles.success}>Opção cadastrada com sucesso!</p>
+          )}
+          {optionsError && <p style={styles.error}>{optionsError}</p>}
+
+          <div style={styles.optionsTableWrapper}>
+            <h3 style={styles.subTitle}>Opções cadastradas</h3>
+
+            {optionsLoading ? (
+              <p style={styles.info}>Carregando opções...</p>
+            ) : options.length === 0 ? (
+              <p style={styles.info}>Nenhuma opção cadastrada.</p>
+            ) : (
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Opção</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {options.map((opt) => (
+                    <tr key={opt.id}>
+                      <td style={styles.td}>{opt.option_text}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -705,14 +860,8 @@ const styles = {
     alignItems: "center",
     gap: "10px",
   },
-  checkbox: {
-    marginRight: "10px",
-  },
-  buttonGroup: {
-    display: "flex",
-    gap: "10px",
-    flexWrap: "wrap" as const,
-  },
+  checkbox: { marginRight: "10px" },
+  buttonGroup: { display: "flex", gap: "10px", flexWrap: "wrap" as const },
   button: {
     padding: "10px",
     fontSize: "14px",
@@ -722,7 +871,6 @@ const styles = {
     borderRadius: "5px",
     fontWeight: "bold",
     cursor: "pointer",
-    transition: "background-color 0.2s",
   },
   primaryButton: {
     padding: "10px",
@@ -733,7 +881,6 @@ const styles = {
     borderRadius: "5px",
     fontWeight: "bold",
     cursor: "pointer",
-    transition: "background-color 0.2s",
   },
   clearButton: {
     padding: "10px",
@@ -744,16 +891,46 @@ const styles = {
     borderRadius: "5px",
     fontWeight: "bold",
     cursor: "pointer",
-    transition: "background-color 0.2s",
   },
-  success: {
-    color: "green",
-    fontSize: "14px",
-    textAlign: "center" as const,
+  success: { color: "green", fontSize: "14px", textAlign: "center" as const },
+  error: { color: "red", fontSize: "14px", textAlign: "center" as const },
+
+  divider: { height: 1, backgroundColor: "#e5e7eb", margin: "24px 0" },
+  sectionTitle: { fontSize: "18px", fontWeight: "bold", color: "#111827" },
+  sectionHint: { fontSize: "14px", color: "#4b5563", marginBottom: "14px" },
+  inlineOptionForm: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "flex-end",
+    flexWrap: "wrap" as const,
+    marginBottom: "10px",
   },
-  error: {
-    color: "red",
+  optionsTableWrapper: {
+    marginTop: "10px",
+    backgroundColor: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    padding: "12px",
+  },
+  subTitle: {
+    margin: "0 0 10px 0",
     fontSize: "14px",
-    textAlign: "center" as const,
+    fontWeight: "bold",
+    color: "#374151",
+  },
+  table: { width: "100%", borderCollapse: "collapse" as const },
+  th: {
+    textAlign: "left" as const,
+    fontSize: "13px",
+    padding: "8px",
+    borderBottom: "1px solid #e5e7eb",
+    color: "#374151",
+  },
+  td: {
+    fontSize: "13px",
+    padding: "8px",
+    borderBottom: "1px solid #f3f4f6",
+    color: "#111827",
+    wordBreak: "break-word" as const,
   },
 };
