@@ -400,6 +400,8 @@ export default function PollRegistrationClient() {
             start_date: formData.start_date?.trim() ? formData.start_date : null,
             end_date: formData.end_date?.trim() ? formData.end_date : null,
           }),
+        }
+      );
   
       const json = await res.json().catch(() => null);
   
