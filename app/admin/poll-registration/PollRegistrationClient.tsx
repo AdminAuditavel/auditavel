@@ -394,9 +394,12 @@ export default function PollRegistrationClient() {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        }
-      );
+          body: JSON.stringify({
+            ...formData,
+            closes_at: formData.closes_at?.trim() ? formData.closes_at : null,
+            start_date: formData.start_date?.trim() ? formData.start_date : null,
+            end_date: formData.end_date?.trim() ? formData.end_date : null,
+          }),
   
       const json = await res.json().catch(() => null);
   
