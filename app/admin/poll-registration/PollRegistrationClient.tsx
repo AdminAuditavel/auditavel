@@ -1,3 +1,5 @@
+//app/admin/poll-registration/PollRegistrationClient.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
