@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function PollRegistration() {
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -58,7 +61,9 @@ export default function PollRegistration() {
   }, []);
 
   // Função de mudança nos campos do formulário
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value, type } = e.target;
     const isCheckbox = type === "checkbox";
 
@@ -138,7 +143,7 @@ export default function PollRegistration() {
       return;
     }
 
-    if (startDate > endDate) {
+    if (formData.end_date && startDate > endDate) {
       setError("A data de início não pode ser posterior à data de término.");
       return;
     }
@@ -158,7 +163,7 @@ export default function PollRegistration() {
       return;
     }
 
-    if (startDate > endDate) {
+    if (formData.start_date && startDate > endDate) {
       setError("A data de término não pode ser anterior à data de início.");
       return;
     }
@@ -179,7 +184,7 @@ export default function PollRegistration() {
       return;
     }
 
-    if (closesAt < endDate) {
+    if (formData.end_date && closesAt < endDate) {
       setError("A data de encerramento não pode ser anterior à data de término.");
       return;
     }
@@ -212,25 +217,26 @@ export default function PollRegistration() {
     });
     setError("");
     setSuccess(false);
+    setIsEditing(true);
   };
 
   // Função para carregar os dados simulados
   const handleOpen = () => {
-    setFormData(sampleData);  // Carrega os dados simulados de exemplo
-    setIsEditing(true);  // Habilita o modo de edição
+    setFormData(sampleData); // Carrega os dados simulados de exemplo
+    setIsEditing(true); // Habilita o modo de edição
   };
 
   // Função para habilitar a edição
   const handleEdit = () => {
-    setIsEditing(true);  // Habilita o modo de edição
+    setIsEditing(true); // Habilita o modo de edição
   };
 
-  // Função para salvar os dados
+  // Função para salvar os dados (simulado)
   const handleSave = () => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      setIsEditing(false);  // Desabilita o modo de edição após salvar
+      setIsEditing(false); // Desabilita o modo de edição após salvar
       setSuccess(true);
     }, 1000);
   };
@@ -238,6 +244,18 @@ export default function PollRegistration() {
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Cadastro de Pesquisas</h1>
+
+      {/* Botão para sair/voltar */}
+      <div style={styles.topActions}>
+        <button
+          type="button"
+          onClick={() => router.push("/admin/dashboard")}
+          style={styles.backButton}
+        >
+          Voltar ao Dashboard
+        </button>
+      </div>
+
       <form onSubmit={handleFormSubmit} style={styles.form}>
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Título:</label>
@@ -365,7 +383,9 @@ export default function PollRegistration() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
+          <label style={styles.label}>
+            Tempo de Cooldown de Voto (em segundos):
+          </label>
           <input
             type="number"
             name="vote_cooldown_seconds"
@@ -469,11 +489,21 @@ export default function PollRegistration() {
             Alterar
           </button>
 
-          <button type="button" onClick={handleSave} style={styles.button} disabled={!isEditing}>
-            Salvar
+          <button
+            type="button"
+            onClick={handleSave}
+            style={styles.button}
+            disabled={!isEditing || loading}
+          >
+            {loading ? "Salvando..." : "Salvar"}
           </button>
 
-          <button type="button" onClick={handleClearForm} style={styles.clearButton}>
+          <button
+            type="button"
+            onClick={handleClearForm}
+            style={styles.clearButton}
+            disabled={loading}
+          >
             Limpar Formulário
           </button>
         </div>
@@ -502,6 +532,21 @@ const styles = {
     marginBottom: "10px",
     textAlign: "center" as const,
     color: "#1f2937",
+  },
+  topActions: {
+    display: "flex",
+    justifyContent: "flex-start",
+    marginBottom: "10px",
+  },
+  backButton: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#fff",
+    backgroundColor: "#6b7280", // cinza
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
   },
   form: {
     display: "flex",
@@ -583,6 +628,7 @@ const styles = {
   buttonGroup: {
     display: "flex",
     gap: "10px",
+    flexWrap: "wrap" as const,
   },
   success: {
     color: "green",
