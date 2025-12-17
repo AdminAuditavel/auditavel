@@ -147,7 +147,7 @@ export default async function AdminPage(props: {
                         )}&poll_id=${encodeURIComponent(poll.id)}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
-                        Abrir no formulário
+                        Abrir Formulário
                       </Link>
                     </td>
 
