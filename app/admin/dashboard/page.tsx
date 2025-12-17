@@ -7,7 +7,7 @@ export default function Dashboard() {
     <div style={styles.wrapper}>
       {/* Menu Lateral */}
       <aside style={styles.sidebar}>
-        <h2 style={styles.sidebarTitle}>Menu</h2>
+        <h2 style={styles.sidebarTitle}>AUDITÁVEL</h2>
 
         <nav style={styles.nav}>
           <Link href="/admin/poll-registration" style={styles.navLink}>
