@@ -237,6 +237,8 @@ export default function PollRegistrationClient() {
       });
 
       const data = await response.json().catch(() => null);
+      console.log("create-poll status:", response.status);
+      console.log("create-poll response:", data);
 
       if (!response.ok) {
         throw new Error(data?.error || "Falha ao salvar pesquisa.");
