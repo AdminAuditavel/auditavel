@@ -25,7 +25,7 @@ export default function PollRegistration() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [isEditing, setIsEditing] = useState(false); // Controle de edição
+  const [isEditing, setIsEditing] = useState(true); // Controle de edição
 
   // Dados simulados para carregamento
   const sampleData = {
