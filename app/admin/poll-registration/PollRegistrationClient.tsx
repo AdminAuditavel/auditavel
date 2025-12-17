@@ -379,14 +379,44 @@ export default function PollRegistrationClient() {
     setIsEditing(true);
   };
 
-  // ainda é "fake save" (Correção 2 vai transformar isso em PUT no BD)
-  const handleSave = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      if (!pollIdFromUrl) {
+        throw new Error("Abra uma pesquisa existente para salvar.");
+      }
+  
+      setLoading(true);
+      setError("");
+      setSuccess(false);
+  
+      const res = await fetch(
+        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
+  
+      const json = await res.json().catch(() => null);
+  
+      if (!res.ok) {
+        throw new Error(
+          json?.details
+            ? `Falha ao salvar: ${json.error} — ${json.details}`
+            : json?.error
+              ? `Falha ao salvar: ${json.error}`
+              : "Falha ao salvar."
+        );
+      }
+  
       setSuccess(true);
-    }, 1000);
+      setIsEditing(false);
+    } catch (err: any) {
+      setError(err.message || "Erro desconhecido.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateOption = async () => {
