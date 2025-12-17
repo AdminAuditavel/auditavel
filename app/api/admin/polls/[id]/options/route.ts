@@ -3,21 +3,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
-function assertAdmin(req: NextRequest) {
+function isAdmin(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
-  if (!token || token !== process.env.ADMIN_TOKEN) {
-    return false;
-  }
-  return true;
+  return !!token && token === process.env.ADMIN_TOKEN;
 }
 
-export async function GET(req: NextRequest, context: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    if (!assertAdmin(req)) {
+    if (!isAdmin(req)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
+
     if (!id) {
       return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
     }
@@ -36,20 +37,27 @@ export async function GET(req: NextRequest, context: { params: { id: string } })
       );
     }
 
-    return NextResponse.json({ success: true, options: data ?? [] }, { status: 200 });
+    return NextResponse.json(
+      { success: true, options: data ?? [] },
+      { status: 200 }
+    );
   } catch (err) {
     console.error("Erro inesperado (options GET):", err);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest, context: { params: { id: string } }) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    if (!assertAdmin(req)) {
+    if (!isAdmin(req)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
+
     if (!id) {
       return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
     }
