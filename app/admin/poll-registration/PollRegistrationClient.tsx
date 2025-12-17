@@ -122,9 +122,11 @@ export default function PollRegistrationClient() {
 
         if (!res.ok) {
           throw new Error(
-            json?.error
-              ? `Falha ao carregar pesquisa: ${json.error}`
-              : "Falha ao carregar pesquisa."
+            json?.details
+              ? `Falha ao criar opção: ${json.error} — ${json.details}`
+              : json?.error
+                ? `Falha ao criar opção: ${json.error}`
+                : "Falha ao criar opção."
           );
         }
 
