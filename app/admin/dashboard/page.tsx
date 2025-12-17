@@ -6,6 +6,7 @@ export default function Dashboard() {
       <h1 style={styles.title}>Painel Administrativo - Auditável</h1>
       <div style={styles.menu}>
         <a href="/admin/poll-registration" style={styles.link}>Cadastrar Pesquisas</a>
+        <a href="/admin/poll-registration" style={styles.link}>Cadastrar Opções</a>
         <a href="/admin/options-management" style={styles.link}>Gerenciar Opções</a>
         <a href="/admin/audit-logs" style={styles.link}>Logs de Auditoria</a>
       </div>
