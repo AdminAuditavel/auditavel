@@ -1,64 +1,83 @@
 //app/api/admin/polls/[id]/options/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
-export async function GET(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
+function assertAdmin(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get("token");
+  if (!token || token !== process.env.ADMIN_TOKEN) {
+    return false;
+  }
+  return true;
+}
 
-    const token = req.nextUrl.searchParams.get("token");
-    if (!token || token !== process.env.ADMIN_TOKEN) {
+export async function GET(req: NextRequest, context: { params: { id: string } }) {
+  try {
+    if (!assertAdmin(req)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
+    const { id } = context.params;
     if (!id) {
-      return NextResponse.json({ error: "missing_id" }, { status: 400 });
+      return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
     }
 
-    const { data: poll, error } = await supabase
-      .from("polls")
-      .select(
-        [
-          "id",
-          "title",
-          "description",
-          "type",
-          "status",
-          "allow_multiple",
-          "max_votes_per_user",
-          "allow_custom_option",
-          "created_at",
-          "closes_at",
-          "vote_cooldown_seconds",
-          "voting_type",
-          "start_date",
-          "end_date",
-          "show_partial_results",
-          "icon_name",
-          "icon_url",
-        ].join(", ")
-      )
-      .eq("id", id)
-      .maybeSingle(); // ✅ melhor que single p/ permitir "não encontrado" sem erro
+    const { data, error } = await supabase
+      .from("poll_options")
+      .select("id, poll_id, option_text")
+      .eq("poll_id", id)
+      .order("option_text", { ascending: true });
 
     if (error) {
-      console.error("poll GET db error:", error);
+      console.error("poll_options GET error:", error);
       return NextResponse.json(
         { error: "db_error", details: error.message },
         { status: 500 }
       );
     }
 
-    if (!poll) {
-      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
+    return NextResponse.json({ success: true, options: data ?? [] }, { status: 200 });
+  } catch (err) {
+    console.error("Erro inesperado (options GET):", err);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest, context: { params: { id: string } }) {
+  try {
+    if (!assertAdmin(req)) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    return NextResponse.json({ success: true, poll }, { status: 200 });
+    const { id } = context.params;
+    if (!id) {
+      return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
+    }
+
+    const body = await req.json().catch(() => null);
+    const option_text = (body?.option_text ?? "").toString().trim();
+
+    if (!option_text) {
+      return NextResponse.json({ error: "missing_option_text" }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from("poll_options")
+      .insert({ poll_id: id, option_text })
+      .select("id, poll_id, option_text")
+      .single();
+
+    if (error) {
+      console.error("poll_options POST error:", error);
+      return NextResponse.json(
+        { error: "db_error", details: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, option: data }, { status: 201 });
   } catch (err) {
-    console.error("Erro inesperado:", err);
+    console.error("Erro inesperado (options POST):", err);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
