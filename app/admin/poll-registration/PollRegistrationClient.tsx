@@ -37,6 +37,10 @@ export default function PollRegistrationClient() {
   const pollIdFromUrl = searchParams.get("poll_id") ?? "";
   const isEditMode = Boolean(pollIdFromUrl);
 
+  // DEBUG (remover depois)
+  console.log("Admin tokenFromUrl:", tokenFromUrl);
+  console.log("Admin pollIdFromUrl:", pollIdFromUrl);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
