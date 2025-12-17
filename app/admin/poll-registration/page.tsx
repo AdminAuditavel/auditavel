@@ -23,7 +23,7 @@ type PollPayload = {
   icon_url?: string | null;
 };
 
-export default function PollRegistration() {
+export default function PollRegistrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -50,8 +50,8 @@ export default function PollRegistration() {
     icon_url: "",
   });
 
-  const [loading, setLoading] = useState(false); // usado no submit create (e no "Salvar" atual, que continua simulado)
-  const [loadingPoll, setLoadingPoll] = useState(false); // usado no load por id
+  const [loading, setLoading] = useState(false); // usado no submit CREATE (e também no "Salvar" simulado)
+  const [loadingPoll, setLoadingPoll] = useState(false); // usado ao carregar a poll existente
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(true);
@@ -142,7 +142,6 @@ export default function PollRegistration() {
     loadPoll();
   }, [pollIdFromUrl, tokenFromUrl]);
 
-  // Função de mudança nos campos do formulário
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -155,7 +154,7 @@ export default function PollRegistration() {
     }));
   };
 
-  // Função para enviar os dados para a API (CREATE - mantém sua funcionalidade atual)
+  // CREATE (mantém funcionalidade atual)
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -308,7 +307,7 @@ export default function PollRegistration() {
     setIsEditing(true);
   };
 
-  // Salvar (mantido como simulado, como você tinha)
+  // Salvar (simulado, como você já tinha)
   const handleSave = () => {
     setLoading(true);
     setTimeout(() => {
@@ -479,7 +478,9 @@ export default function PollRegistration() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
+          <label style={styles.label}>
+            Tempo de Cooldown de Voto (em segundos):
+          </label>
           <input
             type="number"
             name="vote_cooldown_seconds"
@@ -573,7 +574,7 @@ export default function PollRegistration() {
           />
         </div>
 
-        {/* Botões de ação (removidos Abrir/Alterar). Mantido Salvar e Limpar */}
+        {/* Botões de ação (somente Salvar e Limpar). CREATE só aparece fora do modo edição */}
         <div style={styles.buttonGroup}>
           <button
             type="button"
@@ -593,9 +594,13 @@ export default function PollRegistration() {
             Limpar
           </button>
 
-          {/* Mantém o submit CREATE para não perder funcionalidade */}
+          {/* Mantém CREATE via API para não perder funcionalidade */}
           {!isEditMode && (
-            <button type="submit" style={styles.primaryButton} disabled={isBusy}>
+            <button
+              type="submit"
+              style={styles.primaryButton}
+              disabled={isBusy}
+            >
               {loading ? "Cadastrando..." : "Cadastrar"}
             </button>
           )}
