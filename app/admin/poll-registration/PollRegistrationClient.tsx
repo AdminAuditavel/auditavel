@@ -29,6 +29,24 @@ type PollOption = {
   option_text: string;
 };
 
+// datetime-local helpers (evita warning do "2025-...Z")
+function toDatetimeLocal(value?: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+
+function nowDatetimeLocal() {
+  return toDatetimeLocal(new Date().toISOString());
+}
+
 export default function PollRegistrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,6 +54,8 @@ export default function PollRegistrationClient() {
   const tokenFromUrl = searchParams.get("token") ?? "";
   const pollIdFromUrl = searchParams.get("poll_id") ?? "";
   const isEditMode = Boolean(pollIdFromUrl);
+
+  const adminTokenQuery = `token=${encodeURIComponent(tokenFromUrl)}`;
 
   // DEBUG (remover depois)
   console.log("Admin tokenFromUrl:", tokenFromUrl);
@@ -49,11 +69,11 @@ export default function PollRegistrationClient() {
     allow_multiple: false,
     max_votes_per_user: 1,
     allow_custom_option: false,
-    created_at: new Date().toISOString(),
+    created_at: nowDatetimeLocal(),
     closes_at: "",
     vote_cooldown_seconds: 10,
     voting_type: "single",
-    start_date: new Date().toISOString(),
+    start_date: nowDatetimeLocal(),
     end_date: "",
     show_partial_results: true,
     icon_name: "",
@@ -76,7 +96,7 @@ export default function PollRegistrationClient() {
   useEffect(() => {
     if (isEditMode) return;
 
-    const currentDate = new Date().toISOString();
+    const currentDate = nowDatetimeLocal();
     setFormData((prevData) => ({
       ...prevData,
       created_at: currentDate,
@@ -94,9 +114,7 @@ export default function PollRegistrationClient() {
 
       try {
         const res = await fetch(
-          `/api/admin/polls/${encodeURIComponent(
-            pollIdFromUrl
-          )}?token=${encodeURIComponent(tokenFromUrl)}`,
+          `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
           { method: "GET" }
         );
 
@@ -127,15 +145,15 @@ export default function PollRegistrationClient() {
           allow_custom_option: Boolean(
             poll.allow_custom_option ?? prev.allow_custom_option
           ),
-          created_at: poll.created_at ?? prev.created_at,
-          closes_at: poll.closes_at ?? "",
+          created_at: toDatetimeLocal(poll.created_at) || prev.created_at,
+          closes_at: toDatetimeLocal(poll.closes_at),
           vote_cooldown_seconds:
             typeof poll.vote_cooldown_seconds === "number"
               ? poll.vote_cooldown_seconds
               : prev.vote_cooldown_seconds,
           voting_type: poll.voting_type ?? prev.voting_type,
-          start_date: poll.start_date ?? prev.start_date,
-          end_date: poll.end_date ?? "",
+          start_date: toDatetimeLocal(poll.start_date) || prev.start_date,
+          end_date: toDatetimeLocal(poll.end_date),
           show_partial_results:
             typeof poll.show_partial_results === "boolean"
               ? poll.show_partial_results
@@ -153,7 +171,7 @@ export default function PollRegistrationClient() {
     };
 
     loadPoll();
-  }, [pollIdFromUrl, tokenFromUrl]);
+  }, [pollIdFromUrl, adminTokenQuery]);
 
   // Carregar opções quando estiver editando
   useEffect(() => {
@@ -168,7 +186,7 @@ export default function PollRegistrationClient() {
         const res = await fetch(
           `/api/admin/polls/${encodeURIComponent(
             pollIdFromUrl
-          )}/options?token=${encodeURIComponent(tokenFromUrl)}`,
+          )}/options?${adminTokenQuery}`,
           { method: "GET" }
         );
 
@@ -191,7 +209,7 @@ export default function PollRegistrationClient() {
     };
 
     loadOptions();
-  }, [pollIdFromUrl, tokenFromUrl]);
+  }, [pollIdFromUrl, adminTokenQuery]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -212,7 +230,7 @@ export default function PollRegistrationClient() {
     setSuccess(false);
 
     try {
-      const response = await fetch("/api/admin/create-poll", {
+      const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -234,11 +252,11 @@ export default function PollRegistrationClient() {
         allow_multiple: false,
         max_votes_per_user: 1,
         allow_custom_option: false,
-        created_at: new Date().toISOString(),
+        created_at: nowDatetimeLocal(),
         closes_at: "",
         vote_cooldown_seconds: 10,
         voting_type: "single",
-        start_date: new Date().toISOString(),
+        start_date: nowDatetimeLocal(),
         end_date: "",
         show_partial_results: true,
         icon_name: "",
@@ -339,11 +357,11 @@ export default function PollRegistrationClient() {
       allow_multiple: false,
       max_votes_per_user: 1,
       allow_custom_option: false,
-      created_at: new Date().toISOString(),
+      created_at: nowDatetimeLocal(),
       closes_at: "",
       vote_cooldown_seconds: 10,
       voting_type: "single",
-      start_date: new Date().toISOString(),
+      start_date: nowDatetimeLocal(),
       end_date: "",
       show_partial_results: true,
       icon_name: "",
@@ -354,6 +372,7 @@ export default function PollRegistrationClient() {
     setIsEditing(true);
   };
 
+  // ainda é "fake save" (Correção 2 vai transformar isso em PUT no BD)
   const handleSave = () => {
     setLoading(true);
     setTimeout(() => {
@@ -382,7 +401,7 @@ export default function PollRegistrationClient() {
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(
           pollIdFromUrl
-        )}/options?token=${encodeURIComponent(tokenFromUrl)}`,
+        )}/options?${adminTokenQuery}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -697,7 +716,6 @@ export default function PollRegistrationClient() {
         {error && <p style={styles.error}>{error}</p>}
       </form>
 
-      {/* ======= OPÇÕES ======= */}
       <div style={styles.divider} />
 
       <h2 style={styles.sectionTitle}>Opções da Pesquisa</h2>
@@ -731,9 +749,7 @@ export default function PollRegistrationClient() {
             </button>
           </div>
 
-          {optionsSuccess && (
-            <p style={styles.success}>Opção cadastrada com sucesso!</p>
-          )}
+          {optionsSuccess && <p style={styles.success}>Opção cadastrada com sucesso!</p>}
           {optionsError && <p style={styles.error}>{optionsError}</p>}
 
           <div style={styles.optionsTableWrapper}>
