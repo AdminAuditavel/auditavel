@@ -1,3 +1,5 @@
+//app/admin/page.tsx
+
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import Link from "next/link";
 import PollStatusSelect from "./PollStatusSelect";
@@ -75,21 +77,12 @@ export default async function AdminPage(props: {
           Admin — Pesquisas
         </h1>
 
-        <div className="flex items-center gap-4">
-          {/* NOVO: botão para abrir a tela de cadastro mantendo o token */}
-          <Link
-            href={`/admin/poll-registration?token=${encodeURIComponent(
-              token ?? ""
-            )}`}
-            className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            Nova pesquisa
-          </Link>
-
-          <Link href="/" className="text-sm text-emerald-600 hover:underline">
-            Voltar ao site
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="text-sm text-emerald-600 hover:underline"
+        >
+          Voltar ao site
+        </Link>
       </div>
 
       {/* TABELA */}
@@ -97,17 +90,24 @@ export default async function AdminPage(props: {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold">Pesquisa</th>
-              <th className="px-4 py-3 text-left font-semibold">Status</th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Pesquisa
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Status
+              </th>
               <th className="px-4 py-3 text-center font-semibold">
                 Resultados parciais
               </th>
               <th className="px-4 py-3 text-center font-semibold">
                 Visibilidade pública
               </th>
-              <th className="px-4 py-3 text-left font-semibold">Editar</th>
-              <th className="px-4 py-3 text-left font-semibold">Auditoria</th>
-              <th className="px-4 py-3 text-left font-semibold">Criada em</th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Auditoria
+              </th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Criada em
+              </th>
             </tr>
           </thead>
 
@@ -129,7 +129,9 @@ export default async function AdminPage(props: {
                       <div className="font-medium text-gray-900">
                         {poll.title}
                       </div>
-                      <div className="text-xs text-gray-500">ID: {poll.id}</div>
+                      <div className="text-xs text-gray-500">
+                        ID: {poll.id}
+                      </div>
                     </td>
 
                     {/* STATUS */}
@@ -157,24 +159,10 @@ export default async function AdminPage(props: {
                       </span>
                     </td>
 
-                    {/* EDITAR */}
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/poll-registration?token=${encodeURIComponent(
-                          token ?? ""
-                        )}&poll_id=${encodeURIComponent(poll.id)}`}
-                        className="text-sm text-emerald-600 hover:underline"
-                      >
-                        Abrir no formulário
-                      </Link>
-                    </td>
-
                     {/* AUDITORIA */}
                     <td className="px-4 py-3">
                       <Link
-                        href={`/admin/audit?token=${encodeURIComponent(
-                          token ?? ""
-                        )}&poll_id=${encodeURIComponent(poll.id)}`}
+                        href={`/admin/audit?token=${token}&poll_id=${poll.id}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
                         Ver auditoria
@@ -190,7 +178,10 @@ export default async function AdminPage(props: {
               })
             ) : (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                <td
+                  colSpan={6}
+                  className="px-4 py-6 text-center text-gray-500"
+                >
                   Nenhuma pesquisa encontrada.
                 </td>
               </tr>
