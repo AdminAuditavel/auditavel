@@ -1,21 +1,26 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Dashboard() {
   return (
     <div style={styles.wrapper}>
       {/* Menu Lateral */}
       <aside style={styles.sidebar}>
         <h2 style={styles.sidebarTitle}>Menu</h2>
+
         <nav style={styles.nav}>
-          <a href="/admin/poll-registration" style={styles.navLink}>
+          <Link href="/admin/poll-registration" style={styles.navLink}>
             Cadastrar Pesquisas
-          </a>
-          <a href="/admin/options-management" style={styles.navLink}>
+          </Link>
+
+          <Link href="/admin/options-management" style={styles.navLink}>
             Gerenciar Opções
-          </a>
-          <a href="/admin/audit-logs" style={styles.navLink}>
+          </Link>
+
+          <Link href="/admin/audit-logs" style={styles.navLink}>
             Logs de Auditoria
-          </a>
+          </Link>
         </nav>
       </aside>
 
@@ -64,9 +69,10 @@ const styles = {
     borderRadius: "5px",
     transition: "background-color 0.3s, color 0.3s",
     backgroundColor: "transparent",
+    display: "block",
   },
   navLinkHover: {
-    backgroundColor: "#659f74", // Destaque no link ao passar o mouse
+    backgroundColor: "#659f74", // (não usado com inline styles; para hover de verdade use CSS)
   },
   main: {
     flex: "1",
