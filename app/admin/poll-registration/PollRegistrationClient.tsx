@@ -64,11 +64,17 @@ function datetimeLocalToISOOrNull(value: string): string | null {
   const s = (value ?? "").trim();
   if (!s) return null;
 
-  // datetime-local (sem timezone): interpreta como horário local e converte p/ UTC
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
 
   return d.toISOString();
+}
+
+function isValidDatetimeLocal(value: string) {
+  const s = (value ?? "").trim();
+  if (!s) return false;
+  const d = new Date(s);
+  return !Number.isNaN(d.getTime());
 }
 
 export default function PollRegistrationClient() {
@@ -87,7 +93,6 @@ export default function PollRegistrationClient() {
     type: "binary",
     status: "open",
     allow_multiple: false,
-    // ✅ agora pode ser number OU string vazia (quando allow_multiple=true e admin ainda não digitou)
     max_votes_per_user: 1 as number | "",
     allow_custom_option: false,
     created_at: nowDatetimeLocal(),
@@ -99,6 +104,13 @@ export default function PollRegistrationClient() {
     show_partial_results: true,
     icon_name: "",
     icon_url: "",
+  });
+
+  // Mantém o último valor válido para reverter quando o usuário sai do campo com valor inválido
+  const [lastValidDates, setLastValidDates] = useState({
+    start_date: nowDatetimeLocal(),
+    end_date: "",
+    closes_at: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -114,7 +126,6 @@ export default function PollRegistrationClient() {
   const [optionsError, setOptionsError] = useState("");
   const [optionsSuccess, setOptionsSuccess] = useState(false);
 
-  // edição de opção (sem "cancelar", como você pediu)
   const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
   const [editingOptionText, setEditingOptionText] = useState("");
   const [optionSaving, setOptionSaving] = useState(false);
@@ -126,6 +137,11 @@ export default function PollRegistrationClient() {
     setFormData((prevData) => ({
       ...prevData,
       created_at: currentDate,
+      start_date: currentDate,
+    }));
+
+    setLastValidDates((prev) => ({
+      ...prev,
       start_date: currentDate,
     }));
   }, [isEditMode]);
@@ -164,36 +180,36 @@ export default function PollRegistrationClient() {
         const poll: PollPayload | undefined = json?.poll;
         if (!poll) throw new Error("Resposta inválida do servidor (poll ausente).");
 
-        setFormData((prev) => ({
-          ...prev,
+        const nextForm = {
           title: poll.title ?? "",
           description: poll.description ?? "",
-          type: poll.type ?? prev.type,
-          status: poll.status ?? prev.status,
-          allow_multiple: Boolean(poll.allow_multiple ?? prev.allow_multiple),
+          type: poll.type ?? "binary",
+          status: poll.status ?? "open",
+          allow_multiple: Boolean(poll.allow_multiple ?? false),
           max_votes_per_user:
-            typeof poll.max_votes_per_user === "number"
-              ? poll.max_votes_per_user
-              : prev.max_votes_per_user,
-          allow_custom_option: Boolean(
-            poll.allow_custom_option ?? prev.allow_custom_option
-          ),
-          created_at: toDatetimeLocal(poll.created_at) || prev.created_at,
+            typeof poll.max_votes_per_user === "number" ? poll.max_votes_per_user : 1,
+          allow_custom_option: Boolean(poll.allow_custom_option ?? false),
+          created_at: toDatetimeLocal(poll.created_at) || nowDatetimeLocal(),
           closes_at: toDatetimeLocal(poll.closes_at),
           vote_cooldown_seconds:
-            typeof poll.vote_cooldown_seconds === "number"
-              ? poll.vote_cooldown_seconds
-              : prev.vote_cooldown_seconds,
-          voting_type: poll.voting_type ?? prev.voting_type,
-          start_date: toDatetimeLocal(poll.start_date) || prev.start_date,
+            typeof poll.vote_cooldown_seconds === "number" ? poll.vote_cooldown_seconds : 10,
+          voting_type: poll.voting_type ?? "single",
+          start_date: toDatetimeLocal(poll.start_date) || nowDatetimeLocal(),
           end_date: toDatetimeLocal(poll.end_date),
           show_partial_results:
-            typeof poll.show_partial_results === "boolean"
-              ? poll.show_partial_results
-              : prev.show_partial_results,
+            typeof poll.show_partial_results === "boolean" ? poll.show_partial_results : true,
           icon_name: poll.icon_name ?? "",
           icon_url: poll.icon_url ?? "",
-        }));
+        };
+
+        setFormData((prev) => ({ ...prev, ...nextForm }));
+
+        // atualiza lastValidDates com o que veio do backend
+        setLastValidDates({
+          start_date: nextForm.start_date,
+          end_date: nextForm.end_date,
+          closes_at: nextForm.closes_at,
+        });
 
         setIsEditing(true);
       } catch (err: any) {
@@ -206,7 +222,6 @@ export default function PollRegistrationClient() {
     loadPoll();
   }, [pollIdFromUrl, adminTokenQuery]);
 
-  // Carregar opções quando estiver editando
   useEffect(() => {
     const loadOptions = async () => {
       if (!pollIdFromUrl) return;
@@ -217,9 +232,7 @@ export default function PollRegistrationClient() {
 
       try {
         const res = await fetch(
-          `/api/admin/polls/${encodeURIComponent(
-            pollIdFromUrl
-          )}/options?${adminTokenQuery}`,
+          `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options?${adminTokenQuery}`,
           { method: "GET" }
         );
 
@@ -261,17 +274,14 @@ export default function PollRegistrationClient() {
     }));
   };
 
-  // ✅ NOVO: controla allow_multiple e força max_votes_per_user conforme regra
   const handleAllowMultipleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
 
     setFormData((prev) => {
       if (!checked) {
-        // desliga múltiplo => trava em 1
         return { ...prev, allow_multiple: false, max_votes_per_user: 1 };
       }
 
-      // liga múltiplo => exige que admin digite (deixa vazio se não for >=2)
       const current = prev.max_votes_per_user;
       const keep =
         typeof current === "number" && current >= 2 ? current : ("" as const);
@@ -282,7 +292,6 @@ export default function PollRegistrationClient() {
 
   const validateVotesConfigOrThrow = (data: typeof formData) => {
     if (!data.allow_multiple) {
-      // coerência: sem múltiplos votos => sempre 1
       return { ...data, max_votes_per_user: 1 as const };
     }
 
@@ -298,6 +307,88 @@ export default function PollRegistrationClient() {
     return { ...data, max_votes_per_user: n };
   };
 
+  // ===== Datas: onChange só atualiza (permite digitação parcial).
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // ===== Datas: valida no onBlur e reverte para último válido se necessário.
+  const validateAndCommitDatesOrRevert = (field: "start_date" | "end_date" | "closes_at") => {
+    const value = formData[field];
+
+    // end_date/closes_at são opcionais (permitir limpar)
+    if ((field === "end_date" || field === "closes_at") && !value) {
+      setError("");
+      setLastValidDates((prev) => ({ ...prev, [field]: "" }));
+      return;
+    }
+
+    // start_date é obrigatório (não permitir vazio)
+    if (field === "start_date" && !value) {
+      setError("Preencha a data de início (start_date).");
+      setFormData((prev) => ({ ...prev, start_date: lastValidDates.start_date }));
+      return;
+    }
+
+    // formato válido?
+    if (!isValidDatetimeLocal(value)) {
+      setError(
+        field === "start_date"
+          ? "Data de início inválida."
+          : field === "end_date"
+            ? "Data de término inválida."
+            : "Data de encerramento inválida."
+      );
+      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      return;
+    }
+
+    const createdAt = new Date(formData.created_at);
+    const startDate = formData.start_date ? new Date(formData.start_date) : null;
+    const endDate = formData.end_date ? new Date(formData.end_date) : null;
+    const closesAt = formData.closes_at ? new Date(formData.closes_at) : null;
+
+    // Regras auditáveis
+    if (
+      !Number.isNaN(createdAt.getTime()) &&
+      ((startDate && startDate < createdAt) ||
+        (endDate && endDate < createdAt) ||
+        (closesAt && closesAt < createdAt))
+    ) {
+      setError("Datas não podem ser anteriores à data de criação.");
+      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      return;
+    }
+
+    // coerência entre datas
+    if (startDate && endDate && endDate < startDate) {
+      setError("A data de término não pode ser anterior à data de início.");
+      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      return;
+    }
+
+    if (startDate && closesAt && closesAt < startDate) {
+      setError("A data de encerramento não pode ser anterior à data de início.");
+      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      return;
+    }
+
+    if (endDate && closesAt && closesAt < endDate) {
+      setError("A data de encerramento não pode ser anterior à data de término.");
+      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      return;
+    }
+
+    // ok -> grava como último válido
+    setError("");
+    setLastValidDates((prev) => ({ ...prev, [field]: value }));
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -305,8 +396,7 @@ export default function PollRegistrationClient() {
     setSuccess(false);
 
     try {
-      // ===== Datas (cadastro) =====
-      // start_date obrigatório + confirmação + não pode ser menor que agora (com tolerância)
+      // Valida start_date no submit também
       const startRaw = formData.start_date?.trim();
       if (!startRaw) throw new Error("Preencha a data de início (start_date).");
 
@@ -333,14 +423,12 @@ export default function PollRegistrationClient() {
 
       const payload = validateVotesConfigOrThrow(formData);
 
-      // ✅ Alinhamento: enviar ISO UTC no payload
       const startISO = datetimeLocalToISOOrNull(payload.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
 
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
 
-      // ✅ Não enviar created_at (âncora auditável é do banco)
       const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
 
       const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
@@ -362,6 +450,7 @@ export default function PollRegistrationClient() {
 
       setSuccess(true);
 
+      const resetNow = nowDatetimeLocal();
       setFormData({
         title: "",
         description: "",
@@ -370,15 +459,21 @@ export default function PollRegistrationClient() {
         allow_multiple: false,
         max_votes_per_user: 1,
         allow_custom_option: false,
-        created_at: nowDatetimeLocal(),
+        created_at: resetNow,
         closes_at: "",
         vote_cooldown_seconds: 10,
         voting_type: "single",
-        start_date: nowDatetimeLocal(),
+        start_date: resetNow,
         end_date: "",
         show_partial_results: true,
         icon_name: "",
         icon_url: "",
+      });
+
+      setLastValidDates({
+        start_date: resetNow,
+        end_date: "",
+        closes_at: "",
       });
     } catch (err: any) {
       setError(err.message || "Erro desconhecido.");
@@ -388,7 +483,6 @@ export default function PollRegistrationClient() {
   };
 
   const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // se allow_multiple=false, trava em 1
     if (!formData.allow_multiple) {
       setFormData((prevData) => ({
         ...prevData,
@@ -399,7 +493,6 @@ export default function PollRegistrationClient() {
 
     const raw = e.target.value;
 
-    // permite apagar enquanto digita, mas continua obrigatório pra salvar
     if (raw === "") {
       setFormData((prevData) => ({
         ...prevData,
@@ -425,131 +518,9 @@ export default function PollRegistrationClient() {
     }));
   };
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const startDate = new Date(e.target.value);
-    if (Number.isNaN(startDate.getTime())) {
-      setError("Data de início inválida.");
-      return;
-    }
-
-    const createdAt = new Date(formData.created_at);
-    const endDate = formData.end_date ? new Date(formData.end_date) : null;
-
-    // MODELO AUDITÁVEL: nunca pode começar antes da criação (âncora)
-    if (!Number.isNaN(createdAt.getTime()) && startDate < createdAt) {
-      setError("A data de início não pode ser anterior à data de criação.");
-      return;
-    }
-
-    if (endDate && !Number.isNaN(endDate.getTime()) && startDate > endDate) {
-      setError("A data de início não pode ser posterior à data de término.");
-      return;
-    }
-
-    setError("");
-    setFormData((prevData) => ({
-      ...prevData,
-      start_date: e.target.value,
-    }));
-  };
-
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-
-    // permitir limpar (end_date é opcional)
-    if (!raw) {
-      setError("");
-      setFormData((prevData) => ({
-        ...prevData,
-        end_date: "",
-      }));
-      return;
-    }
-
-    const endDate = new Date(raw);
-    if (Number.isNaN(endDate.getTime())) {
-      setError("Data de término inválida.");
-      return;
-    }
-
-    const createdAt = new Date(formData.created_at);
-    const startDate = new Date(formData.start_date);
-
-    // MODELO AUDITÁVEL: não pode ser antes da criação
-    if (!Number.isNaN(createdAt.getTime()) && endDate < createdAt) {
-      setError("A data de término não pode ser anterior à data de criação.");
-      return;
-    }
-
-    if (!Number.isNaN(startDate.getTime()) && endDate < startDate) {
-      setError("A data de término não pode ser anterior à data de início.");
-      return;
-    }
-
-    // coerência adicional: closes_at não pode ficar antes do novo end_date
-    if (formData.closes_at) {
-      const closesAt = new Date(formData.closes_at);
-      if (!Number.isNaN(closesAt.getTime()) && closesAt < endDate) {
-        setError("A data de encerramento não pode ser anterior à data de término.");
-        return;
-      }
-    }
-
-    setError("");
-    setFormData((prevData) => ({
-      ...prevData,
-      end_date: raw,
-    }));
-  };
-
-  const handleClosesAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-
-    // permitir limpar (closes_at é opcional)
-    if (!raw) {
-      setError("");
-      setFormData((prevData) => ({
-        ...prevData,
-        closes_at: "",
-      }));
-      return;
-    }
-
-    const closesAt = new Date(raw);
-    if (Number.isNaN(closesAt.getTime())) {
-      setError("Data de encerramento inválida.");
-      return;
-    }
-
-    const createdAt = new Date(formData.created_at);
-    const startDate = new Date(formData.start_date);
-    const endDate = formData.end_date ? new Date(formData.end_date) : null;
-
-    // MODELO AUDITÁVEL: não pode ser antes da criação
-    if (!Number.isNaN(createdAt.getTime()) && closesAt < createdAt) {
-      setError("A data de encerramento não pode ser anterior à data de criação.");
-      return;
-    }
-
-    // coerência do modelo: closes_at >= start_date
-    if (!Number.isNaN(startDate.getTime()) && closesAt < startDate) {
-      setError("A data de encerramento não pode ser anterior à data de início.");
-      return;
-    }
-
-    if (endDate && !Number.isNaN(endDate.getTime()) && closesAt < endDate) {
-      setError("A data de encerramento não pode ser anterior à data de término.");
-      return;
-    }
-
-    setError("");
-    setFormData((prevData) => ({
-      ...prevData,
-      closes_at: raw,
-    }));
-  };
-
   const handleClearForm = () => {
+    const resetNow = nowDatetimeLocal();
+
     setFormData({
       title: "",
       description: "",
@@ -558,16 +529,23 @@ export default function PollRegistrationClient() {
       allow_multiple: false,
       max_votes_per_user: 1,
       allow_custom_option: false,
-      created_at: nowDatetimeLocal(),
+      created_at: resetNow,
       closes_at: "",
       vote_cooldown_seconds: 10,
       voting_type: "single",
-      start_date: nowDatetimeLocal(),
+      start_date: resetNow,
       end_date: "",
       show_partial_results: true,
       icon_name: "",
       icon_url: "",
     });
+
+    setLastValidDates({
+      start_date: resetNow,
+      end_date: "",
+      closes_at: "",
+    });
+
     setError("");
     setSuccess(false);
     setIsEditing(true);
@@ -585,14 +563,12 @@ export default function PollRegistrationClient() {
 
       const payload = validateVotesConfigOrThrow(formData);
 
-      // ✅ Alinhamento: enviar ISO UTC no payload
       const startISO = datetimeLocalToISOOrNull(payload.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
 
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
 
-      // ✅ Não enviar created_at
       const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
 
       const res = await fetch(
@@ -625,6 +601,13 @@ export default function PollRegistrationClient() {
 
       setSuccess(true);
       setIsEditing(false);
+
+      // após salvar com sucesso, atualiza lastValidDates para os valores atuais
+      setLastValidDates({
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        closes_at: formData.closes_at,
+      });
     } catch (err: any) {
       setError(err.message || "Erro desconhecido.");
     } finally {
@@ -776,7 +759,6 @@ export default function PollRegistrationClient() {
 
       setOptions((prev) => prev.filter((o) => o.id !== opt.id));
 
-      // se deletou a que estava em edição, sai da edição
       if (editingOptionId === opt.id) {
         setEditingOptionId(null);
         setEditingOptionText("");
@@ -792,7 +774,6 @@ export default function PollRegistrationClient() {
 
   const isBusy = loading || loadingPoll;
 
-  // minStart só é aplicado no cadastro (requisito: start_date não pode ser menor que agora)
   const minStartDatetimeLocal = !isEditMode ? nowDatetimeLocal() : undefined;
 
   return (
@@ -941,7 +922,8 @@ export default function PollRegistrationClient() {
               type="datetime-local"
               name="closes_at"
               value={formData.closes_at}
-              onChange={handleClosesAtChange}
+              onChange={handleDateChange}
+              onBlur={() => validateAndCommitDatesOrRevert("closes_at")}
               style={styles.input}
               disabled={!isEditing || isBusy}
             />
@@ -984,7 +966,8 @@ export default function PollRegistrationClient() {
               type="datetime-local"
               name="start_date"
               value={formData.start_date}
-              onChange={handleStartDateChange}
+              onChange={handleDateChange}
+              onBlur={() => validateAndCommitDatesOrRevert("start_date")}
               style={styles.input}
               min={minStartDatetimeLocal}
               required
@@ -998,7 +981,8 @@ export default function PollRegistrationClient() {
               type="datetime-local"
               name="end_date"
               value={formData.end_date}
-              onChange={handleEndDateChange}
+              onChange={handleDateChange}
+              onBlur={() => validateAndCommitDatesOrRevert("end_date")}
               style={styles.input}
               disabled={!isEditing || isBusy}
             />
@@ -1330,7 +1314,6 @@ const styles = {
     cursor: "pointer",
   },
 
-  // ===== Botões de ícone (lápis/salvar/excluir) =====
   iconButton: {
     width: "38px",
     height: "38px",
