@@ -193,11 +193,15 @@ export async function PUT(
     }
 
     /* =========================
-       DATAS (REFINO V2)
-       - edição pode permitir start_date no passado (correção/manutenção)
-       - end_date e closes_at podem ficar vazios ("") -> null
-       - valida coerência entre datas
-       - se start_date for enviado vazio, bloqueia (mantém start_date obrigatório)
+       DATAS (REFINO V2 - MODELO AUDITÁVEL)
+       Regras:
+       - start_date é obrigatório (não pode ser apagado)
+       - start_date NÃO pode ser menor que created_at (sempre)
+       - end_date e closes_at podem ser vazios ("") -> null
+       - coerência:
+         - end_date >= start_date (se existir)
+         - closes_at >= start_date (se existir)
+         - closes_at >= end_date (se ambos existirem)
     ========================= */
 
     // normalização quando vier do form ("" -> null)
@@ -214,10 +218,10 @@ export async function PUT(
     }
 
     // Para validar coerência, precisamos considerar valores atuais + update parcial.
-    // Busca o snapshot atual apenas das datas.
+    // Busca snapshot atual das datas (inclui created_at como âncora auditável).
     const { data: current, error: currentError } = await supabase
       .from("polls")
-      .select("start_date, end_date, closes_at")
+      .select("created_at, start_date, end_date, closes_at")
       .eq("id", id)
       .single();
 
@@ -231,12 +235,13 @@ export async function PUT(
     const nextClosesRaw =
       "closes_at" in update ? update.closes_at : current.closes_at;
 
+    let createdAt: Date | null = null;
     let nextStart: Date | null = null;
     let nextEnd: Date | null = null;
     let nextCloses: Date | null = null;
 
     try {
-      // nextStartRaw pode vir string ou null; start_date deve existir no final
+      createdAt = parseDateOrNull(current.created_at, "created_at");
       nextStart = parseDateOrNull(nextStartRaw, "start_date");
       nextEnd = parseDateOrNull(nextEndRaw, "end_date");
       nextCloses = parseDateOrNull(nextClosesRaw, "closes_at");
@@ -256,6 +261,17 @@ export async function PUT(
       throw e;
     }
 
+    if (!createdAt) {
+      // created_at deveria sempre existir; se não existir, melhor falhar explicitamente
+      return NextResponse.json(
+        {
+          error: "invalid_created_at",
+          message: "created_at inválido (não foi possível validar as datas).",
+        },
+        { status: 500 }
+      );
+    }
+
     if (!nextStart) {
       // segurança extra: start_date não pode ficar nulo depois do merge
       return NextResponse.json(
@@ -264,6 +280,40 @@ export async function PUT(
       );
     }
 
+    // Regra auditável: start_date não pode ser menor que created_at
+    if (nextStart.getTime() < createdAt.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_start_date_before_created_at",
+          message: "start_date não pode ser menor que created_at.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // (Opcional, mas coerente): end_date/closes_at não podem ser menores que created_at
+    // Isso evita configurar datas "antes da criação" mesmo quando start_date não mudou.
+    if (nextEnd && nextEnd.getTime() < createdAt.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_end_date_before_created_at",
+          message: "end_date não pode ser menor que created_at.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (nextCloses && nextCloses.getTime() < createdAt.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_closes_at_before_created_at",
+          message: "closes_at não pode ser menor que created_at.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Coerência entre datas do modelo
     if (nextEnd && nextEnd.getTime() < nextStart.getTime()) {
       return NextResponse.json(
         {
