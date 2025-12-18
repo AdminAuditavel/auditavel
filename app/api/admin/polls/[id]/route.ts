@@ -111,18 +111,50 @@ export async function PUT(
       update.title = t;
     }
 
+    // normaliza max_votes_per_user se vier no payload
     if ("max_votes_per_user" in update && update.max_votes_per_user != null) {
       const n = Number(update.max_votes_per_user);
-      if (!Number.isFinite(n) || n < 0) {
-        return NextResponse.json({ error: "invalid_max_votes_per_user" }, { status: 400 });
+      if (!Number.isFinite(n) || n < 1) {
+        return NextResponse.json(
+          {
+            error: "invalid_max_votes_per_user",
+            message: "max_votes_per_user deve ser >= 1",
+          },
+          { status: 400 }
+        );
       }
       update.max_votes_per_user = n;
+    }
+
+    // Regra: allow_multiple=false => max_votes_per_user=1 (e ignora o que vier)
+    // Regra: allow_multiple=true => max_votes_per_user obrigatório e >=2
+    if ("allow_multiple" in update) {
+      update.allow_multiple = Boolean(update.allow_multiple);
+
+      if (!update.allow_multiple) {
+        update.max_votes_per_user = 1;
+      } else {
+        const n = Number(update.max_votes_per_user);
+        if (!Number.isFinite(n) || n < 2) {
+          return NextResponse.json(
+            {
+              error: "invalid_max_votes_per_user",
+              message: "max_votes_per_user deve ser >= 2 quando allow_multiple=true",
+            },
+            { status: 400 }
+          );
+        }
+        update.max_votes_per_user = n;
+      }
     }
 
     if ("vote_cooldown_seconds" in update && update.vote_cooldown_seconds != null) {
       const n = Number(update.vote_cooldown_seconds);
       if (!Number.isFinite(n) || n < 0) {
-        return NextResponse.json({ error: "invalid_vote_cooldown_seconds" }, { status: 400 });
+        return NextResponse.json(
+          { error: "invalid_vote_cooldown_seconds" },
+          { status: 400 }
+        );
       }
       update.vote_cooldown_seconds = n;
     }
