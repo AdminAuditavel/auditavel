@@ -1,3 +1,5 @@
+//app/api/admin/create-poll/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
@@ -9,27 +11,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+    }
+
+    const allowMultiple = Boolean((body as any).allow_multiple);
+
+    // Regras:
+    // - allow_multiple=false => max_votes_per_user=1
+    // - allow_multiple=true  => max_votes_per_user obrigatório e >=2
+    let maxVotesPerUser = 1;
+
+    if (!allowMultiple) {
+      maxVotesPerUser = 1;
+    } else {
+      const n = Number((body as any).max_votes_per_user);
+      if (!Number.isFinite(n) || n < 2) {
+        return NextResponse.json(
+          {
+            error: "invalid_max_votes_per_user",
+            message: "max_votes_per_user deve ser >= 2 quando allow_multiple=true",
+          },
+          { status: 400 }
+        );
+      }
+      maxVotesPerUser = n;
+    }
 
     // Obs: estamos mantendo seu shape atual, só inserindo
     const { data, error } = await supabase
       .from("polls")
       .insert({
-        title: body.title,
-        description: body.description,
-        type: body.type,
-        status: body.status,
-        allow_multiple: body.allow_multiple,
-        max_votes_per_user: body.max_votes_per_user,
-        allow_custom_option: body.allow_custom_option,
-        closes_at: body.closes_at || null,
-        vote_cooldown_seconds: body.vote_cooldown_seconds,
-        voting_type: body.voting_type,
-        start_date: body.start_date || null,
-        end_date: body.end_date || null,
-        show_partial_results: body.show_partial_results,
-        icon_name: body.icon_name || null,
-        icon_url: body.icon_url || null,
+        title: (body as any).title,
+        description: (body as any).description,
+        type: (body as any).type,
+        status: (body as any).status,
+        allow_multiple: allowMultiple,
+        max_votes_per_user: maxVotesPerUser,
+        allow_custom_option: (body as any).allow_custom_option,
+        closes_at: (body as any).closes_at || null,
+        vote_cooldown_seconds: (body as any).vote_cooldown_seconds,
+        voting_type: (body as any).voting_type,
+        start_date: (body as any).start_date || null,
+        end_date: (body as any).end_date || null,
+        show_partial_results: (body as any).show_partial_results,
+        icon_name: (body as any).icon_name || null,
+        icon_url: (body as any).icon_url || null,
       })
       .select("id")
       .single();
