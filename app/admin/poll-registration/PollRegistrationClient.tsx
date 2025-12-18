@@ -340,11 +340,14 @@ export default function PollRegistrationClient() {
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
 
+      // ✅ Não enviar created_at (âncora auditável é do banco)
+      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
+
       const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...payload,
+          ...payloadWithoutCreatedAt,
           start_date: startISO,
           end_date: endISO,
           closes_at: closesISO,
@@ -589,13 +592,16 @@ export default function PollRegistrationClient() {
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
 
+      // ✅ Não enviar created_at
+      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
+
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...payload,
+            ...payloadWithoutCreatedAt,
             start_date: startISO,
             end_date: endISO,
             closes_at: closesISO,
