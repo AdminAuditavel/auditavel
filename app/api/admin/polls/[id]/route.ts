@@ -28,6 +28,34 @@ const POLL_SELECT_FIELDS = [
   "icon_url",
 ].join(", ");
 
+/**
+ * Normaliza valores vindos do form (datetime-local):
+ * - "" / undefined / null -> null
+ * - string -> string (trim)
+ */
+function emptyToNull(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t ? t : null;
+}
+
+/**
+ * Faz o parse de data para validação.
+ * Retorna null se vier vazio.
+ * Dispara erro (throw) se vier string não vazia porém inválida.
+ */
+function parseDateOrNull(value: unknown, fieldName: string): Date | null {
+  const s = emptyToNull(value);
+  if (!s) return null;
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`invalid_date:${fieldName}`);
+  }
+  return d;
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -107,7 +135,8 @@ export async function PUT(
     // validações mínimas
     if ("title" in update) {
       const t = String(update.title ?? "").trim();
-      if (!t) return NextResponse.json({ error: "missing_title" }, { status: 400 });
+      if (!t)
+        return NextResponse.json({ error: "missing_title" }, { status: 400 });
       update.title = t;
     }
 
@@ -139,7 +168,8 @@ export async function PUT(
           return NextResponse.json(
             {
               error: "invalid_max_votes_per_user",
-              message: "max_votes_per_user deve ser >= 2 quando allow_multiple=true",
+              message:
+                "max_votes_per_user deve ser >= 2 quando allow_multiple=true",
             },
             { status: 400 }
           );
@@ -148,7 +178,10 @@ export async function PUT(
       }
     }
 
-    if ("vote_cooldown_seconds" in update && update.vote_cooldown_seconds != null) {
+    if (
+      "vote_cooldown_seconds" in update &&
+      update.vote_cooldown_seconds != null
+    ) {
       const n = Number(update.vote_cooldown_seconds);
       if (!Number.isFinite(n) || n < 0) {
         return NextResponse.json(
@@ -157,6 +190,108 @@ export async function PUT(
         );
       }
       update.vote_cooldown_seconds = n;
+    }
+
+    /* =========================
+       DATAS (REFINO V2)
+       - edição pode permitir start_date no passado (correção/manutenção)
+       - end_date e closes_at podem ficar vazios ("") -> null
+       - valida coerência entre datas
+       - se start_date for enviado vazio, bloqueia (mantém start_date obrigatório)
+    ========================= */
+
+    // normalização quando vier do form ("" -> null)
+    if ("start_date" in update) update.start_date = emptyToNull(update.start_date);
+    if ("end_date" in update) update.end_date = emptyToNull(update.end_date);
+    if ("closes_at" in update) update.closes_at = emptyToNull(update.closes_at);
+
+    // se admin tentar "apagar" start_date, bloqueia
+    if ("start_date" in update && !update.start_date) {
+      return NextResponse.json(
+        { error: "missing_start_date", message: "start_date é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    // Para validar coerência, precisamos considerar valores atuais + update parcial.
+    // Busca o snapshot atual apenas das datas.
+    const { data: current, error: currentError } = await supabase
+      .from("polls")
+      .select("start_date, end_date, closes_at")
+      .eq("id", id)
+      .single();
+
+    if (currentError || !current) {
+      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
+    }
+
+    const nextStartRaw =
+      "start_date" in update ? update.start_date : current.start_date;
+    const nextEndRaw = "end_date" in update ? update.end_date : current.end_date;
+    const nextClosesRaw =
+      "closes_at" in update ? update.closes_at : current.closes_at;
+
+    let nextStart: Date | null = null;
+    let nextEnd: Date | null = null;
+    let nextCloses: Date | null = null;
+
+    try {
+      // nextStartRaw pode vir string ou null; start_date deve existir no final
+      nextStart = parseDateOrNull(nextStartRaw, "start_date");
+      nextEnd = parseDateOrNull(nextEndRaw, "end_date");
+      nextCloses = parseDateOrNull(nextClosesRaw, "closes_at");
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg.startsWith("invalid_date:")) {
+        const field = msg.split("invalid_date:")[1] || "date";
+        return NextResponse.json(
+          {
+            error: "invalid_date_format",
+            field,
+            message: `Formato de data inválido em ${field}.`,
+          },
+          { status: 400 }
+        );
+      }
+      throw e;
+    }
+
+    if (!nextStart) {
+      // segurança extra: start_date não pode ficar nulo depois do merge
+      return NextResponse.json(
+        { error: "missing_start_date", message: "start_date é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    if (nextEnd && nextEnd.getTime() < nextStart.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_end_date_before_start",
+          message: "end_date não pode ser menor que start_date.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (nextCloses && nextCloses.getTime() < nextStart.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_closes_at_before_start",
+          message: "closes_at não pode ser menor que start_date.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (nextEnd && nextCloses && nextCloses.getTime() < nextEnd.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_closes_at_before_end",
+          message: "closes_at não pode ser menor que end_date.",
+        },
+        { status: 400 }
+      );
     }
 
     // Se você está enviando "datetime-local" (YYYY-MM-DDTHH:mm),
