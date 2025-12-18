@@ -49,6 +49,12 @@ function nowDatetimeLocal() {
   return toDatetimeLocal(new Date().toISOString());
 }
 
+function formatPtBrDateTime(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("pt-BR");
+}
+
 export default function PollRegistrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -283,6 +289,32 @@ export default function PollRegistrationClient() {
     setSuccess(false);
 
     try {
+      // ===== Datas (cadastro) =====
+      // start_date obrigatório + confirmação + não pode ser menor que agora (com tolerância)
+      const startRaw = formData.start_date?.trim();
+      if (!startRaw) throw new Error("Preencha a data de início (start_date).");
+
+      const start = new Date(startRaw);
+      if (Number.isNaN(start.getTime())) {
+        throw new Error("Data de início inválida.");
+      }
+
+      // tolerância 60s (mesma regra do backend)
+      const toleranceMs = 60 * 1000;
+      if (start.getTime() < Date.now() - toleranceMs) {
+        throw new Error(
+          "A data de início não pode ser menor que agora. Ajuste e confirme."
+        );
+      }
+
+      const ok = window.confirm(
+        `Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`
+      );
+      if (!ok) {
+        setLoading(false);
+        return;
+      }
+
       const payload = validateVotesConfigOrThrow(formData);
 
       const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
@@ -294,7 +326,7 @@ export default function PollRegistrationClient() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(data?.error || "Falha ao criar pesquisa.");
+        throw new Error(data?.message || data?.error || "Falha ao criar pesquisa.");
       }
 
       setSuccess(true);
@@ -481,9 +513,11 @@ export default function PollRegistrationClient() {
         throw new Error(
           json?.details
             ? `Falha ao salvar: ${json.error} — ${json.details}`
-            : json?.error
-              ? `Falha ao salvar: ${json.error}`
-              : "Falha ao salvar."
+            : json?.message
+              ? `Falha ao salvar: ${json.message}`
+              : json?.error
+                ? `Falha ao salvar: ${json.error}`
+                : "Falha ao salvar."
         );
       }
 
@@ -655,6 +689,9 @@ export default function PollRegistrationClient() {
   };
 
   const isBusy = loading || loadingPoll;
+
+  // minStart só é aplicado no cadastro (requisito: start_date não pode ser menor que agora)
+  const minStartDatetimeLocal = !isEditMode ? nowDatetimeLocal() : undefined;
 
   return (
     <div style={styles.container}>
@@ -847,6 +884,8 @@ export default function PollRegistrationClient() {
               value={formData.start_date}
               onChange={handleStartDateChange}
               style={styles.input}
+              min={minStartDatetimeLocal}
+              required
               disabled={!isEditing || isBusy}
             />
           </div>
