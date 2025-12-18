@@ -472,6 +472,46 @@ export default function PollRegistrationClient() {
     }
   };
 
+  const handleDeleteOption = async (opt: PollOption) => {
+    try {
+      setOptionsError("");
+      setOptionsSuccess(false);
+  
+      if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para remover opções.");
+  
+      const ok = window.confirm(`Remover a opção:\n\n"${opt.option_text}"\n\nTem certeza?`);
+      if (!ok) return;
+  
+      setOptionsLoading(true);
+  
+      const res = await fetch(
+        `/api/admin/polls/${encodeURIComponent(
+          pollIdFromUrl
+        )}/options/${encodeURIComponent(opt.id)}?${adminTokenQuery}`,
+        { method: "DELETE" }
+      );
+  
+      const json = await res.json().catch(() => null);
+  
+      if (!res.ok) {
+        throw new Error(
+          json?.details
+            ? `Falha ao remover opção: ${json.error} — ${json.details}`
+            : json?.error
+              ? `Falha ao remover opção: ${json.error}`
+              : "Falha ao remover opção."
+        );
+      }
+  
+      setOptions((prev) => prev.filter((o) => o.id !== opt.id));
+      setOptionsSuccess(true);
+    } catch (err: any) {
+      setOptionsError(err.message || "Erro desconhecido.");
+    } finally {
+      setOptionsLoading(false);
+    }
+  };
+
   const isBusy = loading || loadingPoll;
 
   return (
@@ -807,12 +847,23 @@ export default function PollRegistrationClient() {
                 <thead>
                   <tr>
                     <th style={styles.th}>Opção</th>
+                    <th style={{ ...styles.th, width: 140 }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {options.map((opt) => (
                     <tr key={opt.id}>
                       <td style={styles.td}>{opt.option_text}</td>
+                      <td style={styles.td}>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOption(opt)}
+                          style={styles.clearButton}
+                          disabled={optionsLoading}
+                        >
+                          Remover
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
