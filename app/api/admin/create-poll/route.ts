@@ -16,6 +16,27 @@ function emptyToNull(v: unknown): string | null {
 }
 
 /**
+ * Converte valores de data recebidos do front para um formato consistente (ISO UTC),
+ * evitando problemas de fuso horário entre client (datetime-local) e servidor.
+ *
+ * - "" -> null
+ * - "YYYY-MM-DDTHH:mm" (datetime-local) -> Date(local) -> toISOString() (UTC)
+ * - ISO com timezone (Z ou +hh:mm) -> mantém
+ */
+function toISOOrNull(value: unknown): string | null {
+  const s = emptyToNull(value);
+  if (!s) return null;
+
+  // Se já tem timezone explícito, mantém
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) return s;
+
+  // datetime-local (sem timezone): interpreta como horário local
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
  * Faz o parse de data para validação.
  * Retorna null se vier vazio.
  * Dispara erro (throw) se vier string não vazia porém inválida.
@@ -148,6 +169,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ Normaliza datas para ISO UTC antes de salvar (evita problema de fuso)
+    const startDateISO = toISOOrNull((body as any).start_date);
+    const endDateISO = toISOOrNull((body as any).end_date);
+    const closesAtISO = toISOOrNull((body as any).closes_at);
+
+    if (!startDateISO) {
+      return NextResponse.json(
+        {
+          error: "invalid_date_format",
+          field: "start_date",
+          message: "Formato de data inválido em start_date.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Obs: estamos mantendo seu shape atual, só inserindo
     const { data, error } = await supabase
       .from("polls")
@@ -161,9 +198,9 @@ export async function POST(req: NextRequest) {
         allow_custom_option: (body as any).allow_custom_option,
 
         // Datas: start_date obrigatório, end_date/closes_at opcionais
-        start_date: (body as any).start_date,
-        end_date: emptyToNull((body as any).end_date),
-        closes_at: emptyToNull((body as any).closes_at),
+        start_date: startDateISO,
+        end_date: endDateISO,
+        closes_at: closesAtISO,
 
         vote_cooldown_seconds: (body as any).vote_cooldown_seconds,
         voting_type: (body as any).voting_type,
