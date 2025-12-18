@@ -65,7 +65,8 @@ export default function PollRegistrationClient() {
     type: "binary",
     status: "open",
     allow_multiple: false,
-    max_votes_per_user: 1,
+    // ✅ agora pode ser number OU string vazia (quando allow_multiple=true e admin ainda não digitou)
+    max_votes_per_user: 1 as number | "",
     allow_custom_option: false,
     created_at: nowDatetimeLocal(),
     closes_at: "",
@@ -121,7 +122,12 @@ export default function PollRegistrationClient() {
           { method: "GET" }
         );
 
-        const json = await res.json().catch(() => null);
+        let json: any = null;
+        try {
+          json = await res.json();
+        } catch {
+          json = null;
+        }
 
         if (!res.ok) {
           throw new Error(
@@ -195,7 +201,12 @@ export default function PollRegistrationClient() {
           { method: "GET" }
         );
 
-        const json = await res.json().catch(() => null);
+        let json: any = null;
+        try {
+          json = await res.json();
+        } catch {
+          json = null;
+        }
 
         if (!res.ok) {
           throw new Error(
@@ -228,6 +239,43 @@ export default function PollRegistrationClient() {
     }));
   };
 
+  // ✅ NOVO: controla allow_multiple e força max_votes_per_user conforme regra
+  const handleAllowMultipleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+
+    setFormData((prev) => {
+      if (!checked) {
+        // desliga múltiplo => trava em 1
+        return { ...prev, allow_multiple: false, max_votes_per_user: 1 };
+      }
+
+      // liga múltiplo => exige que admin digite (deixa vazio se não for >=2)
+      const current = prev.max_votes_per_user;
+      const keep =
+        typeof current === "number" && current >= 2 ? current : ("" as const);
+
+      return { ...prev, allow_multiple: true, max_votes_per_user: keep };
+    });
+  };
+
+  const validateVotesConfigOrThrow = (data: typeof formData) => {
+    if (!data.allow_multiple) {
+      // coerência: sem múltiplos votos => sempre 1
+      return { ...data, max_votes_per_user: 1 as const };
+    }
+
+    if (data.max_votes_per_user === "") {
+      throw new Error("Digite o máximo de votos por usuário (mínimo 2).");
+    }
+
+    const n = Number(data.max_votes_per_user);
+    if (!Number.isFinite(n) || n < 2) {
+      throw new Error("O máximo de votos por usuário deve ser 2 ou mais.");
+    }
+
+    return { ...data, max_votes_per_user: n };
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -235,10 +283,12 @@ export default function PollRegistrationClient() {
     setSuccess(false);
 
     try {
+      const payload = validateVotesConfigOrThrow(formData);
+
       const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json().catch(() => null);
@@ -275,10 +325,32 @@ export default function PollRegistrationClient() {
   };
 
   const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.max(0, parseInt(e.target.value, 10) || 0);
+    // se allow_multiple=false, trava em 1
+    if (!formData.allow_multiple) {
+      setFormData((prevData) => ({
+        ...prevData,
+        max_votes_per_user: 1,
+      }));
+      return;
+    }
+
+    const raw = e.target.value;
+
+    // permite apagar enquanto digita, mas continua obrigatório pra salvar
+    if (raw === "") {
+      setFormData((prevData) => ({
+        ...prevData,
+        max_votes_per_user: "",
+      }));
+      return;
+    }
+
+    const value = parseInt(raw, 10);
+    if (!Number.isFinite(value)) return;
+
     setFormData((prevData) => ({
       ...prevData,
-      max_votes_per_user: value,
+      max_votes_per_user: Math.max(2, value),
     }));
   };
 
@@ -387,16 +459,18 @@ export default function PollRegistrationClient() {
       setError("");
       setSuccess(false);
 
+      const payload = validateVotesConfigOrThrow(formData);
+
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...formData,
-            closes_at: formData.closes_at?.trim() ? formData.closes_at : null,
-            start_date: formData.start_date?.trim() ? formData.start_date : null,
-            end_date: formData.end_date?.trim() ? formData.end_date : null,
+            ...payload,
+            closes_at: payload.closes_at?.trim() ? payload.closes_at : null,
+            start_date: payload.start_date?.trim() ? payload.start_date : null,
+            end_date: payload.end_date?.trim() ? payload.end_date : null,
           }),
         }
       );
@@ -501,7 +575,12 @@ export default function PollRegistrationClient() {
         }
       );
 
-      const json = await res.json().catch(() => null);
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        json = null;
+      }
 
       if (!res.ok) {
         throw new Error(
@@ -668,11 +747,12 @@ export default function PollRegistrationClient() {
             <input
               type="number"
               name="max_votes_per_user"
-              value={formData.max_votes_per_user}
+              value={formData.max_votes_per_user as any}
               onChange={handleMaxVotesChange}
               style={styles.input}
-              min="0"
-              disabled={!isEditing || isBusy}
+              min={formData.allow_multiple ? 2 : 1}
+              required={formData.allow_multiple}
+              disabled={!isEditing || isBusy || !formData.allow_multiple}
             />
           </div>
         </div>
@@ -683,11 +763,11 @@ export default function PollRegistrationClient() {
               type="checkbox"
               name="allow_multiple"
               checked={formData.allow_multiple}
-              onChange={handleInputChange}
+              onChange={handleAllowMultipleChange}
               style={styles.checkbox}
               disabled={!isEditing || isBusy}
             />
-            Permitir múltiplas escolhas
+            Permitir mais de um voto por usuário
           </label>
 
           <label style={styles.checkboxLabel}>
@@ -836,7 +916,12 @@ export default function PollRegistrationClient() {
             </button>
           )}
 
-          <button type="button" onClick={handleClearForm} style={styles.clearButton} disabled={isBusy}>
+          <button
+            type="button"
+            onClick={handleClearForm}
+            style={styles.clearButton}
+            disabled={isBusy}
+          >
             Limpar
           </button>
 
