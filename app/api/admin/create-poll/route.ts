@@ -3,6 +3,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
+/**
+ * Normaliza valores vindos do form (datetime-local):
+ * - "" / undefined / null -> null
+ * - string -> string (trim)
+ */
+function emptyToNull(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t ? t : null;
+}
+
+/**
+ * Faz o parse de data para validação.
+ * Retorna null se vier vazio.
+ * Dispara erro (throw) se vier string não vazia porém inválida.
+ */
+function parseDateOrNull(value: unknown, fieldName: string): Date | null {
+  const s = emptyToNull(value);
+  if (!s) return null;
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`invalid_date:${fieldName}`);
+  }
+  return d;
+}
+
 export async function POST(req: NextRequest) {
   try {
     // token via query (mesmo padrão do resto do admin)
@@ -39,6 +67,87 @@ export async function POST(req: NextRequest) {
       maxVotesPerUser = n;
     }
 
+    /* =========================
+       DATAS (REFINO V2)
+       - start_date obrigatório no cadastro
+       - start_date não pode ser menor que agora (com tolerância)
+       - end_date e closes_at opcionais
+       - valida coerência entre datas
+    ========================= */
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+    let closesAt: Date | null = null;
+
+    try {
+      startDate = parseDateOrNull((body as any).start_date, "start_date");
+      endDate = parseDateOrNull((body as any).end_date, "end_date");
+      closesAt = parseDateOrNull((body as any).closes_at, "closes_at");
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg.startsWith("invalid_date:")) {
+        const field = msg.split("invalid_date:")[1] || "date";
+        return NextResponse.json(
+          {
+            error: "invalid_date_format",
+            field,
+            message: `Formato de data inválido em ${field}.`,
+          },
+          { status: 400 }
+        );
+      }
+      throw e;
+    }
+
+    if (!startDate) {
+      return NextResponse.json(
+        { error: "missing_start_date", message: "start_date é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    // tolerância de 60s para evitar falso negativo (admin demora a clicar em salvar)
+    const toleranceMs = 60 * 1000;
+    if (startDate.getTime() < Date.now() - toleranceMs) {
+      return NextResponse.json(
+        {
+          error: "invalid_start_date_in_past",
+          message:
+            "start_date não pode ser menor que agora (confirme a data/hora de início da votação).",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (endDate && endDate.getTime() < startDate.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_end_date_before_start",
+          message: "end_date não pode ser menor que start_date.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (closesAt && closesAt.getTime() < startDate.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_closes_at_before_start",
+          message: "closes_at não pode ser menor que start_date.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (endDate && closesAt && closesAt.getTime() < endDate.getTime()) {
+      return NextResponse.json(
+        {
+          error: "invalid_closes_at_before_end",
+          message: "closes_at não pode ser menor que end_date.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Obs: estamos mantendo seu shape atual, só inserindo
     const { data, error } = await supabase
       .from("polls")
@@ -50,11 +159,14 @@ export async function POST(req: NextRequest) {
         allow_multiple: allowMultiple,
         max_votes_per_user: maxVotesPerUser,
         allow_custom_option: (body as any).allow_custom_option,
-        closes_at: (body as any).closes_at || null,
+
+        // Datas: start_date obrigatório, end_date/closes_at opcionais
+        start_date: (body as any).start_date,
+        end_date: emptyToNull((body as any).end_date),
+        closes_at: emptyToNull((body as any).closes_at),
+
         vote_cooldown_seconds: (body as any).vote_cooldown_seconds,
         voting_type: (body as any).voting_type,
-        start_date: (body as any).start_date || null,
-        end_date: (body as any).end_date || null,
         show_partial_results: (body as any).show_partial_results,
         icon_name: (body as any).icon_name || null,
         icon_url: (body as any).icon_url || null,
