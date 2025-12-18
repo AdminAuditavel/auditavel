@@ -832,7 +832,7 @@ export default function PollRegistrationClient() {
             </button>
           </div>
 
-          {optionsSuccess && <p style={styles.success}>Opção cadastrada com sucesso!</p>}
+          {optionsSuccess && <p style={styles.success}>Opção atualizada com sucesso!</p>}
           {optionsError && <p style={styles.error}>{optionsError}</p>}
 
           <div style={styles.optionsTableWrapper}>
@@ -847,25 +847,70 @@ export default function PollRegistrationClient() {
                 <thead>
                   <tr>
                     <th style={styles.th}>Opção</th>
-                    <th style={{ ...styles.th, width: 140 }}>Ações</th>
+                    <th style={{ ...styles.th, width: 160 }}>Ações</th>
                   </tr>
                 </thead>
+              
                 <tbody>
-                  {options.map((opt) => (
-                    <tr key={opt.id}>
-                      <td style={styles.td}>{opt.option_text}</td>
-                      <td style={styles.td}>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteOption(opt)}
-                          style={styles.clearButton}
-                          disabled={optionsLoading}
-                        >
-                          Remover
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {options.map((opt) => {
+                    const isEditingRow = editingOptionId === opt.id;
+              
+                    return (
+                      <tr key={opt.id}>
+                        <td style={styles.td}>
+                          {isEditingRow ? (
+                            <input
+                              type="text"
+                              value={editingOptionText}
+                              onChange={(e) => setEditingOptionText(e.target.value)}
+                              style={styles.input}
+                              disabled={optionSaving || optionsLoading}
+                            />
+                          ) : (
+                            opt.option_text
+                          )}
+                        </td>
+              
+                        <td style={styles.td}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                            {!isEditingRow ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditOption(opt)}
+                                  style={styles.iconButton}
+                                  title="Editar"
+                                  disabled={optionsLoading}
+                                >
+                                  ✏️
+                                </button>
+              
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteOption(opt)}
+                                  style={styles.iconDangerButton}
+                                  title="Excluir"
+                                  disabled={optionsLoading}
+                                >
+                                  🗑️
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleSaveOption}
+                                style={styles.iconSuccessButton}
+                                title="Salvar"
+                                disabled={optionSaving || !editingOptionText.trim()}
+                              >
+                                💾
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -975,7 +1020,9 @@ const styles = {
     gap: "10px",
   },
   checkbox: { marginRight: "10px" },
+
   buttonGroup: { display: "flex", gap: "10px", flexWrap: "wrap" as const },
+
   button: {
     padding: "10px",
     fontSize: "14px",
@@ -1006,6 +1053,45 @@ const styles = {
     fontWeight: "bold",
     cursor: "pointer",
   },
+
+  // ===== Botões de ícone (lápis/salvar/excluir) =====
+  iconButton: {
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #d1d5db",
+    backgroundColor: "#fff",
+    cursor: "pointer",
+    fontSize: "18px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconSuccessButton: {
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #16a34a",
+    backgroundColor: "#dcfce7",
+    cursor: "pointer",
+    fontSize: "18px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconDangerButton: {
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #f43f5e",
+    backgroundColor: "#ffe4e6",
+    cursor: "pointer",
+    fontSize: "18px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   success: { color: "green", fontSize: "14px", textAlign: "center" as const },
   error: { color: "red", fontSize: "14px", textAlign: "center" as const },
 
