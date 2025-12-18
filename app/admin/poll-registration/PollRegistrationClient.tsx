@@ -59,10 +59,6 @@ export default function PollRegistrationClient() {
 
   const adminTokenQuery = `token=${encodeURIComponent(tokenFromUrl)}`;
 
-  // DEBUG (remover depois)
-  console.log("Admin tokenFromUrl:", tokenFromUrl);
-  console.log("Admin pollIdFromUrl:", pollIdFromUrl);
-
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -95,6 +91,11 @@ export default function PollRegistrationClient() {
   const [optionsError, setOptionsError] = useState("");
   const [optionsSuccess, setOptionsSuccess] = useState(false);
 
+  // edição de opção (sem "cancelar", como você pediu)
+  const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
+  const [editingOptionText, setEditingOptionText] = useState("");
+  const [optionSaving, setOptionSaving] = useState(false);
+
   useEffect(() => {
     if (isEditMode) return;
 
@@ -125,10 +126,10 @@ export default function PollRegistrationClient() {
         if (!res.ok) {
           throw new Error(
             json?.details
-              ? `Falha ao criar opção: ${json.error} — ${json.details}`
+              ? `Falha ao carregar pesquisa: ${json.error} — ${json.details}`
               : json?.error
-                ? `Falha ao criar opção: ${json.error}`
-                : "Falha ao criar opção."
+                ? `Falha ao carregar pesquisa: ${json.error}`
+                : "Falha ao carregar pesquisa."
           );
         }
 
@@ -242,11 +243,8 @@ export default function PollRegistrationClient() {
 
       const data = await response.json().catch(() => null);
 
-      console.log("create-poll status:", response.status);
-      console.log("create-poll response:", JSON.stringify(data, null, 2));
-      
       if (!response.ok) {
-        throw new Error(data?.error || "Falha ao  pesquisa.");
+        throw new Error(data?.error || "Falha ao criar pesquisa.");
       }
 
       setSuccess(true);
@@ -384,11 +382,11 @@ export default function PollRegistrationClient() {
       if (!pollIdFromUrl) {
         throw new Error("Abra uma pesquisa existente para salvar.");
       }
-  
+
       setLoading(true);
       setError("");
       setSuccess(false);
-  
+
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
         {
@@ -402,9 +400,9 @@ export default function PollRegistrationClient() {
           }),
         }
       );
-  
+
       const json = await res.json().catch(() => null);
-  
+
       if (!res.ok) {
         throw new Error(
           json?.details
@@ -414,7 +412,7 @@ export default function PollRegistrationClient() {
               : "Falha ao salvar."
         );
       }
-  
+
       setSuccess(true);
       setIsEditing(false);
     } catch (err: any) {
@@ -472,27 +470,85 @@ export default function PollRegistrationClient() {
     }
   };
 
+  const startEditOption = (opt: PollOption) => {
+    setOptionsError("");
+    setOptionsSuccess(false);
+    setEditingOptionId(opt.id);
+    setEditingOptionText(opt.option_text);
+  };
+
+  const handleSaveOption = async () => {
+    try {
+      setOptionsError("");
+      setOptionsSuccess(false);
+
+      if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para editar opções.");
+      if (!editingOptionId) throw new Error("Nenhuma opção em edição.");
+
+      const text = editingOptionText.trim();
+      if (!text) throw new Error("Digite o texto da opção.");
+
+      setOptionSaving(true);
+
+      const res = await fetch(
+        `/api/admin/polls/${encodeURIComponent(
+          pollIdFromUrl
+        )}/options/${encodeURIComponent(editingOptionId)}?${adminTokenQuery}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ option_text: text }),
+        }
+      );
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          json?.details
+            ? `Falha ao salvar opção: ${json.error} — ${json.details}`
+            : json?.error
+              ? `Falha ao salvar opção: ${json.error}`
+              : "Falha ao salvar opção."
+        );
+      }
+
+      const updated: PollOption | undefined = json?.option;
+      if (!updated) throw new Error("Resposta inválida do servidor (option ausente).");
+
+      setOptions((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+
+      setOptionsSuccess(true);
+      setEditingOptionId(null);
+      setEditingOptionText("");
+    } catch (err: any) {
+      setOptionsError(err.message || "Erro desconhecido.");
+    } finally {
+      setOptionSaving(false);
+    }
+  };
+
   const handleDeleteOption = async (opt: PollOption) => {
     try {
       setOptionsError("");
       setOptionsSuccess(false);
-  
+
       if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para remover opções.");
-  
+
       const ok = window.confirm(`Remover a opção:\n\n"${opt.option_text}"\n\nTem certeza?`);
       if (!ok) return;
-  
+
       setOptionsLoading(true);
-  
+
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(
           pollIdFromUrl
         )}/options/${encodeURIComponent(opt.id)}?${adminTokenQuery}`,
         { method: "DELETE" }
       );
-  
+
       const json = await res.json().catch(() => null);
-  
+
       if (!res.ok) {
         throw new Error(
           json?.details
@@ -502,8 +558,15 @@ export default function PollRegistrationClient() {
               : "Falha ao remover opção."
         );
       }
-  
+
       setOptions((prev) => prev.filter((o) => o.id !== opt.id));
+
+      // se deletou a que estava em edição, sai da edição
+      if (editingOptionId === opt.id) {
+        setEditingOptionId(null);
+        setEditingOptionText("");
+      }
+
       setOptionsSuccess(true);
     } catch (err: any) {
       setOptionsError(err.message || "Erro desconhecido.");
@@ -516,9 +579,7 @@ export default function PollRegistrationClient() {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>
-        {isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}
-      </h1>
+      <h1 style={styles.title}>{isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}</h1>
 
       {isEditMode && (
         <p style={styles.modeInfo}>
@@ -531,9 +592,7 @@ export default function PollRegistrationClient() {
           type="button"
           onClick={() =>
             router.push(
-              tokenFromUrl
-                ? `/admin?token=${encodeURIComponent(tokenFromUrl)}`
-                : "/admin"
+              tokenFromUrl ? `/admin?token=${encodeURIComponent(tokenFromUrl)}` : "/admin"
             )
           }
           style={styles.backButton}
@@ -671,9 +730,7 @@ export default function PollRegistrationClient() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>
-            Tempo de Cooldown de Voto (em segundos):
-          </label>
+          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
           <input
             type="number"
             name="vote_cooldown_seconds"
@@ -778,16 +835,11 @@ export default function PollRegistrationClient() {
               {loading ? "Salvando..." : "Salvar"}
             </button>
           )}
-        
-          <button
-            type="button"
-            onClick={handleClearForm}
-            style={styles.clearButton}
-            disabled={isBusy}
-          >
+
+          <button type="button" onClick={handleClearForm} style={styles.clearButton} disabled={isBusy}>
             Limpar
           </button>
-        
+
           {!isEditMode && (
             <button type="submit" style={styles.primaryButton} disabled={isBusy}>
               {loading ? "Cadastrando..." : "Cadastrar"}
@@ -850,11 +902,11 @@ export default function PollRegistrationClient() {
                     <th style={{ ...styles.th, width: 160 }}>Ações</th>
                   </tr>
                 </thead>
-              
+
                 <tbody>
                   {options.map((opt) => {
                     const isEditingRow = editingOptionId === opt.id;
-              
+
                     return (
                       <tr key={opt.id}>
                         <td style={styles.td}>
@@ -870,7 +922,7 @@ export default function PollRegistrationClient() {
                             opt.option_text
                           )}
                         </td>
-              
+
                         <td style={styles.td}>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
                             {!isEditingRow ? (
@@ -884,7 +936,7 @@ export default function PollRegistrationClient() {
                                 >
                                   ✏️
                                 </button>
-              
+
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteOption(opt)}
@@ -1020,9 +1072,7 @@ const styles = {
     gap: "10px",
   },
   checkbox: { marginRight: "10px" },
-
   buttonGroup: { display: "flex", gap: "10px", flexWrap: "wrap" as const },
-
   button: {
     padding: "10px",
     fontSize: "14px",
