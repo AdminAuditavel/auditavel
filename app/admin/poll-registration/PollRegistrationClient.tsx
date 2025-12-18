@@ -396,19 +396,26 @@ export default function PollRegistrationClient() {
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const startDate = new Date(e.target.value);
+    if (Number.isNaN(startDate.getTime())) {
+      setError("Data de início inválida.");
+      return;
+    }
+
     const createdAt = new Date(formData.created_at);
     const endDate = formData.end_date ? new Date(formData.end_date) : null;
 
-    if (startDate < createdAt) {
+    // MODELO AUDITÁVEL: nunca pode começar antes da criação (âncora)
+    if (!Number.isNaN(createdAt.getTime()) && startDate < createdAt) {
       setError("A data de início não pode ser anterior à data de criação.");
       return;
     }
 
-    if (endDate && startDate > endDate) {
+    if (endDate && !Number.isNaN(endDate.getTime()) && startDate > endDate) {
       setError("A data de início não pode ser posterior à data de término.");
       return;
     }
 
+    setError("");
     setFormData((prevData) => ({
       ...prevData,
       start_date: e.target.value,
@@ -416,44 +423,98 @@ export default function PollRegistrationClient() {
   };
 
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const endDate = new Date(e.target.value);
+    const raw = e.target.value;
+
+    // permitir limpar (end_date é opcional)
+    if (!raw) {
+      setError("");
+      setFormData((prevData) => ({
+        ...prevData,
+        end_date: "",
+      }));
+      return;
+    }
+
+    const endDate = new Date(raw);
+    if (Number.isNaN(endDate.getTime())) {
+      setError("Data de término inválida.");
+      return;
+    }
+
     const createdAt = new Date(formData.created_at);
     const startDate = new Date(formData.start_date);
 
-    if (endDate < createdAt) {
+    // MODELO AUDITÁVEL: não pode ser antes da criação
+    if (!Number.isNaN(createdAt.getTime()) && endDate < createdAt) {
       setError("A data de término não pode ser anterior à data de criação.");
       return;
     }
 
-    if (startDate > endDate) {
+    if (!Number.isNaN(startDate.getTime()) && endDate < startDate) {
       setError("A data de término não pode ser anterior à data de início.");
       return;
     }
 
+    // coerência adicional: closes_at não pode ficar antes do novo end_date
+    if (formData.closes_at) {
+      const closesAt = new Date(formData.closes_at);
+      if (!Number.isNaN(closesAt.getTime()) && closesAt < endDate) {
+        setError("A data de encerramento não pode ser anterior à data de término.");
+        return;
+      }
+    }
+
+    setError("");
     setFormData((prevData) => ({
       ...prevData,
-      end_date: e.target.value,
+      end_date: raw,
     }));
   };
 
   const handleClosesAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const closesAt = new Date(e.target.value);
+    const raw = e.target.value;
+
+    // permitir limpar (closes_at é opcional)
+    if (!raw) {
+      setError("");
+      setFormData((prevData) => ({
+        ...prevData,
+        closes_at: "",
+      }));
+      return;
+    }
+
+    const closesAt = new Date(raw);
+    if (Number.isNaN(closesAt.getTime())) {
+      setError("Data de encerramento inválida.");
+      return;
+    }
+
     const createdAt = new Date(formData.created_at);
+    const startDate = new Date(formData.start_date);
     const endDate = formData.end_date ? new Date(formData.end_date) : null;
 
-    if (closesAt < createdAt) {
+    // MODELO AUDITÁVEL: não pode ser antes da criação
+    if (!Number.isNaN(createdAt.getTime()) && closesAt < createdAt) {
       setError("A data de encerramento não pode ser anterior à data de criação.");
       return;
     }
 
-    if (endDate && closesAt < endDate) {
+    // coerência do modelo: closes_at >= start_date
+    if (!Number.isNaN(startDate.getTime()) && closesAt < startDate) {
+      setError("A data de encerramento não pode ser anterior à data de início.");
+      return;
+    }
+
+    if (endDate && !Number.isNaN(endDate.getTime()) && closesAt < endDate) {
       setError("A data de encerramento não pode ser anterior à data de término.");
       return;
     }
 
+    setError("");
     setFormData((prevData) => ({
       ...prevData,
-      closes_at: e.target.value,
+      closes_at: raw,
     }));
   };
 
