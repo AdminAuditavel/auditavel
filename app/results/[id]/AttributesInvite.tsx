@@ -1,3 +1,5 @@
+//app/results/[id]/AttributesInvite.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
