@@ -55,6 +55,22 @@ function formatPtBrDateTime(value: string) {
   return d.toLocaleString("pt-BR");
 }
 
+/**
+ * Converte o valor do input `datetime-local` (YYYY-MM-DDTHH:mm) para ISO UTC.
+ * - "" -> null
+ * - inválido -> null
+ */
+function datetimeLocalToISOOrNull(value: string): string | null {
+  const s = (value ?? "").trim();
+  if (!s) return null;
+
+  // datetime-local (sem timezone): interpreta como horário local e converte p/ UTC
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+
+  return d.toISOString();
+}
+
 export default function PollRegistrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -317,10 +333,22 @@ export default function PollRegistrationClient() {
 
       const payload = validateVotesConfigOrThrow(formData);
 
+      // ✅ Alinhamento: enviar ISO UTC no payload
+      const startISO = datetimeLocalToISOOrNull(payload.start_date);
+      if (!startISO) throw new Error("Data de início inválida.");
+
+      const endISO = datetimeLocalToISOOrNull(payload.end_date);
+      const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
+
       const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          start_date: startISO,
+          end_date: endISO,
+          closes_at: closesISO,
+        }),
       });
 
       const data = await response.json().catch(() => null);
@@ -554,6 +582,13 @@ export default function PollRegistrationClient() {
 
       const payload = validateVotesConfigOrThrow(formData);
 
+      // ✅ Alinhamento: enviar ISO UTC no payload
+      const startISO = datetimeLocalToISOOrNull(payload.start_date);
+      if (!startISO) throw new Error("Data de início inválida.");
+
+      const endISO = datetimeLocalToISOOrNull(payload.end_date);
+      const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
+
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
         {
@@ -561,9 +596,9 @@ export default function PollRegistrationClient() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...payload,
-            closes_at: payload.closes_at?.trim() ? payload.closes_at : null,
-            start_date: payload.start_date?.trim() ? payload.start_date : null,
-            end_date: payload.end_date?.trim() ? payload.end_date : null,
+            start_date: startISO,
+            end_date: endISO,
+            closes_at: closesISO,
           }),
         }
       );
@@ -1368,4 +1403,4 @@ const styles = {
     color: "#111827",
     wordBreak: "break-word" as const,
   },
-};
+} as const;
