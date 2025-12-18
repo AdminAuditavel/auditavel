@@ -41,6 +41,27 @@ function emptyToNull(v: unknown): string | null {
 }
 
 /**
+ * Converte valores de data recebidos do front para um formato consistente (ISO UTC),
+ * evitando problemas de fuso horário entre client (datetime-local) e servidor.
+ *
+ * - "" -> null
+ * - "YYYY-MM-DDTHH:mm" (datetime-local) -> Date(local) -> toISOString() (UTC)
+ * - ISO com timezone (Z ou +hh:mm) -> mantém
+ */
+function toISOOrNull(value: unknown): string | null {
+  const s = emptyToNull(value);
+  if (!s) return null;
+
+  // Se já tem timezone explícito, mantém
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) return s;
+
+  // datetime-local (sem timezone): interpreta como horário local
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
  * Faz o parse de data para validação.
  * Retorna null se vier vazio.
  * Dispara erro (throw) se vier string não vazia porém inválida.
@@ -202,14 +223,16 @@ export async function PUT(
          - end_date >= start_date (se existir)
          - closes_at >= start_date (se existir)
          - closes_at >= end_date (se ambos existirem)
+       Extra:
+       - normaliza datetime-local -> ISO UTC (evita mistura de formatos)
     ========================= */
 
-    // normalização quando vier do form ("" -> null)
+    // 1) normaliza quando vier do form ("" -> null)
     if ("start_date" in update) update.start_date = emptyToNull(update.start_date);
     if ("end_date" in update) update.end_date = emptyToNull(update.end_date);
     if ("closes_at" in update) update.closes_at = emptyToNull(update.closes_at);
 
-    // se admin tentar "apagar" start_date, bloqueia
+    // 2) se admin tentar "apagar" start_date, bloqueia
     if ("start_date" in update && !update.start_date) {
       return NextResponse.json(
         { error: "missing_start_date", message: "start_date é obrigatório." },
@@ -217,8 +240,7 @@ export async function PUT(
       );
     }
 
-    // Para validar coerência, precisamos considerar valores atuais + update parcial.
-    // Busca snapshot atual das datas (inclui created_at como âncora auditável).
+    // 3) snapshot atual (inclui created_at como âncora auditável)
     const { data: current, error: currentError } = await supabase
       .from("polls")
       .select("created_at, start_date, end_date, closes_at")
@@ -229,22 +251,37 @@ export async function PUT(
       return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
 
+    // 4) calcula "próximos valores" (merge de update parcial)
     const nextStartRaw =
       "start_date" in update ? update.start_date : current.start_date;
     const nextEndRaw = "end_date" in update ? update.end_date : current.end_date;
     const nextClosesRaw =
       "closes_at" in update ? update.closes_at : current.closes_at;
 
+    // 5) normaliza para ISO UTC (se vier datetime-local)
+    const nextStartISO = toISOOrNull(nextStartRaw);
+    const nextEndISO = toISOOrNull(nextEndRaw);
+    const nextClosesISO = toISOOrNull(nextClosesRaw);
+
+    // Se o update contém campos de data, já salvamos em ISO (consistência)
+    if ("start_date" in update) update.start_date = nextStartISO;
+    if ("end_date" in update) update.end_date = nextEndISO;
+    if ("closes_at" in update) update.closes_at = nextClosesISO;
+
+    // 6) parse para validação
     let createdAt: Date | null = null;
     let nextStart: Date | null = null;
     let nextEnd: Date | null = null;
     let nextCloses: Date | null = null;
 
     try {
+      // created_at vem do banco (geralmente ISO)
       createdAt = parseDateOrNull(current.created_at, "created_at");
-      nextStart = parseDateOrNull(nextStartRaw, "start_date");
-      nextEnd = parseDateOrNull(nextEndRaw, "end_date");
-      nextCloses = parseDateOrNull(nextClosesRaw, "closes_at");
+
+      // datas "next" já normalizadas (ISO), então o parse fica consistente
+      nextStart = parseDateOrNull(nextStartISO, "start_date");
+      nextEnd = parseDateOrNull(nextEndISO, "end_date");
+      nextCloses = parseDateOrNull(nextClosesISO, "closes_at");
     } catch (e: any) {
       const msg = String(e?.message ?? "");
       if (msg.startsWith("invalid_date:")) {
@@ -262,7 +299,6 @@ export async function PUT(
     }
 
     if (!createdAt) {
-      // created_at deveria sempre existir; se não existir, melhor falhar explicitamente
       return NextResponse.json(
         {
           error: "invalid_created_at",
@@ -273,7 +309,6 @@ export async function PUT(
     }
 
     if (!nextStart) {
-      // segurança extra: start_date não pode ficar nulo depois do merge
       return NextResponse.json(
         { error: "missing_start_date", message: "start_date é obrigatório." },
         { status: 400 }
@@ -291,8 +326,7 @@ export async function PUT(
       );
     }
 
-    // (Opcional, mas coerente): end_date/closes_at não podem ser menores que created_at
-    // Isso evita configurar datas "antes da criação" mesmo quando start_date não mudou.
+    // Coerência: end_date/closes_at também não podem ser menores que created_at
     if (nextEnd && nextEnd.getTime() < createdAt.getTime()) {
       return NextResponse.json(
         {
@@ -344,8 +378,6 @@ export async function PUT(
       );
     }
 
-    // Se você está enviando "datetime-local" (YYYY-MM-DDTHH:mm),
-    // o Supabase geralmente aceita isso. Se preferir, converta para ISO aqui.
     const { data: poll, error } = await supabase
       .from("polls")
       .update(update)
