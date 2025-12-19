@@ -3,21 +3,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
 
-/* =========================
-   Helper — syncParticipant
-========================= */
+/* ======================================================
+   Helpers
+====================================================== */
+
 async function syncParticipant(participant_id: string) {
   try {
-    const { data: existingParticipant } = await supabase
+    const { data } = await supabase
       .from("participants")
       .select("id")
       .eq("id", participant_id)
       .maybeSingle();
 
-    if (!existingParticipant) {
-      await supabase.from("participants").insert({
-        id: participant_id,
-      });
+    if (!data) {
+      await supabase.from("participants").insert({ id: participant_id });
     } else {
       await supabase
         .from("participants")
@@ -25,10 +24,25 @@ async function syncParticipant(participant_id: string) {
         .eq("id", participant_id);
     }
   } catch (e) {
-    console.error("Erro ao sincronizar participante:", e);
-    // não bloqueia o voto
+    console.error("syncParticipant error:", e);
   }
 }
+
+function snapshotSingle(option_id: string) {
+  return { voting_type: "single", option_id };
+}
+
+function snapshotMultiple(option_ids: string[]) {
+  return { voting_type: "multiple", option_ids };
+}
+
+function snapshotRanking(option_ids: string[]) {
+  return { voting_type: "ranking", option_ids };
+}
+
+/* ======================================================
+   Handler
+====================================================== */
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,273 +51,81 @@ export async function POST(req: NextRequest) {
       poll_id,
       option_id,
       option_ids,
-      user_hash,
       participant_id,
+      user_hash,
     } = body as {
       poll_id?: string;
       option_id?: string;
       option_ids?: string[];
-      user_hash?: string;
       participant_id?: string;
+      user_hash?: string;
     };
 
-    if (!poll_id || !user_hash || !participant_id) {
-      return NextResponse.json(
-        {
-          error: "missing_data",
-          message: "poll_id, user_hash e participant_id são obrigatórios",
-        },
-        { status: 400 }
-      );
+    if (!poll_id || !participant_id) {
+      return NextResponse.json({ error: "missing_data" }, { status: 400 });
     }
 
     /* =========================
-       POLL CONFIG
+       Load poll
     ========================= */
-    const { data: poll, error: pollError } = await supabase
+    const { data: poll } = await supabase
       .from("polls")
-      .select("allow_multiple, vote_cooldown_seconds, voting_type, status")
+      .select(
+        `
+        id,
+        status,
+        voting_type,
+        vote_cooldown_seconds,
+        max_votes_per_user,
+        allow_multiple
+      `
+      )
       .eq("id", poll_id)
       .single();
 
-    if (pollError || !poll) {
-      return NextResponse.json(
-        { error: "poll_not_found" },
-        { status: 404 }
-      );
+    if (!poll) {
+      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
 
     if (poll.status !== "open") {
-      return NextResponse.json(
-        { error: "poll_not_open" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "poll_not_open" }, { status: 403 });
     }
 
-    const allowMultiple = Boolean(poll.allow_multiple);
-    const cooldownSeconds = poll.vote_cooldown_seconds ?? 0;
-    const votingType = poll.voting_type ?? "single";
+    const effectiveMaxVotes =
+      poll.max_votes_per_user ??
+      (poll.allow_multiple ? Infinity : 1);
 
     /* =========================
-       RANKING (V1 — PRESERVADO)
+       Cooldown
     ========================= */
-    if (Array.isArray(option_ids) && votingType === "ranking") {
-      if (option_ids.length === 0) {
-        return NextResponse.json(
-          { error: "invalid_data" },
-          { status: 400 }
-        );
-      }
-
-      if (cooldownSeconds > 0) {
-        const { data: lastVote } = await supabase
-          .from("votes")
-          .select("created_at")
-          .eq("poll_id", poll_id)
-          .eq("user_hash", user_hash)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (lastVote) {
-          const cooldownEnd =
-            new Date(lastVote.created_at).getTime() +
-            cooldownSeconds * 1000;
-
-          if (Date.now() < cooldownEnd) {
-            const remainingSeconds = Math.ceil(
-              (cooldownEnd - Date.now()) / 1000
-            );
-
-            return NextResponse.json(
-              {
-                error: "cooldown_active",
-                remaining_seconds: remainingSeconds,
-              },
-              { status: 429 }
-            );
-          }
-        }
-      }
-
-      // syncParticipant somente após validações
-      await syncParticipant(participant_id);
-
-      if (!allowMultiple) {
-        const { data: previousVotes } = await supabase
-          .from("votes")
-          .select("id")
-          .eq("poll_id", poll_id)
-          .eq("user_hash", user_hash);
-
-        if (previousVotes && previousVotes.length > 0) {
-          const ids = previousVotes.map(v => v.id);
-          await supabase.from("vote_rankings").delete().in("vote_id", ids);
-          await supabase.from("votes").delete().in("id", ids);
-        }
-      }
-
-      const voteId = randomUUID();
-
-      await supabase.from("votes").insert({
-        id: voteId,
-        poll_id,
-        user_hash,
-        participant_id,
-      });
-
-      const rows = option_ids.map((optId, idx) => ({
-        id: randomUUID(),
-        vote_id: voteId,
-        option_id: optId,
-        ranking: idx + 1,
-      }));
-
-      await supabase.from("vote_rankings").insert(rows);
-
-      return NextResponse.json({ success: true });
-    }
-
-    /* =========================
-       MULTIPLE (NOVO — ISOLADO)
-    ========================= */
-    if (Array.isArray(option_ids) && votingType === "multiple") {
-      if (option_ids.length === 0) {
-        return NextResponse.json(
-          { error: "invalid_data" },
-          { status: 400 }
-        );
-      }
-
-      const uniqueOptionIds = Array.from(new Set(option_ids));
-
-      if (cooldownSeconds > 0) {
-        const { data: lastVote } = await supabase
-          .from("votes")
-          .select("created_at")
-          .eq("poll_id", poll_id)
-          .eq("user_hash", user_hash)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (lastVote) {
-          const cooldownEnd =
-            new Date(lastVote.created_at).getTime() +
-            cooldownSeconds * 1000;
-
-          if (Date.now() < cooldownEnd) {
-            const remainingSeconds = Math.ceil(
-              (cooldownEnd - Date.now()) / 1000
-            );
-
-            return NextResponse.json(
-              {
-                error: "cooldown_active",
-                remaining_seconds: remainingSeconds,
-              },
-              { status: 429 }
-            );
-          }
-        }
-      }
-
-      // syncParticipant somente após validações
-      await syncParticipant(participant_id);
-
-      const voteId = randomUUID();
-
-      await supabase.from("votes").insert({
-        id: voteId,
-        poll_id,
-        user_hash,
-        participant_id,
-      });
-
-      const rows = uniqueOptionIds.map(optId => ({
-        vote_id: voteId,
-        option_id: optId,
-      }));
-
-      await supabase.from("vote_options").insert(rows);
-
-      return NextResponse.json({
-        success: true,
-        inserted: uniqueOptionIds.length,
-      });
-    }
-
-    /* =========================
-       SINGLE (V1 — PRESERVADO)
-    ========================= */
-    if (!option_id) {
-      return NextResponse.json(
-        { error: "missing_option" },
-        { status: 400 }
-      );
-    }
-
-    if (!allowMultiple) {
-      const { data: existing } = await supabase
-        .from("votes")
-        .select("id")
-        .eq("poll_id", poll_id)
-        .eq("user_hash", user_hash)
-        .maybeSingle();
-
-      // syncParticipant somente antes da escrita
-      await syncParticipant(participant_id);
-
-      if (existing) {
-        await supabase
-          .from("votes")
-          .update({
-            option_id,
-            participant_id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-
-        return NextResponse.json({ success: true, updated: true });
-      }
-
-      await supabase.from("votes").insert({
-        id: randomUUID(),
-        poll_id,
-        option_id,
-        user_hash,
-        participant_id,
-        votes_count: 1,
-      });
-
-      return NextResponse.json({ success: true });
-    }
-
-    // SINGLE allowMultiple = true (V1)
-    if (cooldownSeconds > 0) {
+    if (poll.vote_cooldown_seconds && poll.vote_cooldown_seconds > 0) {
       const { data: lastVote } = await supabase
         .from("votes")
-        .select("created_at")
+        .select("created_at, updated_at")
         .eq("poll_id", poll_id)
-        .eq("user_hash", user_hash)
+        .eq("participant_id", participant_id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (lastVote) {
+        const lastTs = Math.max(
+          new Date(lastVote.created_at).getTime(),
+          lastVote.updated_at
+            ? new Date(lastVote.updated_at).getTime()
+            : 0
+        );
+
         const cooldownEnd =
-          new Date(lastVote.created_at).getTime() +
-          cooldownSeconds * 1000;
+          lastTs + poll.vote_cooldown_seconds * 1000;
 
         if (Date.now() < cooldownEnd) {
-          const remainingSeconds = Math.ceil(
-            (cooldownEnd - Date.now()) / 1000
-          );
-
           return NextResponse.json(
             {
               error: "cooldown_active",
-              remaining_seconds: remainingSeconds,
+              remaining_seconds: Math.ceil(
+                (cooldownEnd - Date.now()) / 1000
+              ),
             },
             { status: 429 }
           );
@@ -311,21 +133,226 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    /* =========================
+       syncParticipant
+    ========================= */
     await syncParticipant(participant_id);
 
-    await supabase.from("votes").insert({
-      id: randomUUID(),
-      poll_id,
-      option_id,
-      user_hash,
-      participant_id,
-      votes_count: 1,
-    });
+    /* ======================================================
+       MODE: VOTO ÚNICO (max_votes_per_user = 1)
+    ======================================================= */
+    if (effectiveMaxVotes === 1) {
+      const { data: existingVote } = await supabase
+        .from("votes")
+        .select("id, option_id")
+        .eq("poll_id", poll_id)
+        .eq("participant_id", participant_id)
+        .maybeSingle();
+
+      let voteId = existingVote?.id ?? randomUUID();
+      let beforeState: any = null;
+      let afterState: any = null;
+      let isUpdate = Boolean(existingVote);
+
+      if (poll.voting_type === "single") {
+        if (!option_id) {
+          return NextResponse.json(
+            { error: "missing_option" },
+            { status: 400 }
+          );
+        }
+
+        if (existingVote) {
+          beforeState = snapshotSingle(existingVote.option_id);
+          await supabase
+            .from("votes")
+            .update({
+              option_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", voteId);
+        } else {
+          await supabase.from("votes").insert({
+            id: voteId,
+            poll_id,
+            option_id,
+            participant_id,
+            user_hash,
+          });
+        }
+
+        afterState = snapshotSingle(option_id);
+      }
+
+      if (poll.voting_type === "multiple") {
+        if (!Array.isArray(option_ids) || option_ids.length === 0) {
+          return NextResponse.json(
+            { error: "invalid_payload" },
+            { status: 400 }
+          );
+        }
+
+        const dedup = Array.from(new Set(option_ids));
+
+        if (existingVote) {
+          const { data: prev } = await supabase
+            .from("vote_options")
+            .select("option_id")
+            .eq("vote_id", voteId);
+
+          beforeState = snapshotMultiple(
+            prev?.map(r => r.option_id) ?? []
+          );
+
+          await supabase.from("vote_options").delete().eq("vote_id", voteId);
+        } else {
+          await supabase.from("votes").insert({
+            id: voteId,
+            poll_id,
+            participant_id,
+            user_hash,
+          });
+        }
+
+        await supabase.from("vote_options").insert(
+          dedup.map(opt => ({
+            vote_id: voteId,
+            option_id: opt,
+          }))
+        );
+
+        afterState = snapshotMultiple(dedup);
+      }
+
+      if (poll.voting_type === "ranking") {
+        if (!Array.isArray(option_ids) || option_ids.length === 0) {
+          return NextResponse.json(
+            { error: "invalid_payload" },
+            { status: 400 }
+          );
+        }
+
+        if (existingVote) {
+          const { data: prev } = await supabase
+            .from("vote_rankings")
+            .select("option_id")
+            .eq("vote_id", voteId)
+            .order("ranking");
+
+          beforeState = snapshotRanking(
+            prev?.map(r => r.option_id) ?? []
+          );
+
+          await supabase.from("vote_rankings").delete().eq("vote_id", voteId);
+        } else {
+          await supabase.from("votes").insert({
+            id: voteId,
+            poll_id,
+            participant_id,
+            user_hash,
+          });
+        }
+
+        await supabase.from("vote_rankings").insert(
+          option_ids.map((opt, idx) => ({
+            id: randomUUID(),
+            vote_id: voteId,
+            option_id: opt,
+            ranking: idx + 1,
+          }))
+        );
+
+        afterState = snapshotRanking(option_ids);
+      }
+
+      await supabase.from("vote_events").insert({
+        poll_id,
+        vote_id: voteId,
+        participant_id,
+        event_type: isUpdate ? "updated" : "created",
+        before_state: beforeState,
+        after_state: afterState,
+      });
+
+      return NextResponse.json({ success: true, updated: isUpdate });
+    }
+
+    /* ======================================================
+       MODE: BIG BROTHER (max_votes_per_user > 1)
+    ======================================================= */
+    const voteId = randomUUID();
+
+    if (poll.voting_type === "single") {
+      if (!option_id) {
+        return NextResponse.json(
+          { error: "missing_option" },
+          { status: 400 }
+        );
+      }
+
+      await supabase.from("votes").insert({
+        id: voteId,
+        poll_id,
+        option_id,
+        participant_id,
+        user_hash,
+      });
+    }
+
+    if (poll.voting_type === "multiple") {
+      if (!Array.isArray(option_ids) || option_ids.length === 0) {
+        return NextResponse.json(
+          { error: "invalid_payload" },
+          { status: 400 }
+        );
+      }
+
+      const dedup = Array.from(new Set(option_ids));
+
+      await supabase.from("votes").insert({
+        id: voteId,
+        poll_id,
+        participant_id,
+        user_hash,
+      });
+
+      await supabase.from("vote_options").insert(
+        dedup.map(opt => ({
+          vote_id: voteId,
+          option_id: opt,
+        }))
+      );
+    }
+
+    if (poll.voting_type === "ranking") {
+      if (!Array.isArray(option_ids) || option_ids.length === 0) {
+        return NextResponse.json(
+          { error: "invalid_payload" },
+          { status: 400 }
+        );
+      }
+
+      await supabase.from("votes").insert({
+        id: voteId,
+        poll_id,
+        participant_id,
+        user_hash,
+      });
+
+      await supabase.from("vote_rankings").insert(
+        option_ids.map((opt, idx) => ({
+          id: randomUUID(),
+          vote_id: voteId,
+          option_id: opt,
+          ranking: idx + 1,
+        }))
+      );
+    }
 
     return NextResponse.json({ success: true });
 
   } catch (e) {
-    console.error("Erro interno:", e);
+    console.error("internal_error", e);
     return NextResponse.json(
       { error: "internal_error" },
       { status: 500 }
