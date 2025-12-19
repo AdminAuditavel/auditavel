@@ -974,7 +974,7 @@ export default function PollRegistrationClient() {
 
         {/* Tempo de espera + Tipo de Voto + Máx. opções por voto (mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, width: 240, minWidth: 100 }}>
+          <div style={{ ...styles.fieldGroup, width: 240, minWidth: 80 }}>
             <label style={styles.label}>Tempo de espera (seg):</label>
             <input
               type="number"
@@ -987,8 +987,8 @@ export default function PollRegistrationClient() {
             />
           </div>
         
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 50 }}>
-            <label style={styles.label}>Tipo de Voto:</label>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 80 }}>
+            <label style={styles.label}>Opções tipo:</label>
             <select
               name="voting_type"
               value={formData.voting_type}
@@ -1013,7 +1013,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
         
-          <div style={{ ...styles.fieldGroup, width: 220, minWidth: 100 }}>
+          <div style={{ ...styles.fieldGroup, width: 220, minWidth: 80 }}>
             <label style={styles.label}>Máx. opções marcar:</label>
             <input
               type="number"
