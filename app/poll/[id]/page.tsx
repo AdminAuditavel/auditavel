@@ -121,6 +121,10 @@ export default function PollPage() {
   }
 
   const isOpen = poll.status === 'open';
+  const maxOptions =
+    poll.max_options_per_vote !== null
+      ? poll.max_options_per_vote
+      : Infinity;
 
   return (
     <main className="p-6 max-w-xl mx-auto space-y-5">
@@ -132,7 +136,7 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* ===== RANKING ===== */}
+      {/* ================= RANKING ================= */}
       {votingType === 'ranking' && (
         <>
           <p className="text-sm text-gray-600">
@@ -170,14 +174,23 @@ export default function PollPage() {
             </SortableContext>
           </DndContext>
 
+          {rankingMessage && (
+            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {rankingMessage}
+            </div>
+          )}
+
           {isOpen && (
             <button
               onClick={async () => {
-                const userHash =
-                  localStorage.getItem('auditavel_uid') ??
-                  crypto.randomUUID();
+                setRankingMessage(null);
 
-                localStorage.setItem('auditavel_uid', userHash);
+                let userHash = localStorage.getItem('auditavel_uid');
+                if (!userHash) {
+                  userHash = crypto.randomUUID();
+                  localStorage.setItem('auditavel_uid', userHash);
+                }
+
                 const participantId = getOrCreateParticipantId();
 
                 const res = await fetch('/api/vote', {
@@ -193,13 +206,13 @@ export default function PollPage() {
 
                 if (!res.ok) {
                   const data = await res.json();
-                  setRankingMessage(data.error ?? 'Erro ao votar');
+                  setRankingMessage(data.error ?? 'Erro ao enviar ranking.');
                   return;
                 }
 
                 router.push(`/results/${safeId}`);
               }}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white"
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
             >
               Enviar classificação
             </button>
@@ -207,37 +220,64 @@ export default function PollPage() {
         </>
       )}
 
-      {/* ===== MULTIPLE ===== */}
+      {/* ================= MULTIPLE ================= */}
       {votingType === 'multiple' && (
         <>
           <p className="text-sm text-gray-600">
-            Você pode selecionar uma ou mais opções.
+            {maxOptions === Infinity
+              ? 'Você pode selecionar uma ou mais opções.'
+              : `Selecione até ${maxOptions} opções.`}
           </p>
 
           <div className="space-y-2">
-            {options.map(o => (
-              <label
-                key={o.id}
-                className="flex items-center gap-2 border rounded-lg p-3 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedOptions.includes(o.id)}
-                  onChange={() => {
-                    setSelectedOptions(prev =>
-                      prev.includes(o.id)
-                        ? prev.filter(id => id !== o.id)
-                        : [...prev, o.id]
-                    );
+            {options.map(o => {
+              const selected = selectedOptions.includes(o.id);
+              const limitReached =
+                !selected && selectedOptions.length >= maxOptions;
+
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  disabled={limitReached}
+                  onClick={() => {
+                    setMultipleMessage(null);
+
+                    if (selected) {
+                      setSelectedOptions(prev =>
+                        prev.filter(id => id !== o.id)
+                      );
+                      return;
+                    }
+
+                    if (selectedOptions.length >= maxOptions) {
+                      setMultipleMessage(
+                        `Você pode selecionar no máximo ${maxOptions} opções.`
+                      );
+                      return;
+                    }
+
+                    setSelectedOptions(prev => [...prev, o.id]);
                   }}
-                />
-                <span>{o.option_text}</span>
-              </label>
-            ))}
+                  className={`w-full text-left px-4 py-3 rounded-lg border transition
+                    ${
+                      selected
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
+                        : 'border-gray-300 bg-white hover:border-emerald-400'
+                    }
+                    ${limitReached ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
+                >
+                  {o.option_text}
+                </button>
+              );
+            })}
           </div>
 
           {multipleMessage && (
-            <div className="text-sm text-red-600">{multipleMessage}</div>
+            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {multipleMessage}
+            </div>
           )}
 
           {isOpen && (
@@ -246,11 +286,12 @@ export default function PollPage() {
               onClick={async () => {
                 setMultipleMessage(null);
 
-                const userHash =
-                  localStorage.getItem('auditavel_uid') ??
-                  crypto.randomUUID();
+                let userHash = localStorage.getItem('auditavel_uid');
+                if (!userHash) {
+                  userHash = crypto.randomUUID();
+                  localStorage.setItem('auditavel_uid', userHash);
+                }
 
-                localStorage.setItem('auditavel_uid', userHash);
                 const participantId = getOrCreateParticipantId();
 
                 const res = await fetch('/api/vote', {
@@ -266,13 +307,13 @@ export default function PollPage() {
 
                 if (!res.ok) {
                   const data = await res.json();
-                  setMultipleMessage(data.error ?? 'Erro ao votar');
+                  setMultipleMessage(data.error ?? 'Erro ao registrar voto.');
                   return;
                 }
 
                 router.push(`/results/${safeId}`);
               }}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
             >
               Enviar voto
             </button>
@@ -280,7 +321,7 @@ export default function PollPage() {
         </>
       )}
 
-      {/* ===== SINGLE ===== */}
+      {/* ================= SINGLE ================= */}
       {votingType === 'single' && (
         <div className="space-y-3">
           {options.map(o => (
