@@ -28,14 +28,17 @@ async function syncParticipant(participant_id: string) {
   }
 }
 
+function arraysEqual(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => v === b[i]);
+}
+
 function snapshotSingle(option_id: string) {
   return { voting_type: "single", option_id };
 }
-
 function snapshotMultiple(option_ids: string[]) {
   return { voting_type: "multiple", option_ids };
 }
-
 function snapshotRanking(option_ids: string[]) {
   return { voting_type: "ranking", option_ids };
 }
@@ -53,13 +56,7 @@ export async function POST(req: NextRequest) {
       option_ids,
       participant_id,
       user_hash,
-    } = body as {
-      poll_id?: string;
-      option_id?: string;
-      option_ids?: string[];
-      participant_id?: string;
-      user_hash?: string;
-    };
+    } = body as any;
 
     if (!poll_id || !participant_id) {
       return NextResponse.json({ error: "missing_data" }, { status: 400 });
@@ -154,6 +151,7 @@ export async function POST(req: NextRequest) {
       let afterState: any = null;
       let isUpdate = Boolean(existingVote);
 
+      /* ---------- SINGLE ---------- */
       if (poll.voting_type === "single") {
         if (!option_id) {
           return NextResponse.json(
@@ -164,6 +162,10 @@ export async function POST(req: NextRequest) {
 
         if (existingVote) {
           beforeState = snapshotSingle(existingVote.option_id);
+          if (existingVote.option_id === option_id) {
+            return NextResponse.json({ success: true, updated: false });
+          }
+
           await supabase
             .from("votes")
             .update({
@@ -184,6 +186,7 @@ export async function POST(req: NextRequest) {
         afterState = snapshotSingle(option_id);
       }
 
+      /* ---------- MULTIPLE ---------- */
       if (poll.voting_type === "multiple") {
         if (!Array.isArray(option_ids) || option_ids.length === 0) {
           return NextResponse.json(
@@ -193,6 +196,12 @@ export async function POST(req: NextRequest) {
         }
 
         const dedup = Array.from(new Set(option_ids));
+        if (dedup.length === 0) {
+          return NextResponse.json(
+            { error: "invalid_payload" },
+            { status: 400 }
+          );
+        }
 
         if (existingVote) {
           const { data: prev } = await supabase
@@ -200,9 +209,12 @@ export async function POST(req: NextRequest) {
             .select("option_id")
             .eq("vote_id", voteId);
 
-          beforeState = snapshotMultiple(
-            prev?.map(r => r.option_id) ?? []
-          );
+          const prevIds = prev?.map(r => r.option_id) ?? [];
+          beforeState = snapshotMultiple(prevIds);
+
+          if (arraysEqual(prevIds.sort(), dedup.sort())) {
+            return NextResponse.json({ success: true, updated: false });
+          }
 
           await supabase.from("vote_options").delete().eq("vote_id", voteId);
         } else {
@@ -224,10 +236,18 @@ export async function POST(req: NextRequest) {
         afterState = snapshotMultiple(dedup);
       }
 
+      /* ---------- RANKING ---------- */
       if (poll.voting_type === "ranking") {
         if (!Array.isArray(option_ids) || option_ids.length === 0) {
           return NextResponse.json(
             { error: "invalid_payload" },
+            { status: 400 }
+          );
+        }
+
+        if (new Set(option_ids).size !== option_ids.length) {
+          return NextResponse.json(
+            { error: "invalid_ranking_duplicate_option" },
             { status: 400 }
           );
         }
@@ -239,9 +259,12 @@ export async function POST(req: NextRequest) {
             .eq("vote_id", voteId)
             .order("ranking");
 
-          beforeState = snapshotRanking(
-            prev?.map(r => r.option_id) ?? []
-          );
+          const prevIds = prev?.map(r => r.option_id) ?? [];
+          beforeState = snapshotRanking(prevIds);
+
+          if (arraysEqual(prevIds, option_ids)) {
+            return NextResponse.json({ success: true, updated: false });
+          }
 
           await supabase.from("vote_rankings").delete().eq("vote_id", voteId);
         } else {
@@ -328,6 +351,13 @@ export async function POST(req: NextRequest) {
       if (!Array.isArray(option_ids) || option_ids.length === 0) {
         return NextResponse.json(
           { error: "invalid_payload" },
+          { status: 400 }
+        );
+      }
+
+      if (new Set(option_ids).size !== option_ids.length) {
+        return NextResponse.json(
+          { error: "invalid_ranking_duplicate_option" },
           { status: 400 }
         );
       }
