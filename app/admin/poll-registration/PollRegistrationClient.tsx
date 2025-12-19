@@ -9,17 +9,21 @@ type PollPayload = {
   id?: string;
   title?: string | null;
   description?: string | null;
-  type?: string | null;
   status?: string | null;
+
   allow_multiple?: boolean | null;
   max_votes_per_user?: number | null;
-  allow_custom_option?: boolean | null;
+
+  vote_cooldown_seconds?: number | null;
+
+  voting_type?: "single" | "ranking" | "multiple" | null;
+  max_options_per_vote?: number | null;
+
   created_at?: string | null;
   closes_at?: string | null;
-  vote_cooldown_seconds?: number | null;
-  voting_type?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+
   show_partial_results?: boolean | null;
   icon_name?: string | null;
   icon_url?: string | null;
@@ -90,17 +94,27 @@ export default function PollRegistrationClient() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    type: "binary",
-    status: "open",
+    status: "open" as "draft" | "open" | "paused" | "closed",
+
+    // allow_multiple agora é controlado por Select Sim/Não
     allow_multiple: false,
-    max_votes_per_user: 1 as number | "",
-    allow_custom_option: false,
+    // sempre number (sem ""), conforme regra nova
+    max_votes_per_user: 1,
+
     created_at: nowDatetimeLocal(),
     closes_at: "",
+
+    // default deve ser 10
     vote_cooldown_seconds: 10,
-    voting_type: "single",
+
+    // Tipo de voto: single | ranking | multiple
+    voting_type: "single" as "single" | "ranking" | "multiple",
+    // só usado quando voting_type === "multiple"
+    max_options_per_vote: 2 as number,
+
     start_date: nowDatetimeLocal(),
     end_date: "",
+
     show_partial_results: true,
     icon_name: "",
     icon_url: "",
@@ -138,6 +152,11 @@ export default function PollRegistrationClient() {
       ...prevData,
       created_at: currentDate,
       start_date: currentDate,
+      vote_cooldown_seconds: 10,
+      allow_multiple: false,
+      max_votes_per_user: 1,
+      voting_type: "single",
+      max_options_per_vote: 2,
     }));
 
     setLastValidDates((prev) => ({
@@ -180,27 +199,52 @@ export default function PollRegistrationClient() {
         const poll: PollPayload | undefined = json?.poll;
         if (!poll) throw new Error("Resposta inválida do servidor (poll ausente).");
 
+        const vt: "single" | "ranking" | "multiple" =
+          poll.voting_type === "ranking"
+            ? "ranking"
+            : poll.voting_type === "multiple"
+              ? "multiple"
+              : "single";
+
         const nextForm = {
           title: poll.title ?? "",
           description: poll.description ?? "",
-          type: poll.type ?? "binary",
-          status: poll.status ?? "open",
+          status: (poll.status ?? "open") as any,
+
           allow_multiple: Boolean(poll.allow_multiple ?? false),
           max_votes_per_user:
             typeof poll.max_votes_per_user === "number" ? poll.max_votes_per_user : 1,
-          allow_custom_option: Boolean(poll.allow_custom_option ?? false),
+
           created_at: toDatetimeLocal(poll.created_at) || nowDatetimeLocal(),
           closes_at: toDatetimeLocal(poll.closes_at),
+
           vote_cooldown_seconds:
             typeof poll.vote_cooldown_seconds === "number" ? poll.vote_cooldown_seconds : 10,
-          voting_type: poll.voting_type ?? "single",
+
+          voting_type: vt,
+          max_options_per_vote:
+            vt === "multiple"
+              ? typeof poll.max_options_per_vote === "number"
+                ? poll.max_options_per_vote
+                : 2
+              : 2,
+
           start_date: toDatetimeLocal(poll.start_date) || nowDatetimeLocal(),
           end_date: toDatetimeLocal(poll.end_date),
+
           show_partial_results:
             typeof poll.show_partial_results === "boolean" ? poll.show_partial_results : true,
+
           icon_name: poll.icon_name ?? "",
           icon_url: poll.icon_url ?? "",
         };
+
+        // Regra: se allow_multiple for false, forçar max_votes_per_user=1
+        if (!nextForm.allow_multiple) {
+          nextForm.max_votes_per_user = 1;
+        } else if (nextForm.max_votes_per_user < 2) {
+          nextForm.max_votes_per_user = 2;
+        }
 
         setFormData((prev) => ({ ...prev, ...nextForm }));
 
@@ -274,20 +318,21 @@ export default function PollRegistrationClient() {
     }));
   };
 
-  const handleAllowMultipleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
-
-    setFormData((prev) => {
-      if (!checked) {
-        return { ...prev, allow_multiple: false, max_votes_per_user: 1 };
-      }
-
-      const current = prev.max_votes_per_user;
-      const keep =
-        typeof current === "number" && current >= 2 ? current : ("" as const);
-
-      return { ...prev, allow_multiple: true, max_votes_per_user: keep };
-    });
+  // NOVO: allow_multiple via select Sim/Não
+  const handleAllowMultipleSelect = (value: "no" | "yes") => {
+    if (value === "no") {
+      setFormData((prev) => ({
+        ...prev,
+        allow_multiple: false,
+        max_votes_per_user: 1,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        allow_multiple: true,
+        max_votes_per_user: 2,
+      }));
+    }
   };
 
   const validateVotesConfigOrThrow = (data: typeof formData) => {
@@ -295,16 +340,25 @@ export default function PollRegistrationClient() {
       return { ...data, max_votes_per_user: 1 as const };
     }
 
-    if (data.max_votes_per_user === "") {
-      throw new Error("Digite o máximo de votos por usuário (mínimo 2).");
-    }
-
     const n = Number(data.max_votes_per_user);
     if (!Number.isFinite(n) || n < 2) {
-      throw new Error("O máximo de votos por usuário deve ser 2 ou mais.");
+      throw new Error("O máximo permitido deve ser 2 ou mais quando múltiplos votos estiverem habilitados.");
     }
 
     return { ...data, max_votes_per_user: n };
+  };
+
+  const validateMaxOptionsOrThrow = (data: typeof formData) => {
+    if (data.voting_type !== "multiple") {
+      return { ...data, max_options_per_vote: 2 as const };
+    }
+
+    const n = Number(data.max_options_per_vote);
+    if (!Number.isFinite(n) || n < 1) {
+      throw new Error("O máximo de opções por voto deve ser 1 ou mais.");
+    }
+
+    return { ...data, max_options_per_vote: n };
   };
 
   // ===== Datas: onChange só atualiza (permite digitação parcial).
@@ -319,7 +373,7 @@ export default function PollRegistrationClient() {
 
   // ===== Datas: valida no onBlur e reverte para último válido se necessário.
   const validateAndCommitDatesOrRevert = (field: "start_date" | "end_date" | "closes_at") => {
-    const value = formData[field];
+    const value = (formData as any)[field] as string;
 
     // end_date/closes_at são opcionais (permitir limpar)
     if ((field === "end_date" || field === "closes_at") && !value) {
@@ -344,7 +398,7 @@ export default function PollRegistrationClient() {
             ? "Data de término inválida."
             : "Data de encerramento inválida."
       );
-      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      setFormData((prev) => ({ ...prev, [field]: (lastValidDates as any)[field] }));
       return;
     }
 
@@ -361,26 +415,26 @@ export default function PollRegistrationClient() {
         (closesAt && closesAt < createdAt))
     ) {
       setError("Datas não podem ser anteriores à data de criação.");
-      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      setFormData((prev) => ({ ...prev, [field]: (lastValidDates as any)[field] }));
       return;
     }
 
     // coerência entre datas
     if (startDate && endDate && endDate < startDate) {
       setError("A data de término não pode ser anterior à data de início.");
-      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      setFormData((prev) => ({ ...prev, [field]: (lastValidDates as any)[field] }));
       return;
     }
 
     if (startDate && closesAt && closesAt < startDate) {
       setError("A data de encerramento não pode ser anterior à data de início.");
-      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      setFormData((prev) => ({ ...prev, [field]: (lastValidDates as any)[field] }));
       return;
     }
 
     if (endDate && closesAt && closesAt < endDate) {
       setError("A data de encerramento não pode ser anterior à data de término.");
-      setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
+      setFormData((prev) => ({ ...prev, [field]: (lastValidDates as any)[field] }));
       return;
     }
 
@@ -408,38 +462,45 @@ export default function PollRegistrationClient() {
       // tolerância 60s (mesma regra do backend)
       const toleranceMs = 60 * 1000;
       if (start.getTime() < Date.now() - toleranceMs) {
-        throw new Error(
-          "A data de início não pode ser menor que agora. Ajuste e confirme."
-        );
+        throw new Error("A data de início não pode ser menor que agora. Ajuste e confirme.");
       }
 
-      const ok = window.confirm(
-        `Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`
-      );
+      const ok = window.confirm(`Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`);
       if (!ok) {
         setLoading(false);
         return;
       }
 
-      const payload = validateVotesConfigOrThrow(formData);
+      const payload1 = validateVotesConfigOrThrow(formData);
+      const payload2 = validateMaxOptionsOrThrow(payload1);
 
-      const startISO = datetimeLocalToISOOrNull(payload.start_date);
+      const startISO = datetimeLocalToISOOrNull(payload2.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
 
-      const endISO = datetimeLocalToISOOrNull(payload.end_date);
-      const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
+      const endISO = datetimeLocalToISOOrNull(payload2.end_date);
+      const closesISO = datetimeLocalToISOOrNull(payload2.closes_at);
 
-      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
+      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload2;
+
+      const bodyToSend: any = {
+        ...payloadWithoutCreatedAt,
+        start_date: startISO,
+        end_date: endISO,
+        closes_at: closesISO,
+        vote_cooldown_seconds: payload2.vote_cooldown_seconds ?? 10,
+      };
+
+      // max_options_per_vote só faz sentido no multiple
+      if (payload2.voting_type === "multiple") {
+        bodyToSend.max_options_per_vote = payload2.max_options_per_vote;
+      } else {
+        bodyToSend.max_options_per_vote = null;
+      }
 
       const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...payloadWithoutCreatedAt,
-          start_date: startISO,
-          end_date: endISO,
-          closes_at: closesISO,
-        }),
+        body: JSON.stringify(bodyToSend),
       });
 
       const data = await response.json().catch(() => null);
@@ -454,17 +515,22 @@ export default function PollRegistrationClient() {
       setFormData({
         title: "",
         description: "",
-        type: "binary",
         status: "open",
+
         allow_multiple: false,
         max_votes_per_user: 1,
-        allow_custom_option: false,
+
         created_at: resetNow,
         closes_at: "",
+
         vote_cooldown_seconds: 10,
+
         voting_type: "single",
+        max_options_per_vote: 2,
+
         start_date: resetNow,
         end_date: "",
+
         show_partial_results: true,
         icon_name: "",
         icon_url: "",
@@ -492,21 +558,23 @@ export default function PollRegistrationClient() {
     }
 
     const raw = e.target.value;
-
-    if (raw === "") {
-      setFormData((prevData) => ({
-        ...prevData,
-        max_votes_per_user: "",
-      }));
-      return;
-    }
-
     const value = parseInt(raw, 10);
     if (!Number.isFinite(value)) return;
 
     setFormData((prevData) => ({
       ...prevData,
       max_votes_per_user: Math.max(2, value),
+    }));
+  };
+
+  const handleMaxOptionsPerVoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const value = parseInt(raw, 10);
+    if (!Number.isFinite(value)) return;
+
+    setFormData((prevData) => ({
+      ...prevData,
+      max_options_per_vote: Math.max(1, value),
     }));
   };
 
@@ -524,17 +592,22 @@ export default function PollRegistrationClient() {
     setFormData({
       title: "",
       description: "",
-      type: "binary",
       status: "open",
+
       allow_multiple: false,
       max_votes_per_user: 1,
-      allow_custom_option: false,
+
       created_at: resetNow,
       closes_at: "",
+
       vote_cooldown_seconds: 10,
+
       voting_type: "single",
+      max_options_per_vote: 2,
+
       start_date: resetNow,
       end_date: "",
+
       show_partial_results: true,
       icon_name: "",
       icon_url: "",
@@ -561,27 +634,37 @@ export default function PollRegistrationClient() {
       setError("");
       setSuccess(false);
 
-      const payload = validateVotesConfigOrThrow(formData);
+      const payload1 = validateVotesConfigOrThrow(formData);
+      const payload2 = validateMaxOptionsOrThrow(payload1);
 
-      const startISO = datetimeLocalToISOOrNull(payload.start_date);
+      const startISO = datetimeLocalToISOOrNull(payload2.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
 
-      const endISO = datetimeLocalToISOOrNull(payload.end_date);
-      const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
+      const endISO = datetimeLocalToISOOrNull(payload2.end_date);
+      const closesISO = datetimeLocalToISOOrNull(payload2.closes_at);
 
-      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
+      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload2;
+
+      const bodyToSend: any = {
+        ...payloadWithoutCreatedAt,
+        start_date: startISO,
+        end_date: endISO,
+        closes_at: closesISO,
+        vote_cooldown_seconds: payload2.vote_cooldown_seconds ?? 10,
+      };
+
+      if (payload2.voting_type === "multiple") {
+        bodyToSend.max_options_per_vote = payload2.max_options_per_vote;
+      } else {
+        bodyToSend.max_options_per_vote = null;
+      }
 
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...payloadWithoutCreatedAt,
-            start_date: startISO,
-            end_date: endISO,
-            closes_at: closesISO,
-          }),
+          body: JSON.stringify(bodyToSend),
         }
       );
 
@@ -632,9 +715,7 @@ export default function PollRegistrationClient() {
       setOptionsLoading(true);
 
       const res = await fetch(
-        `/api/admin/polls/${encodeURIComponent(
-          pollIdFromUrl
-        )}/options?${adminTokenQuery}`,
+        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options?${adminTokenQuery}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -684,9 +765,9 @@ export default function PollRegistrationClient() {
       setOptionSaving(true);
 
       const res = await fetch(
-        `/api/admin/polls/${encodeURIComponent(
-          pollIdFromUrl
-        )}/options/${encodeURIComponent(editingOptionId)}?${adminTokenQuery}`,
+        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options/${encodeURIComponent(
+          editingOptionId
+        )}?${adminTokenQuery}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -739,9 +820,9 @@ export default function PollRegistrationClient() {
       setOptionsLoading(true);
 
       const res = await fetch(
-        `/api/admin/polls/${encodeURIComponent(
-          pollIdFromUrl
-        )}/options/${encodeURIComponent(opt.id)}?${adminTokenQuery}`,
+        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options/${encodeURIComponent(
+          opt.id
+        )}?${adminTokenQuery}`,
         { method: "DELETE" }
       );
 
@@ -833,20 +914,6 @@ export default function PollRegistrationClient() {
 
         <div style={styles.inlineFieldGroup}>
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Tipo de Pesquisa:</label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              style={styles.select}
-              disabled={!isEditing || isBusy}
-            >
-              <option value="binary">Binária</option>
-              <option value="multiple">Múltipla Escolha</option>
-            </select>
-          </div>
-
-          <div style={styles.fieldGroup}>
             <label style={styles.label}>Status:</label>
             <select
               name="status"
@@ -861,46 +928,36 @@ export default function PollRegistrationClient() {
               <option value="closed">Encerrada</option>
             </select>
           </div>
+        </div>
+
+        {/* allow_multiple (Sim/Não) + max_votes_per_user em sequência */}
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Permitir múltiplos votos?</label>
+            <select
+              value={formData.allow_multiple ? "yes" : "no"}
+              onChange={(e) => handleAllowMultipleSelect(e.target.value as "no" | "yes")}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="no">Não</option>
+              <option value="yes">Sim</option>
+            </select>
+          </div>
 
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Máximo de Votos por Usuário:</label>
+            <label style={styles.label}>Máximo Permitido:</label>
             <input
               type="number"
               name="max_votes_per_user"
-              value={formData.max_votes_per_user as any}
+              value={formData.max_votes_per_user}
               onChange={handleMaxVotesChange}
               style={styles.input}
               min={formData.allow_multiple ? 2 : 1}
-              required={formData.allow_multiple}
-              disabled={!isEditing || isBusy || !formData.allow_multiple}
+              disabled={!isEditing || isBusy}
+              readOnly={!formData.allow_multiple}
             />
           </div>
-        </div>
-
-        <div style={styles.inlineFieldGroup}>
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="allow_multiple"
-              checked={formData.allow_multiple}
-              onChange={handleAllowMultipleChange}
-              style={styles.checkbox}
-              disabled={!isEditing || isBusy}
-            />
-            Permitir mais de um voto por usuário
-          </label>
-
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="allow_custom_option"
-              checked={formData.allow_custom_option}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-              disabled={!isEditing || isBusy}
-            />
-            Permitir opções personalizadas
-          </label>
         </div>
 
         <div style={styles.inlineFieldGroup}>
@@ -931,7 +988,7 @@ export default function PollRegistrationClient() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
+          <label style={styles.label}>Tempo de espera (segundos):</label>
           <input
             type="number"
             name="vote_cooldown_seconds"
@@ -943,20 +1000,45 @@ export default function PollRegistrationClient() {
           />
         </div>
 
+        {/* voting_type + max_options_per_vote (condicional) em sequência */}
         <div style={styles.inlineFieldGroup}>
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Tipo de Votação:</label>
+            <label style={styles.label}>Tipo de Voto:</label>
             <select
               name="voting_type"
               value={formData.voting_type}
-              onChange={handleInputChange}
+              onChange={(e) => {
+                const v = e.target.value as "single" | "ranking" | "multiple";
+                setFormData((prev) => ({
+                  ...prev,
+                  voting_type: v,
+                  // se não for multiple, mantém valor (não usado), mas o payload envia null
+                  max_options_per_vote: v === "multiple" ? Math.max(1, prev.max_options_per_vote) : prev.max_options_per_vote,
+                }));
+              }}
               style={styles.select}
               disabled={!isEditing || isBusy}
             >
-              <option value="single">Única Escolha</option>
+              <option value="single">Simples</option>
               <option value="ranking">Ranking</option>
+              <option value="multiple">Múltipla</option>
             </select>
           </div>
+
+          {formData.voting_type === "multiple" && (
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Máx. opções por voto:</label>
+              <input
+                type="number"
+                name="max_options_per_vote"
+                value={formData.max_options_per_vote}
+                onChange={handleMaxOptionsPerVoteChange}
+                style={styles.input}
+                min={1}
+                disabled={!isEditing || isBusy}
+              />
+            </div>
+          )}
         </div>
 
         <div style={styles.inlineFieldGroup}>
@@ -1182,7 +1264,6 @@ export default function PollRegistrationClient() {
     </div>
   );
 }
-
 const styles = {
   container: {
     maxWidth: "600px",
