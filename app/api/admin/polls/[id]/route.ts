@@ -1,4 +1,4 @@
-//app/api/admin/polls/[id]/route.ts
+// app/api/admin/polls/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
@@ -8,19 +8,23 @@ function assertAdmin(req: NextRequest) {
   return !!token && token === process.env.ADMIN_TOKEN;
 }
 
+/**
+ * ATUALIZEI para refletir o schema real (tabela que você mostrou):
+ * id,title,description,status,allow_multiple,max_votes_per_user,created_at,closes_at,
+ * vote_cooldown_seconds,voting_type,start_date,end_date,show_partial_results,icon_name,icon_url,max_options_per_vote
+ */
 const POLL_SELECT_FIELDS = [
   "id",
   "title",
   "description",
-  "type",
   "status",
   "allow_multiple",
   "max_votes_per_user",
-  "allow_custom_option",
   "created_at",
   "closes_at",
   "vote_cooldown_seconds",
   "voting_type",
+  "max_options_per_vote",
   "start_date",
   "end_date",
   "show_partial_results",
@@ -41,12 +45,7 @@ function emptyToNull(v: unknown): string | null {
 }
 
 /**
- * Converte valores de data recebidos do front para um formato consistente (ISO UTC),
- * evitando problemas de fuso horário entre client (datetime-local) e servidor.
- *
- * - "" -> null
- * - "YYYY-MM-DDTHH:mm" (datetime-local) -> Date(local) -> toISOString() (UTC)
- * - ISO com timezone (Z ou +hh:mm) -> mantém
+ * Converte datas recebidas do front para ISO UTC consistente.
  */
 function toISOOrNull(value: unknown): string | null {
   const s = emptyToNull(value);
@@ -62,9 +61,7 @@ function toISOOrNull(value: unknown): string | null {
 }
 
 /**
- * Faz o parse de data para validação.
- * Retorna null se vier vazio.
- * Dispara erro (throw) se vier string não vazia porém inválida.
+ * Parse para validação. Retorna null se vazio; lança erro se inválido.
  */
 function parseDateOrNull(value: unknown, fieldName: string): Date | null {
   const s = emptyToNull(value);
@@ -77,18 +74,19 @@ function parseDateOrNull(value: unknown, fieldName: string): Date | null {
   return d;
 }
 
-export async function GET(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
+function isValidVotingType(v: any): v is "single" | "ranking" | "multiple" {
+  return v === "single" || v === "ranking" || v === "multiple";
+}
 
+export async function GET(req: NextRequest, context: { params: { id: string } }) {
+  try {
     if (!assertAdmin(req)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    if (!id) {
+    const id = context?.params?.id;
+
+    if (!id || typeof id !== "string") {
       return NextResponse.json({ error: "missing_id" }, { status: 400 });
     }
 
@@ -98,29 +96,35 @@ export async function GET(
       .eq("id", id)
       .single();
 
-    if (error || !poll) {
+    // Se deu erro no select (ex.: coluna inexistente), isso é 500, não 404
+    if (error) {
+      console.error("poll GET db error:", error);
+      return NextResponse.json(
+        { error: "db_error", details: error.message },
+        { status: 500 }
+      );
+    }
+
+    if (!poll) {
       return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, poll }, { status: 200 });
   } catch (err) {
-    console.error("Erro inesperado:", err);
+    console.error("Erro inesperado (GET poll):", err);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
 
-export async function PUT(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const { id } = await context.params;
-
     if (!assertAdmin(req)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    if (!id) {
+    const id = context?.params?.id;
+
+    if (!id || typeof id !== "string") {
       return NextResponse.json({ error: "missing_id" }, { status: 400 });
     }
 
@@ -129,18 +133,17 @@ export async function PUT(
       return NextResponse.json({ error: "invalid_body" }, { status: 400 });
     }
 
-    // Permite atualizar apenas campos conhecidos (evita sobrescrever colunas indevidas)
+    // Somente campos existentes no schema atual
     const allowedKeys = [
       "title",
       "description",
-      "type",
       "status",
       "allow_multiple",
       "max_votes_per_user",
-      "allow_custom_option",
       "closes_at",
       "vote_cooldown_seconds",
       "voting_type",
+      "max_options_per_vote",
       "start_date",
       "end_date",
       "show_partial_results",
@@ -153,15 +156,48 @@ export async function PUT(
       if (k in body) update[k] = (body as any)[k];
     }
 
-    // validações mínimas
+    // ===== validações mínimas =====
+
     if ("title" in update) {
       const t = String(update.title ?? "").trim();
-      if (!t)
+      if (!t) {
         return NextResponse.json({ error: "missing_title" }, { status: 400 });
+      }
       update.title = t;
     }
 
-    // normaliza max_votes_per_user se vier no payload
+    if ("status" in update) {
+      const s = String(update.status ?? "").trim();
+      const ok = s === "draft" || s === "open" || s === "paused" || s === "closed";
+      if (!ok) {
+        return NextResponse.json({ error: "invalid_status" }, { status: 400 });
+      }
+      update.status = s;
+    }
+
+    if ("vote_cooldown_seconds" in update && update.vote_cooldown_seconds != null) {
+      const n = Number(update.vote_cooldown_seconds);
+      if (!Number.isFinite(n) || n < 0) {
+        return NextResponse.json(
+          { error: "invalid_vote_cooldown_seconds" },
+          { status: 400 }
+        );
+      }
+      update.vote_cooldown_seconds = n;
+    }
+
+    if ("voting_type" in update) {
+      const vt = update.voting_type;
+      if (vt == null) {
+        // permite limpar? melhor não — mas não vou quebrar seu fluxo;
+        // se você quiser obrigatório, basta bloquear aqui.
+        update.voting_type = "single";
+      } else if (!isValidVotingType(vt)) {
+        return NextResponse.json({ error: "invalid_voting_type" }, { status: 400 });
+      }
+    }
+
+    // max_votes_per_user / allow_multiple (mesma regra que você já tinha)
     if ("max_votes_per_user" in update && update.max_votes_per_user != null) {
       const n = Number(update.max_votes_per_user);
       if (!Number.isFinite(n) || n < 1) {
@@ -176,8 +212,6 @@ export async function PUT(
       update.max_votes_per_user = n;
     }
 
-    // Regra: allow_multiple=false => max_votes_per_user=1 (e ignora o que vier)
-    // Regra: allow_multiple=true => max_votes_per_user obrigatório e >=2
     if ("allow_multiple" in update) {
       update.allow_multiple = Boolean(update.allow_multiple);
 
@@ -189,8 +223,7 @@ export async function PUT(
           return NextResponse.json(
             {
               error: "invalid_max_votes_per_user",
-              message:
-                "max_votes_per_user deve ser >= 2 quando allow_multiple=true",
+              message: "max_votes_per_user deve ser >= 2 quando allow_multiple=true",
             },
             { status: 400 }
           );
@@ -199,40 +232,78 @@ export async function PUT(
       }
     }
 
-    if (
-      "vote_cooldown_seconds" in update &&
-      update.vote_cooldown_seconds != null
-    ) {
-      const n = Number(update.vote_cooldown_seconds);
-      if (!Number.isFinite(n) || n < 0) {
+    // max_options_per_vote: só faz sentido quando voting_type === "multiple"
+    if ("max_options_per_vote" in update) {
+      if (update.max_options_per_vote == null || update.max_options_per_vote === "") {
+        update.max_options_per_vote = null;
+      } else {
+        const n = Number(update.max_options_per_vote);
+        if (!Number.isFinite(n) || n < 1) {
+          return NextResponse.json(
+            {
+              error: "invalid_max_options_per_vote",
+              message: "max_options_per_vote deve ser >= 1",
+            },
+            { status: 400 }
+          );
+        }
+        update.max_options_per_vote = n;
+      }
+    }
+
+    // Se voting_type não vier no payload, precisamos do atual para validar coerência.
+    // Também precisamos de created_at como âncora das regras de data.
+    const { data: current, error: currentError } = await supabase
+      .from("polls")
+      .select("created_at, start_date, end_date, closes_at, voting_type")
+      .eq("id", id)
+      .single();
+
+    if (currentError) {
+      console.error("poll PUT current db error:", currentError);
+      return NextResponse.json(
+        { error: "db_error", details: currentError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!current) {
+      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
+    }
+
+    const nextVotingType: "single" | "ranking" | "multiple" =
+      ("voting_type" in update ? update.voting_type : current.voting_type) ?? "single";
+
+    // Se não for multiple, max_options_per_vote deve ficar null (não atrapalha listagem nem o front)
+    if (nextVotingType !== "multiple") {
+      update.max_options_per_vote = null;
+    } else {
+      // multiple: max_options_per_vote obrigatório (>=1)
+      const candidate =
+        "max_options_per_vote" in update ? update.max_options_per_vote : (current as any).max_options_per_vote;
+
+      const n = Number(candidate);
+      if (!Number.isFinite(n) || n < 1) {
         return NextResponse.json(
-          { error: "invalid_vote_cooldown_seconds" },
+          {
+            error: "invalid_max_options_per_vote",
+            message: "max_options_per_vote é obrigatório quando voting_type=multiple (>=1).",
+          },
           { status: 400 }
         );
       }
-      update.vote_cooldown_seconds = n;
+      update.max_options_per_vote = n;
     }
 
     /* =========================
-       DATAS (REFINO V2 - MODELO AUDITÁVEL)
-       Regras:
-       - start_date é obrigatório (não pode ser apagado)
-       - start_date NÃO pode ser menor que created_at (sempre)
-       - end_date e closes_at podem ser vazios ("") -> null
-       - coerência:
-         - end_date >= start_date (se existir)
-         - closes_at >= start_date (se existir)
-         - closes_at >= end_date (se ambos existirem)
-       Extra:
-       - normaliza datetime-local -> ISO UTC (evita mistura de formatos)
+       DATAS — mesmas regras que você já implementou,
+       só mantendo o comportamento e corrigindo o merge.
     ========================= */
 
-    // 1) normaliza quando vier do form ("" -> null)
     if ("start_date" in update) update.start_date = emptyToNull(update.start_date);
     if ("end_date" in update) update.end_date = emptyToNull(update.end_date);
     if ("closes_at" in update) update.closes_at = emptyToNull(update.closes_at);
 
-    // 2) se admin tentar "apagar" start_date, bloqueia
     if ("start_date" in update && !update.start_date) {
       return NextResponse.json(
         { error: "missing_start_date", message: "start_date é obrigatório." },
@@ -240,45 +311,25 @@ export async function PUT(
       );
     }
 
-    // 3) snapshot atual (inclui created_at como âncora auditável)
-    const { data: current, error: currentError } = await supabase
-      .from("polls")
-      .select("created_at, start_date, end_date, closes_at")
-      .eq("id", id)
-      .single();
-
-    if (currentError || !current) {
-      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
-    }
-
-    // 4) calcula "próximos valores" (merge de update parcial)
-    const nextStartRaw =
-      "start_date" in update ? update.start_date : current.start_date;
+    const nextStartRaw = "start_date" in update ? update.start_date : current.start_date;
     const nextEndRaw = "end_date" in update ? update.end_date : current.end_date;
-    const nextClosesRaw =
-      "closes_at" in update ? update.closes_at : current.closes_at;
+    const nextClosesRaw = "closes_at" in update ? update.closes_at : current.closes_at;
 
-    // 5) normaliza para ISO UTC (se vier datetime-local)
     const nextStartISO = toISOOrNull(nextStartRaw);
     const nextEndISO = toISOOrNull(nextEndRaw);
     const nextClosesISO = toISOOrNull(nextClosesRaw);
 
-    // Se o update contém campos de data, já salvamos em ISO (consistência)
     if ("start_date" in update) update.start_date = nextStartISO;
     if ("end_date" in update) update.end_date = nextEndISO;
     if ("closes_at" in update) update.closes_at = nextClosesISO;
 
-    // 6) parse para validação
     let createdAt: Date | null = null;
     let nextStart: Date | null = null;
     let nextEnd: Date | null = null;
     let nextCloses: Date | null = null;
 
     try {
-      // created_at vem do banco (geralmente ISO)
       createdAt = parseDateOrNull(current.created_at, "created_at");
-
-      // datas "next" já normalizadas (ISO), então o parse fica consistente
       nextStart = parseDateOrNull(nextStartISO, "start_date");
       nextEnd = parseDateOrNull(nextEndISO, "end_date");
       nextCloses = parseDateOrNull(nextClosesISO, "closes_at");
@@ -300,10 +351,7 @@ export async function PUT(
 
     if (!createdAt) {
       return NextResponse.json(
-        {
-          error: "invalid_created_at",
-          message: "created_at inválido (não foi possível validar as datas).",
-        },
+        { error: "invalid_created_at", message: "created_at inválido." },
         { status: 500 }
       );
     }
@@ -315,7 +363,6 @@ export async function PUT(
       );
     }
 
-    // Regra auditável: start_date não pode ser menor que created_at
     if (nextStart.getTime() < createdAt.getTime()) {
       return NextResponse.json(
         {
@@ -326,7 +373,6 @@ export async function PUT(
       );
     }
 
-    // Coerência: end_date/closes_at também não podem ser menores que created_at
     if (nextEnd && nextEnd.getTime() < createdAt.getTime()) {
       return NextResponse.json(
         {
@@ -347,33 +393,23 @@ export async function PUT(
       );
     }
 
-    // Coerência entre datas do modelo
     if (nextEnd && nextEnd.getTime() < nextStart.getTime()) {
       return NextResponse.json(
-        {
-          error: "invalid_end_date_before_start",
-          message: "end_date não pode ser menor que start_date.",
-        },
+        { error: "invalid_end_date_before_start", message: "end_date < start_date." },
         { status: 400 }
       );
     }
 
     if (nextCloses && nextCloses.getTime() < nextStart.getTime()) {
       return NextResponse.json(
-        {
-          error: "invalid_closes_at_before_start",
-          message: "closes_at não pode ser menor que start_date.",
-        },
+        { error: "invalid_closes_at_before_start", message: "closes_at < start_date." },
         { status: 400 }
       );
     }
 
     if (nextEnd && nextCloses && nextCloses.getTime() < nextEnd.getTime()) {
       return NextResponse.json(
-        {
-          error: "invalid_closes_at_before_end",
-          message: "closes_at não pode ser menor que end_date.",
-        },
+        { error: "invalid_closes_at_before_end", message: "closes_at < end_date." },
         { status: 400 }
       );
     }
@@ -385,12 +421,16 @@ export async function PUT(
       .select(POLL_SELECT_FIELDS)
       .single();
 
-    if (error || !poll) {
+    if (error) {
       console.error("poll PUT db error:", error);
       return NextResponse.json(
-        { error: "db_error", details: error?.message },
+        { error: "db_error", details: error.message },
         { status: 500 }
       );
+    }
+
+    if (!poll) {
+      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, poll }, { status: 200 });
