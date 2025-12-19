@@ -180,29 +180,24 @@ export default function PollRegistrationClient() {
         const poll: PollPayload | undefined = json?.poll;
         if (!poll) throw new Error("Resposta inválida do servidor (poll ausente).");
 
-        // ✅ CORREÇÃO APLICADA AQUI (tipagem + remoção de campos obsoletos)
-        const nextForm: typeof formData = {
+        const nextForm = {
           title: poll.title ?? "",
           description: poll.description ?? "",
+          type: poll.type ?? "binary",
           status: poll.status ?? "open",
           allow_multiple: Boolean(poll.allow_multiple ?? false),
           max_votes_per_user:
-            typeof poll.max_votes_per_user === "number"
-              ? poll.max_votes_per_user
-              : 1,
+            typeof poll.max_votes_per_user === "number" ? poll.max_votes_per_user : 1,
+          allow_custom_option: Boolean(poll.allow_custom_option ?? false),
           created_at: toDatetimeLocal(poll.created_at) || nowDatetimeLocal(),
           closes_at: toDatetimeLocal(poll.closes_at),
           vote_cooldown_seconds:
-            typeof poll.vote_cooldown_seconds === "number"
-              ? poll.vote_cooldown_seconds
-              : 10,
+            typeof poll.vote_cooldown_seconds === "number" ? poll.vote_cooldown_seconds : 10,
           voting_type: poll.voting_type ?? "single",
           start_date: toDatetimeLocal(poll.start_date) || nowDatetimeLocal(),
           end_date: toDatetimeLocal(poll.end_date),
           show_partial_results:
-            typeof poll.show_partial_results === "boolean"
-              ? poll.show_partial_results
-              : true,
+            typeof poll.show_partial_results === "boolean" ? poll.show_partial_results : true,
           icon_name: poll.icon_name ?? "",
           icon_url: poll.icon_url ?? "",
         };
@@ -215,171 +210,149 @@ export default function PollRegistrationClient() {
           end_date: nextForm.end_date,
           closes_at: nextForm.closes_at,
         });
-        
-        setIsEditing(true);
-        } catch (err: any) {
-          setError(err.message || "Erro desconhecido.");
-        } finally {
-          setLoadingPoll(false);
-        }
-        };
-        
-        loadPoll();
-        }, [pollIdFromUrl, adminTokenQuery]);
-        
-        useEffect(() => {
-        const loadOptions = async () => {
-          if (!pollIdFromUrl) return;
-        
-          setOptionsLoading(true);
-          setOptionsError("");
-          setOptionsSuccess(false);
-        
-          try {
-            const res = await fetch(
-              `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options?${adminTokenQuery}`,
-              { method: "GET" }
-            );
-        
-            let json: any = null;
-            try {
-              json = await res.json();
-            } catch {
-              json = null;
-            }
-        
-            if (!res.ok) {
-              throw new Error(
-                json?.error
-                  ? `Falha ao carregar opções: ${json.error}`
-                  : "Falha ao carregar opções."
-              );
-            }
-        
-            setOptions(Array.isArray(json?.options) ? json.options : []);
-          } catch (err: any) {
-            setOptionsError(err.message || "Erro desconhecido.");
-          } finally {
-            setOptionsLoading(false);
-          }
-        };
-        
-        loadOptions();
-        }, [pollIdFromUrl, adminTokenQuery]);
-        
-        const handleInputChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-        ) => {
-        const { name, value, type } = e.target;
-        const isCheckbox = type === "checkbox";
-        
-        setFormData((prev) => ({
-          ...prev,
-          [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
-        }));
-        };
-        
-        /* =======================
-           allow_multiple (SELECT)
-        ======================= */
-        const handleAllowMultipleSelectChange = (
-        e: React.ChangeEvent<HTMLSelectElement>
-        ) => {
-        const allow = e.target.value === "yes";
-        
-        setFormData((prev) => {
-          if (!allow) {
-            return {
-              ...prev,
-              allow_multiple: false,
-              max_votes_per_user: 1,
-            };
-          }
-        
-          const current = prev.max_votes_per_user;
-          const next =
-            typeof current === "number" && current >= 2 ? current : 2;
-        
-          return {
-            ...prev,
-            allow_multiple: true,
-            max_votes_per_user: next,
-          };
-        });
-        };
-        
-        const validateVotesConfigOrThrow = (data: typeof formData) => {
-        if (!data.allow_multiple) {
-          return { ...data, max_votes_per_user: 1 as const };
-        }
-        
-        if (data.max_votes_per_user === "") {
-          throw new Error("Digite o máximo de votos por usuário (mínimo 2).");
-        }
-        
-        const n = Number(data.max_votes_per_user);
-        if (!Number.isFinite(n) || n < 2) {
-          throw new Error("O máximo de votos por usuário deve ser 2 ou mais.");
-        }
-        
-        return { ...data, max_votes_per_user: n };
-        };
-        
-        // ===== Datas: onChange só atualiza (permite digitação parcial).
-        const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        
-        setFormData((prev) => ({
-          ...prev,
-          [name]: value,
-        }));
-        };
 
-    // ===== Datas: valida no onBlur e reverte para último válido se necessário.
-  const validateAndCommitDatesOrRevert = (
-    field: "start_date" | "end_date" | "closes_at"
+        setIsEditing(true);
+      } catch (err: any) {
+        setError(err.message || "Erro desconhecido.");
+      } finally {
+        setLoadingPoll(false);
+      }
+    };
+
+    loadPoll();
+  }, [pollIdFromUrl, adminTokenQuery]);
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      if (!pollIdFromUrl) return;
+
+      setOptionsLoading(true);
+      setOptionsError("");
+      setOptionsSuccess(false);
+
+      try {
+        const res = await fetch(
+          `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options?${adminTokenQuery}`,
+          { method: "GET" }
+        );
+
+        let json: any = null;
+        try {
+          json = await res.json();
+        } catch {
+          json = null;
+        }
+
+        if (!res.ok) {
+          throw new Error(
+            json?.error
+              ? `Falha ao carregar opções: ${json.error}`
+              : "Falha ao carregar opções."
+          );
+        }
+
+        setOptions(Array.isArray(json?.options) ? json.options : []);
+      } catch (err: any) {
+        setOptionsError(err.message || "Erro desconhecido.");
+      } finally {
+        setOptionsLoading(false);
+      }
+    };
+
+    loadOptions();
+  }, [pollIdFromUrl, adminTokenQuery]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
+    const { name, value, type } = e.target;
+    const isCheckbox = type === "checkbox";
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
+    }));
+  };
+
+  const handleAllowMultipleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+
+    setFormData((prev) => {
+      if (!checked) {
+        return { ...prev, allow_multiple: false, max_votes_per_user: 1 };
+      }
+
+      const current = prev.max_votes_per_user;
+      const keep =
+        typeof current === "number" && current >= 2 ? current : ("" as const);
+
+      return { ...prev, allow_multiple: true, max_votes_per_user: keep };
+    });
+  };
+
+  const validateVotesConfigOrThrow = (data: typeof formData) => {
+    if (!data.allow_multiple) {
+      return { ...data, max_votes_per_user: 1 as const };
+    }
+
+    if (data.max_votes_per_user === "") {
+      throw new Error("Digite o máximo de votos por usuário (mínimo 2).");
+    }
+
+    const n = Number(data.max_votes_per_user);
+    if (!Number.isFinite(n) || n < 2) {
+      throw new Error("O máximo de votos por usuário deve ser 2 ou mais.");
+    }
+
+    return { ...data, max_votes_per_user: n };
+  };
+
+  // ===== Datas: onChange só atualiza (permite digitação parcial).
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // ===== Datas: valida no onBlur e reverte para último válido se necessário.
+  const validateAndCommitDatesOrRevert = (field: "start_date" | "end_date" | "closes_at") => {
     const value = formData[field];
-  
+
     // end_date/closes_at são opcionais (permitir limpar)
     if ((field === "end_date" || field === "closes_at") && !value) {
       setError("");
       setLastValidDates((prev) => ({ ...prev, [field]: "" }));
       return;
     }
-  
+
     // start_date é obrigatório (não permitir vazio)
     if (field === "start_date" && !value) {
       setError("Preencha a data de início (start_date).");
-      setFormData((prev) => ({
-        ...prev,
-        start_date: lastValidDates.start_date,
-      }));
+      setFormData((prev) => ({ ...prev, start_date: lastValidDates.start_date }));
       return;
     }
-  
+
     // formato válido?
     if (!isValidDatetimeLocal(value)) {
       setError(
         field === "start_date"
           ? "Data de início inválida."
           : field === "end_date"
-          ? "Data de término inválida."
-          : "Data de encerramento inválida."
+            ? "Data de término inválida."
+            : "Data de encerramento inválida."
       );
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
-  
+
     const createdAt = new Date(formData.created_at);
-    const startDate = formData.start_date
-      ? new Date(formData.start_date)
-      : null;
+    const startDate = formData.start_date ? new Date(formData.start_date) : null;
     const endDate = formData.end_date ? new Date(formData.end_date) : null;
-    const closesAt = formData.closes_at
-      ? new Date(formData.closes_at)
-      : null;
-  
+    const closesAt = formData.closes_at ? new Date(formData.closes_at) : null;
+
     // Regras auditáveis
     if (
       !Number.isNaN(createdAt.getTime()) &&
@@ -391,47 +364,47 @@ export default function PollRegistrationClient() {
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
-  
+
     // coerência entre datas
     if (startDate && endDate && endDate < startDate) {
       setError("A data de término não pode ser anterior à data de início.");
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
-  
+
     if (startDate && closesAt && closesAt < startDate) {
       setError("A data de encerramento não pode ser anterior à data de início.");
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
-  
+
     if (endDate && closesAt && closesAt < endDate) {
       setError("A data de encerramento não pode ser anterior à data de término.");
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
-  
+
     // ok -> grava como último válido
     setError("");
     setLastValidDates((prev) => ({ ...prev, [field]: value }));
   };
-  
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess(false);
-  
+
     try {
       // Valida start_date no submit também
       const startRaw = formData.start_date?.trim();
       if (!startRaw) throw new Error("Preencha a data de início (start_date).");
-  
+
       const start = new Date(startRaw);
       if (Number.isNaN(start.getTime())) {
         throw new Error("Data de início inválida.");
       }
-  
+
       // tolerância 60s (mesma regra do backend)
       const toleranceMs = 60 * 1000;
       if (start.getTime() < Date.now() - toleranceMs) {
@@ -439,7 +412,7 @@ export default function PollRegistrationClient() {
           "A data de início não pode ser menor que agora. Ajuste e confirme."
         );
       }
-  
+
       const ok = window.confirm(
         `Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`
       );
@@ -447,17 +420,17 @@ export default function PollRegistrationClient() {
         setLoading(false);
         return;
       }
-  
+
       const payload = validateVotesConfigOrThrow(formData);
-  
+
       const startISO = datetimeLocalToISOOrNull(payload.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
-  
+
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
-  
+
       const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
-  
+
       const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -468,24 +441,24 @@ export default function PollRegistrationClient() {
           closes_at: closesISO,
         }),
       });
-  
+
       const data = await response.json().catch(() => null);
-  
+
       if (!response.ok) {
-        throw new Error(
-          data?.message || data?.error || "Falha ao criar pesquisa."
-        );
+        throw new Error(data?.message || data?.error || "Falha ao criar pesquisa.");
       }
-  
+
       setSuccess(true);
-  
+
       const resetNow = nowDatetimeLocal();
       setFormData({
         title: "",
         description: "",
+        type: "binary",
         status: "open",
         allow_multiple: false,
         max_votes_per_user: 1,
+        allow_custom_option: false,
         created_at: resetNow,
         closes_at: "",
         vote_cooldown_seconds: 10,
@@ -496,7 +469,7 @@ export default function PollRegistrationClient() {
         icon_name: "",
         icon_url: "",
       });
-  
+
       setLastValidDates({
         start_date: resetNow,
         end_date: "",
@@ -508,7 +481,7 @@ export default function PollRegistrationClient() {
       setLoading(false);
     }
   };
-  
+
   const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!formData.allow_multiple) {
       setFormData((prevData) => ({
@@ -517,9 +490,9 @@ export default function PollRegistrationClient() {
       }));
       return;
     }
-  
+
     const raw = e.target.value;
-  
+
     if (raw === "") {
       setFormData((prevData) => ({
         ...prevData,
@@ -527,16 +500,16 @@ export default function PollRegistrationClient() {
       }));
       return;
     }
-  
+
     const value = parseInt(raw, 10);
     if (!Number.isFinite(value)) return;
-  
+
     setFormData((prevData) => ({
       ...prevData,
       max_votes_per_user: Math.max(2, value),
     }));
   };
-  
+
   const handleCooldownChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Math.max(0, parseInt(e.target.value, 10) || 0);
     setFormData((prevData) => ({
@@ -544,16 +517,18 @@ export default function PollRegistrationClient() {
       vote_cooldown_seconds: value,
     }));
   };
-  
+
   const handleClearForm = () => {
     const resetNow = nowDatetimeLocal();
-  
+
     setFormData({
       title: "",
       description: "",
+      type: "binary",
       status: "open",
       allow_multiple: false,
       max_votes_per_user: 1,
+      allow_custom_option: false,
       created_at: resetNow,
       closes_at: "",
       vote_cooldown_seconds: 10,
@@ -564,42 +539,40 @@ export default function PollRegistrationClient() {
       icon_name: "",
       icon_url: "",
     });
-  
+
     setLastValidDates({
       start_date: resetNow,
       end_date: "",
       closes_at: "",
     });
-  
+
     setError("");
     setSuccess(false);
     setIsEditing(true);
   };
-  
+
   const handleSave = async () => {
     try {
       if (!pollIdFromUrl) {
         throw new Error("Abra uma pesquisa existente para salvar.");
       }
-  
+
       setLoading(true);
       setError("");
       setSuccess(false);
-  
+
       const payload = validateVotesConfigOrThrow(formData);
-  
+
       const startISO = datetimeLocalToISOOrNull(payload.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
-  
+
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
-  
+
       const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
-  
+
       const res = await fetch(
-        `/api/admin/polls/${encodeURIComponent(
-          pollIdFromUrl
-        )}?${adminTokenQuery}`,
+        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -611,24 +584,23 @@ export default function PollRegistrationClient() {
           }),
         }
       );
-  
+
       const json = await res.json().catch(() => null);
-  
+
       if (!res.ok) {
         throw new Error(
           json?.details
             ? `Falha ao salvar: ${json.error} — ${json.details}`
             : json?.message
-            ? `Falha ao salvar: ${json.message}`
-            : json?.error
-            ? `Falha ao salvar: ${json.error}`
-            : "Falha ao salvar."
+              ? `Falha ao salvar: ${json.message}`
+              : json?.error
+                ? `Falha ao salvar: ${json.error}`
+                : "Falha ao salvar."
         );
       }
-  
+
       setSuccess(true);
       setIsEditing(false);
-
 
       // após salvar com sucesso, atualiza lastValidDates para os valores atuais
       setLastValidDates({
@@ -805,218 +777,619 @@ export default function PollRegistrationClient() {
   const minStartDatetimeLocal = !isEditMode ? nowDatetimeLocal() : undefined;
 
   return (
-  <div style={styles.container}>
-    <h1 style={styles.title}>
-      {isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}
-    </h1>
+    <div style={styles.container}>
+      <h1 style={styles.title}>{isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}</h1>
 
-    {isEditMode && (
-      <p style={styles.modeInfo}>
-        ID da pesquisa: <strong>{pollIdFromUrl}</strong>
-      </p>
-    )}
+      {isEditMode && (
+        <p style={styles.modeInfo}>
+          ID da pesquisa: <strong>{pollIdFromUrl}</strong>
+        </p>
+      )}
 
-    <div style={styles.topActions}>
-      <button
-        type="button"
-        onClick={() =>
-          router.push(
-            tokenFromUrl ? `/admin?token=${encodeURIComponent(tokenFromUrl)}` : "/admin"
-          )
-        }
-        style={styles.backButton}
-        disabled={isBusy}
-      >
-        Admin
-      </button>
-    </div>
-
-    {loadingPoll && <p style={styles.info}>Carregando dados da pesquisa...</p>}
-
-    <form onSubmit={handleFormSubmit} style={styles.form}>
-      <div style={styles.fieldGroup}>
-        <label style={styles.label}>Título:</label>
-        <input
-          type="text"
-          name="title"
-          value={formData.title}
-          onChange={handleInputChange}
-          style={styles.input}
-          required
-          disabled={!isEditing || isBusy}
-        />
+      <div style={styles.topActions}>
+        <button
+          type="button"
+          onClick={() =>
+            router.push(
+              tokenFromUrl ? `/admin?token=${encodeURIComponent(tokenFromUrl)}` : "/admin"
+            )
+          }
+          style={styles.backButton}
+          disabled={isBusy}
+        >
+          Admin
+        </button>
       </div>
 
-      <div style={styles.fieldGroup}>
-        <label style={styles.label}>Descrição:</label>
-        <textarea
-          name="description"
-          value={formData.description}
-          onChange={handleInputChange}
-          style={styles.textarea}
-          required
-          disabled={!isEditing || isBusy}
-        />
-      </div>
+      {loadingPoll && <p style={styles.info}>Carregando dados da pesquisa...</p>}
 
-      <div style={styles.inlineFieldGroup}>
+      <form onSubmit={handleFormSubmit} style={styles.form}>
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Status:</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleInputChange}
-            style={styles.select}
-            disabled={!isEditing || isBusy}
-          >
-            <option value="draft">Rascunho</option>
-            <option value="open">Aberta</option>
-            <option value="paused">Pausada</option>
-            <option value="closed">Encerrada</option>
-          </select>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Permitir mais de um voto?</label>
-          <select
-            name="allow_multiple"
-            value={formData.allow_multiple ? "yes" : "no"}
-            onChange={(e) =>
-              handleAllowMultipleChange({
-                ...e,
-                target: {
-                  ...e.target,
-                  checked: e.target.value === "yes",
-                },
-              } as any)
-            }
-            style={styles.select}
-            disabled={!isEditing || isBusy}
-          >
-            <option value="no">Não</option>
-            <option value="yes">Sim</option>
-          </select>
-        </div>
-
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Máximo de Votos por Usuário:</label>
+          <label style={styles.label}>Título:</label>
           <input
-            type="number"
-            name="max_votes_per_user"
-            value={formData.max_votes_per_user as any}
-            onChange={handleMaxVotesChange}
-            style={styles.input}
-            min={formData.allow_multiple ? 2 : 1}
-            disabled={!isEditing || isBusy || !formData.allow_multiple}
-          />
-        </div>
-      </div>
-
-      <div style={styles.fieldGroup}>
-        <label style={styles.label}>Tempo de Cooldown (segundos):</label>
-        <input
-          type="number"
-          name="vote_cooldown_seconds"
-          value={formData.vote_cooldown_seconds}
-          onChange={handleCooldownChange}
-          style={styles.input}
-          min={0}
-          disabled={!isEditing || isBusy}
-        />
-      </div>
-
-      <div style={styles.inlineFieldGroup}>
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tipo de Votação:</label>
-          <select
-            name="voting_type"
-            value={formData.voting_type}
+            type="text"
+            name="title"
+            value={formData.title}
             onChange={handleInputChange}
-            style={styles.select}
-            disabled={!isEditing || isBusy}
-          >
-            <option value="single">Simples</option>
-            <option value="ranking">Ranking</option>
-            <option value="multiple">Múltipla</option>
-          </select>
-        </div>
-
-        {formData.voting_type === "multiple" && (
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Máx. opções por voto:</label>
-            <input
-              type="number"
-              name="max_options_per_vote"
-              value={(formData as any).max_options_per_vote ?? ""}
-              onChange={handleInputChange}
-              style={styles.input}
-              min={1}
-              disabled={!isEditing || isBusy}
-            />
-          </div>
-        )}
-      </div>
-
-      <div style={styles.inlineFieldGroup}>
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Início:</label>
-          <input
-            type="datetime-local"
-            name="start_date"
-            value={formData.start_date}
-            onChange={handleDateChange}
-            onBlur={() => validateAndCommitDatesOrRevert("start_date")}
             style={styles.input}
-            min={minStartDatetimeLocal}
+            placeholder="Digite o título da pesquisa"
             required
             disabled={!isEditing || isBusy}
           />
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Término:</label>
-          <input
-            type="datetime-local"
-            name="end_date"
-            value={formData.end_date}
-            onChange={handleDateChange}
-            onBlur={() => validateAndCommitDatesOrRevert("end_date")}
-            style={styles.input}
+          <label style={styles.label}>Descrição:</label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            style={styles.textarea}
+            placeholder="Digite uma descrição opcional"
+            required
             disabled={!isEditing || isBusy}
           />
         </div>
-      </div>
 
-      <div style={styles.buttonGroup}>
-        {isEditMode && (
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Pesquisa:</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="binary">Binária</option>
+              <option value="multiple">Múltipla Escolha</option>
+            </select>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Status:</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="draft">Rascunho</option>
+              <option value="open">Aberta</option>
+              <option value="paused">Pausada</option>
+              <option value="closed">Encerrada</option>
+            </select>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Máximo de Votos por Usuário:</label>
+            <input
+              type="number"
+              name="max_votes_per_user"
+              value={formData.max_votes_per_user as any}
+              onChange={handleMaxVotesChange}
+              style={styles.input}
+              min={formData.allow_multiple ? 2 : 1}
+              required={formData.allow_multiple}
+              disabled={!isEditing || isBusy || !formData.allow_multiple}
+            />
+          </div>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_multiple"
+              checked={formData.allow_multiple}
+              onChange={handleAllowMultipleChange}
+              style={styles.checkbox}
+              disabled={!isEditing || isBusy}
+            />
+            Permitir mais de um voto por usuário
+          </label>
+
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_custom_option"
+              checked={formData.allow_custom_option}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+              disabled={!isEditing || isBusy}
+            />
+            Permitir opções personalizadas
+          </label>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Criado em:</label>
+            <input
+              type="datetime-local"
+              name="created_at"
+              value={formData.created_at}
+              onChange={handleInputChange}
+              style={styles.input}
+              readOnly
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Encerramento:</label>
+            <input
+              type="datetime-local"
+              name="closes_at"
+              value={formData.closes_at}
+              onChange={handleDateChange}
+              onBlur={() => validateAndCommitDatesOrRevert("closes_at")}
+              style={styles.input}
+              disabled={!isEditing || isBusy}
+            />
+          </div>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
+          <input
+            type="number"
+            name="vote_cooldown_seconds"
+            value={formData.vote_cooldown_seconds}
+            onChange={handleCooldownChange}
+            style={styles.input}
+            min="0"
+            disabled={!isEditing || isBusy}
+          />
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Votação:</label>
+            <select
+              name="voting_type"
+              value={formData.voting_type}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="single">Única Escolha</option>
+              <option value="ranking">Ranking</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Início:</label>
+            <input
+              type="datetime-local"
+              name="start_date"
+              value={formData.start_date}
+              onChange={handleDateChange}
+              onBlur={() => validateAndCommitDatesOrRevert("start_date")}
+              style={styles.input}
+              min={minStartDatetimeLocal}
+              required
+              disabled={!isEditing || isBusy}
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Término:</label>
+            <input
+              type="datetime-local"
+              name="end_date"
+              value={formData.end_date}
+              onChange={handleDateChange}
+              onBlur={() => validateAndCommitDatesOrRevert("end_date")}
+              style={styles.input}
+              disabled={!isEditing || isBusy}
+            />
+          </div>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>
+            Mostrar Resultados Parciais:
+            <input
+              type="checkbox"
+              name="show_partial_results"
+              checked={formData.show_partial_results}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+              disabled={!isEditing || isBusy}
+            />
+          </label>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Nome do Ícone:</label>
+          <input
+            type="text"
+            name="icon_name"
+            value={formData.icon_name}
+            onChange={handleInputChange}
+            style={styles.input}
+            placeholder="Digite o nome do ícone"
+            disabled={!isEditing || isBusy}
+          />
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>URL do Ícone:</label>
+          <input
+            type="url"
+            name="icon_url"
+            value={formData.icon_url}
+            onChange={handleInputChange}
+            style={styles.input}
+            placeholder="Digite a URL do ícone"
+            disabled={!isEditing || isBusy}
+          />
+        </div>
+
+        <div style={styles.buttonGroup}>
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={handleSave}
+              style={styles.button}
+              disabled={!isEditing || isBusy}
+            >
+              {loading ? "Salvando..." : "Salvar"}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={handleSave}
-            style={styles.button}
-            disabled={!isEditing || isBusy}
+            onClick={handleClearForm}
+            style={styles.clearButton}
+            disabled={isBusy}
           >
-            Salvar
+            Limpar
           </button>
-        )}
 
-        <button
-          type="button"
-          onClick={handleClearForm}
-          style={styles.clearButton}
-          disabled={isBusy}
-        >
-          Limpar
-        </button>
+          {!isEditMode && (
+            <button type="submit" style={styles.primaryButton} disabled={isBusy}>
+              {loading ? "Cadastrando..." : "Cadastrar"}
+            </button>
+          )}
+        </div>
 
-        {!isEditMode && (
-          <button type="submit" style={styles.primaryButton} disabled={isBusy}>
-            Cadastrar
-          </button>
-        )}
-      </div>
+        {success && <p style={styles.success}>Operação realizada com sucesso!</p>}
+        {error && <p style={styles.error}>{error}</p>}
+      </form>
 
-      {success && <p style={styles.success}>Operação realizada com sucesso!</p>}
-      {error && <p style={styles.error}>{error}</p>}
-    </form>
-  </div>
-);
+      <div style={styles.divider} />
+
+      <h2 style={styles.sectionTitle}>Opções da Pesquisa</h2>
+
+      {!isEditMode ? (
+        <p style={styles.sectionHint}>
+          Para cadastrar opções, abra uma pesquisa existente (modo edição).
+        </p>
+      ) : (
+        <>
+          <div style={styles.inlineOptionForm}>
+            <div style={{ ...styles.fieldGroup, flex: 1 }}>
+              <label style={styles.label}>Texto da opção:</label>
+              <input
+                type="text"
+                value={optionText}
+                onChange={(e) => setOptionText(e.target.value)}
+                style={styles.input}
+                placeholder="Ex.: Sim, Não, Talvez..."
+                disabled={optionsLoading}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCreateOption}
+              style={styles.primaryButton}
+              disabled={optionsLoading || !optionText.trim()}
+            >
+              {optionsLoading ? "Adicionando..." : "Adicionar Opção"}
+            </button>
+          </div>
+
+          {optionsSuccess && <p style={styles.success}>Opção atualizada com sucesso!</p>}
+          {optionsError && <p style={styles.error}>{optionsError}</p>}
+
+          <div style={styles.optionsTableWrapper}>
+            <h3 style={styles.subTitle}>Opções cadastradas</h3>
+
+            {optionsLoading ? (
+              <p style={styles.info}>Carregando opções...</p>
+            ) : options.length === 0 ? (
+              <p style={styles.info}>Nenhuma opção cadastrada.</p>
+            ) : (
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Opção</th>
+                    <th style={{ ...styles.th, width: 160 }}>Ações</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {options.map((opt) => {
+                    const isEditingRow = editingOptionId === opt.id;
+
+                    return (
+                      <tr key={opt.id}>
+                        <td style={styles.td}>
+                          {isEditingRow ? (
+                            <input
+                              type="text"
+                              value={editingOptionText}
+                              onChange={(e) => setEditingOptionText(e.target.value)}
+                              style={styles.input}
+                              disabled={optionSaving || optionsLoading}
+                            />
+                          ) : (
+                            opt.option_text
+                          )}
+                        </td>
+
+                        <td style={styles.td}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                            {!isEditingRow ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditOption(opt)}
+                                  style={styles.iconButton}
+                                  title="Editar"
+                                  disabled={optionsLoading}
+                                >
+                                  ✏️
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteOption(opt)}
+                                  style={styles.iconDangerButton}
+                                  title="Excluir"
+                                  disabled={optionsLoading}
+                                >
+                                  🗑️
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleSaveOption}
+                                style={styles.iconSuccessButton}
+                                title="Salvar"
+                                disabled={optionSaving || !editingOptionText.trim()}
+                              >
+                                💾
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const styles = {
+  container: {
+    maxWidth: "600px",
+    margin: "0 auto",
+    padding: "20px",
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    backgroundColor: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "10px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+  },
+  title: {
+    fontSize: "24px",
+    fontWeight: "bold",
+    marginBottom: "10px",
+    textAlign: "center" as const,
+    color: "#1f2937",
+  },
+  modeInfo: {
+    fontSize: "13px",
+    color: "#374151",
+    marginBottom: "8px",
+    textAlign: "center" as const,
+  },
+  info: {
+    fontSize: "14px",
+    color: "#374151",
+    textAlign: "center" as const,
+    marginBottom: "10px",
+  },
+  topActions: {
+    display: "flex",
+    justifyContent: "flex-start",
+    marginBottom: "10px",
+  },
+  backButton: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#fff",
+    backgroundColor: "#6b7280",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "15px",
+  },
+  fieldGroup: {
+    display: "flex",
+    flexDirection: "column" as const,
+    minWidth: 0,
+  },
+  inlineFieldGroup: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "20px",
+    alignItems: "center",
+    flexWrap: "wrap" as const,
+  },
+  label: {
+    fontSize: "14px",
+    fontWeight: "bold",
+    color: "#374151",
+    marginBottom: "5px",
+  },
+  input: {
+    padding: "10px",
+    fontSize: "14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "5px",
+    backgroundColor: "#fff",
+  },
+  textarea: {
+    padding: "10px",
+    fontSize: "14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "5px",
+    backgroundColor: "#fff",
+    minHeight: "80px",
+    resize: "none" as const,
+  },
+  select: {
+    padding: "10px",
+    fontSize: "14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "5px",
+    backgroundColor: "#fff",
+  },
+  checkboxLabel: {
+    fontSize: "14px",
+    color: "#374151",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  checkbox: { marginRight: "10px" },
+  buttonGroup: { display: "flex", gap: "10px", flexWrap: "wrap" as const },
+  button: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#fff",
+    backgroundColor: "#3b82f6",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  primaryButton: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#fff",
+    backgroundColor: "#16a34a",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  clearButton: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#fff",
+    backgroundColor: "#f43f5e",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+
+  iconButton: {
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #d1d5db",
+    backgroundColor: "#fff",
+    cursor: "pointer",
+    fontSize: "18px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconSuccessButton: {
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #16a34a",
+    backgroundColor: "#dcfce7",
+    cursor: "pointer",
+    fontSize: "18px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconDangerButton: {
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #f43f5e",
+    backgroundColor: "#ffe4e6",
+    cursor: "pointer",
+    fontSize: "18px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  success: { color: "green", fontSize: "14px", textAlign: "center" as const },
+  error: { color: "red", fontSize: "14px", textAlign: "center" as const },
+
+  divider: { height: 1, backgroundColor: "#e5e7eb", margin: "24px 0" },
+  sectionTitle: { fontSize: "18px", fontWeight: "bold", color: "#111827" },
+  sectionHint: { fontSize: "14px", color: "#4b5563", marginBottom: "14px" },
+  inlineOptionForm: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "flex-end",
+    flexWrap: "wrap" as const,
+    marginBottom: "10px",
+  },
+  optionsTableWrapper: {
+    marginTop: "10px",
+    backgroundColor: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    padding: "12px",
+  },
+  subTitle: {
+    margin: "0 0 10px 0",
+    fontSize: "14px",
+    fontWeight: "bold",
+    color: "#374151",
+  },
+  table: { width: "100%", borderCollapse: "collapse" as const },
+  th: {
+    textAlign: "left" as const,
+    fontSize: "13px",
+    padding: "8px",
+    borderBottom: "1px solid #e5e7eb",
+    color: "#374151",
+  },
+  td: {
+    fontSize: "13px",
+    padding: "8px",
+    borderBottom: "1px solid #f3f4f6",
+    color: "#111827",
+    wordBreak: "break-word" as const,
+  },
+} as const;
