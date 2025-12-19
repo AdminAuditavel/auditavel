@@ -972,10 +972,10 @@ export default function PollRegistrationClient() {
           </div>
         </div>
 
-        {/* Tempo de espera + Tipo de Voto (na mesma linha) */}
+        {/* Tempo de espera + Tipo de Voto + Máx. opções por voto (mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, width: 240, minWidth: 220 }}>
-            <label style={styles.label}>Tempo de espera (segundos):</label>
+          <div style={{ ...styles.fieldGroup, width: 240, minWidth: 170 }}>
+            <label style={styles.label}>Tempo de espera (seg):</label>
             <input
               type="number"
               name="vote_cooldown_seconds"
@@ -986,8 +986,8 @@ export default function PollRegistrationClient() {
               disabled={!isEditing || isBusy}
             />
           </div>
-
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+        
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 80 }}>
             <label style={styles.label}>Tipo de Voto:</label>
             <select
               name="voting_type"
@@ -997,6 +997,7 @@ export default function PollRegistrationClient() {
                 setFormData((prev) => ({
                   ...prev,
                   voting_type: v,
+                  // se não for multiple, mantém valor (não usado), mas o payload envia null
                   max_options_per_vote:
                     v === "multiple"
                       ? Math.max(1, prev.max_options_per_vote)
@@ -1011,25 +1012,21 @@ export default function PollRegistrationClient() {
               <option value="multiple">Múltipla</option>
             </select>
           </div>
-        </div>
-
-        {/* max_options_per_vote condicional (mantido) */}
-        {formData.voting_type === "multiple" && (
-          <div style={styles.inlineFieldGroup}>
-            <div style={{ ...styles.fieldGroup, width: 240, minWidth: 220 }}>
-              <label style={styles.label}>Máx. opções por voto:</label>
-              <input
-                type="number"
-                name="max_options_per_vote"
-                value={formData.max_options_per_vote}
-                onChange={handleMaxOptionsPerVoteChange}
-                style={styles.input}
-                min={1}
-                disabled={!isEditing || isBusy}
-              />
-            </div>
+        
+          <div style={{ ...styles.fieldGroup, width: 220, minWidth: 170 }}>
+            <label style={styles.label}>Máx. opções marcar:</label>
+            <input
+              type="number"
+              name="max_options_per_vote"
+              value={formData.max_options_per_vote}
+              onChange={handleMaxOptionsPerVoteChange}
+              style={styles.input}
+              min={1}
+              disabled={!isEditing || isBusy || formData.voting_type !== "multiple"}
+              readOnly={formData.voting_type !== "multiple"}
+            />
           </div>
-        )}
+        </div>
 
         {/* Início + Término */}
         <div style={styles.inlineFieldGroup}>
