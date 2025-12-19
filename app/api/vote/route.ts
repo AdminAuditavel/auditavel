@@ -3,6 +3,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
 
+/* =========================
+   Helper — syncParticipant
+========================= */
+async function syncParticipant(participant_id: string) {
+  try {
+    const { data: existingParticipant } = await supabase
+      .from("participants")
+      .select("id")
+      .eq("id", participant_id)
+      .maybeSingle();
+
+    if (!existingParticipant) {
+      await supabase.from("participants").insert({
+        id: participant_id,
+      });
+    } else {
+      await supabase
+        .from("participants")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("id", participant_id);
+    }
+  } catch (e) {
+    console.error("Erro ao sincronizar participante:", e);
+    // NÃO bloqueia o voto
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -20,41 +47,14 @@ export async function POST(req: NextRequest) {
       participant_id?: string;
     };
 
-   if (!poll_id || !user_hash || !participant_id) {
-    return NextResponse.json(
-      {
-        error: "missing_data",
-        message: "poll_id, user_hash e participant_id são obrigatórios",
-      },
-      { status: 400 }
-    );
-  }
-
-    /* =========================
-       PARTICIPANT (V2.1)
-    ========================= */
-    if (participant_id) {
-      try {
-        const { data: existingParticipant } = await supabase
-          .from("participants")
-          .select("id")
-          .eq("id", participant_id)
-          .maybeSingle();
-
-        if (!existingParticipant) {
-          await supabase.from("participants").insert({
-            id: participant_id,
-          });
-        } else {
-          await supabase
-            .from("participants")
-            .update({ last_seen_at: new Date().toISOString() })
-            .eq("id", participant_id);
-        }
-      } catch (e) {
-        console.error("Erro ao sincronizar participante:", e);
-        // NÃO bloqueia o voto
-      }
+    if (!poll_id || !user_hash || !participant_id) {
+      return NextResponse.json(
+        {
+          error: "missing_data",
+          message: "poll_id, user_hash e participant_id são obrigatórios",
+        },
+        { status: 400 }
+      );
     }
 
     /* =========================
@@ -145,6 +145,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // ✅ syncParticipant SOMENTE após validações + cooldown
+      await syncParticipant(participant_id);
+
       if (!allowMultiple) {
         const { data: previousVotes } = await supabase
           .from("votes")
@@ -165,7 +168,7 @@ export async function POST(req: NextRequest) {
         id: parentVoteId,
         poll_id,
         user_hash,
-        participant_id: participant_id ?? null,
+        participant_id,
       };
 
       const { data: parentVoteData, error: parentVoteError } = await supabase
@@ -230,12 +233,15 @@ export async function POST(req: NextRequest) {
         .eq("user_hash", user_hash)
         .maybeSingle();
 
+      // ✅ syncParticipant SOMENTE antes de escrita
+      await syncParticipant(participant_id);
+
       if (existing) {
         await supabase
           .from("votes")
           .update({
             option_id,
-            participant_id: participant_id ?? null,
+            participant_id,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existing.id);
@@ -248,7 +254,7 @@ export async function POST(req: NextRequest) {
         poll_id,
         option_id,
         user_hash,
-        participant_id: participant_id ?? null,
+        participant_id,
         votes_count: 1,
       });
 
@@ -287,12 +293,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ✅ syncParticipant SOMENTE antes de escrita
+    await syncParticipant(participant_id);
+
     await supabase.from("votes").insert({
       id: randomUUID(),
       poll_id,
       option_id,
       user_hash,
-      participant_id: participant_id ?? null,
+      participant_id,
       votes_count: 1,
     });
 
