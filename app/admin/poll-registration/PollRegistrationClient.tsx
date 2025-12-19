@@ -342,7 +342,9 @@ export default function PollRegistrationClient() {
 
     const n = Number(data.max_votes_per_user);
     if (!Number.isFinite(n) || n < 2) {
-      throw new Error("O máximo permitido deve ser 2 ou mais quando múltiplos votos estiverem habilitados.");
+      throw new Error(
+        "O máximo permitido deve ser 2 ou mais quando múltiplos votos estiverem habilitados."
+      );
     }
 
     return { ...data, max_votes_per_user: n };
@@ -364,11 +366,7 @@ export default function PollRegistrationClient() {
   // ===== Datas: onChange só atualiza (permite digitação parcial).
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // ===== Datas: valida no onBlur e reverte para último válido se necessário.
@@ -465,7 +463,9 @@ export default function PollRegistrationClient() {
         throw new Error("A data de início não pode ser menor que agora. Ajuste e confirme.");
       }
 
-      const ok = window.confirm(`Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`);
+      const ok = window.confirm(
+        `Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`
+      );
       if (!ok) {
         setLoading(false);
         return;
@@ -867,24 +867,10 @@ export default function PollRegistrationClient() {
         </p>
       )}
 
-      <div style={styles.topActions}>
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              tokenFromUrl ? `/admin?token=${encodeURIComponent(tokenFromUrl)}` : "/admin"
-            )
-          }
-          style={styles.backButton}
-          disabled={isBusy}
-        >
-          Admin
-        </button>
-      </div>
-
       {loadingPoll && <p style={styles.info}>Carregando dados da pesquisa...</p>}
 
       <form onSubmit={handleFormSubmit} style={styles.form}>
+        {/* Título com campo maior */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Título:</label>
           <input
@@ -892,7 +878,7 @@ export default function PollRegistrationClient() {
             name="title"
             value={formData.title}
             onChange={handleInputChange}
-            style={styles.input}
+            style={styles.titleInput}
             placeholder="Digite o título da pesquisa"
             required
             disabled={!isEditing || isBusy}
@@ -912,8 +898,9 @@ export default function PollRegistrationClient() {
           />
         </div>
 
+        {/* Status + allow_multiple + max_votes_per_user (todos na mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 160 }}>
             <label style={styles.label}>Status:</label>
             <select
               name="status"
@@ -928,11 +915,8 @@ export default function PollRegistrationClient() {
               <option value="closed">Encerrada</option>
             </select>
           </div>
-        </div>
 
-        {/* allow_multiple (Sim/Não) + max_votes_per_user em sequência */}
-        <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Permitir múltiplos votos?</label>
             <select
               value={formData.allow_multiple ? "yes" : "no"}
@@ -945,7 +929,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, width: 170, minWidth: 170 }}>
             <label style={styles.label}>Máximo Permitido:</label>
             <input
               type="number"
@@ -960,8 +944,9 @@ export default function PollRegistrationClient() {
           </div>
         </div>
 
+        {/* Criado em + Encerramento */}
         <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Criado em:</label>
             <input
               type="datetime-local"
@@ -973,7 +958,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Data de Encerramento:</label>
             <input
               type="datetime-local"
@@ -987,22 +972,22 @@ export default function PollRegistrationClient() {
           </div>
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tempo de espera (segundos):</label>
-          <input
-            type="number"
-            name="vote_cooldown_seconds"
-            value={formData.vote_cooldown_seconds}
-            onChange={handleCooldownChange}
-            style={styles.input}
-            min="0"
-            disabled={!isEditing || isBusy}
-          />
-        </div>
-
-        {/* voting_type + max_options_per_vote (condicional) em sequência */}
+        {/* Tempo de espera + Tipo de Voto (na mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, width: 240, minWidth: 220 }}>
+            <label style={styles.label}>Tempo de espera (segundos):</label>
+            <input
+              type="number"
+              name="vote_cooldown_seconds"
+              value={formData.vote_cooldown_seconds}
+              onChange={handleCooldownChange}
+              style={styles.input}
+              min="0"
+              disabled={!isEditing || isBusy}
+            />
+          </div>
+
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Tipo de Voto:</label>
             <select
               name="voting_type"
@@ -1012,8 +997,10 @@ export default function PollRegistrationClient() {
                 setFormData((prev) => ({
                   ...prev,
                   voting_type: v,
-                  // se não for multiple, mantém valor (não usado), mas o payload envia null
-                  max_options_per_vote: v === "multiple" ? Math.max(1, prev.max_options_per_vote) : prev.max_options_per_vote,
+                  max_options_per_vote:
+                    v === "multiple"
+                      ? Math.max(1, prev.max_options_per_vote)
+                      : prev.max_options_per_vote,
                 }));
               }}
               style={styles.select}
@@ -1024,9 +1011,12 @@ export default function PollRegistrationClient() {
               <option value="multiple">Múltipla</option>
             </select>
           </div>
+        </div>
 
-          {formData.voting_type === "multiple" && (
-            <div style={styles.fieldGroup}>
+        {/* max_options_per_vote condicional (mantido) */}
+        {formData.voting_type === "multiple" && (
+          <div style={styles.inlineFieldGroup}>
+            <div style={{ ...styles.fieldGroup, width: 240, minWidth: 220 }}>
               <label style={styles.label}>Máx. opções por voto:</label>
               <input
                 type="number"
@@ -1038,11 +1028,12 @@ export default function PollRegistrationClient() {
                 disabled={!isEditing || isBusy}
               />
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
+        {/* Início + Término */}
         <div style={styles.inlineFieldGroup}>
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Data de Início:</label>
             <input
               type="datetime-local"
@@ -1057,7 +1048,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={styles.fieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Data de Término:</label>
             <input
               type="datetime-local"
@@ -1111,32 +1102,46 @@ export default function PollRegistrationClient() {
           />
         </div>
 
-        <div style={styles.buttonGroup}>
-          {isEditMode && (
+        {/* Linha de ações: Limpar/Cadastrar/Salvar à esquerda e Admin à direita */}
+        <div style={styles.actionsRow}>
+          <div style={styles.buttonGroup}>
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={handleSave}
+                style={styles.button}
+                disabled={!isEditing || isBusy}
+              >
+                {loading ? "Salvando..." : "Salvar"}
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={handleSave}
-              style={styles.button}
-              disabled={!isEditing || isBusy}
+              onClick={handleClearForm}
+              style={styles.clearButton}
+              disabled={isBusy}
             >
-              {loading ? "Salvando..." : "Salvar"}
+              Limpar
             </button>
-          )}
+
+            {!isEditMode && (
+              <button type="submit" style={styles.primaryButton} disabled={isBusy}>
+                {loading ? "Cadastrando..." : "Cadastrar"}
+              </button>
+            )}
+          </div>
 
           <button
             type="button"
-            onClick={handleClearForm}
-            style={styles.clearButton}
+            onClick={() =>
+              router.push(tokenFromUrl ? `/admin?token=${encodeURIComponent(tokenFromUrl)}` : "/admin")
+            }
+            style={styles.backButton}
             disabled={isBusy}
           >
-            Limpar
+            Admin
           </button>
-
-          {!isEditMode && (
-            <button type="submit" style={styles.primaryButton} disabled={isBusy}>
-              {loading ? "Cadastrando..." : "Cadastrar"}
-            </button>
-          )}
         </div>
 
         {success && <p style={styles.success}>Operação realizada com sucesso!</p>}
@@ -1264,6 +1269,7 @@ export default function PollRegistrationClient() {
     </div>
   );
 }
+
 const styles = {
   container: {
     maxWidth: "600px",
@@ -1294,21 +1300,6 @@ const styles = {
     textAlign: "center" as const,
     marginBottom: "10px",
   },
-  topActions: {
-    display: "flex",
-    justifyContent: "flex-start",
-    marginBottom: "10px",
-  },
-  backButton: {
-    padding: "10px",
-    fontSize: "14px",
-    color: "#fff",
-    backgroundColor: "#6b7280",
-    border: "none",
-    borderRadius: "5px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
   form: {
     display: "flex",
     flexDirection: "column" as const,
@@ -1322,8 +1313,8 @@ const styles = {
   inlineFieldGroup: {
     display: "flex",
     justifyContent: "space-between",
-    gap: "20px",
-    alignItems: "center",
+    gap: "14px",
+    alignItems: "flex-end",
     flexWrap: "wrap" as const,
   },
   label: {
@@ -1337,6 +1328,14 @@ const styles = {
     fontSize: "14px",
     border: "1px solid #d1d5db",
     borderRadius: "5px",
+    backgroundColor: "#fff",
+  },
+  // Campo título um pouco maior
+  titleInput: {
+    padding: "12px",
+    fontSize: "16px",
+    border: "1px solid #d1d5db",
+    borderRadius: "6px",
     backgroundColor: "#fff",
   },
   textarea: {
@@ -1355,14 +1354,7 @@ const styles = {
     borderRadius: "5px",
     backgroundColor: "#fff",
   },
-  checkboxLabel: {
-    fontSize: "14px",
-    color: "#374151",
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-  checkbox: { marginRight: "10px" },
+  checkbox: { marginLeft: "10px" },
   buttonGroup: { display: "flex", gap: "10px", flexWrap: "wrap" as const },
   button: {
     padding: "10px",
@@ -1393,6 +1385,27 @@ const styles = {
     borderRadius: "5px",
     fontWeight: "bold",
     cursor: "pointer",
+  },
+  backButton: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#fff",
+    backgroundColor: "#6b7280",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    whiteSpace: "nowrap" as const,
+  },
+
+  // Ações: esquerda (Salvar/Limpar/Cadastrar) e direita (Admin)
+  actionsRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    flexWrap: "wrap" as const,
+    marginTop: "4px",
   },
 
   iconButton: {
