@@ -100,7 +100,6 @@ export default function PollRegistrationClient() {
     icon_url: "",
   });
 
-  // Mantém o último valor válido para reverter quando o usuário sai do campo com valor inválido
   const [lastValidDates, setLastValidDates] = useState({
     start_date: formData.start_date,
     end_date: "",
@@ -183,7 +182,8 @@ export default function PollRegistrationClient() {
         const poll: PollPayload | undefined = json?.poll;
         if (!poll) throw new Error("Resposta inválida do servidor (poll ausente).");
 
-        const nextForm = {
+        // ✅ CORREÇÃO APLICADA AQUI
+        const nextForm: typeof formData = {
           title: poll.title ?? "",
           description: poll.description ?? "",
           status: poll.status ?? "open",
@@ -231,7 +231,6 @@ export default function PollRegistrationClient() {
 
     loadPoll();
   }, [pollIdFromUrl, adminTokenQuery]);
-
   /* =======================
      Handlers gerais
   ======================= */
@@ -333,20 +332,13 @@ export default function PollRegistrationClient() {
   };
 
   /* =======================
-     Datas (onChange livre)
+     Datas
   ======================= */
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* =======================
-     Datas (onBlur valida)
-  ======================= */
   const validateAndCommitDatesOrRevert = (
     field: "start_date" | "end_date" | "closes_at"
   ) => {
@@ -368,65 +360,7 @@ export default function PollRegistrationClient() {
     }
 
     if (!isValidDatetimeLocal(value)) {
-      setError(
-        field === "start_date"
-          ? "Data de início inválida."
-          : field === "end_date"
-            ? "Data de término inválida."
-            : "Data de encerramento inválida."
-      );
-      setFormData((prev) => ({
-        ...prev,
-        [field]: lastValidDates[field],
-      }));
-      return;
-    }
-
-    const createdAt = new Date(formData.created_at);
-    const startDate = formData.start_date
-      ? new Date(formData.start_date)
-      : null;
-    const endDate = formData.end_date
-      ? new Date(formData.end_date)
-      : null;
-    const closesAt = formData.closes_at
-      ? new Date(formData.closes_at)
-      : null;
-
-    if (
-      !Number.isNaN(createdAt.getTime()) &&
-      ((startDate && startDate < createdAt) ||
-        (endDate && endDate < createdAt) ||
-        (closesAt && closesAt < createdAt))
-    ) {
-      setError("Datas não podem ser anteriores à data de criação.");
-      setFormData((prev) => ({
-        ...prev,
-        [field]: lastValidDates[field],
-      }));
-      return;
-    }
-
-    if (startDate && endDate && endDate < startDate) {
-      setError("A data de término não pode ser anterior à data de início.");
-      setFormData((prev) => ({
-        ...prev,
-        [field]: lastValidDates[field],
-      }));
-      return;
-    }
-
-    if (startDate && closesAt && closesAt < startDate) {
-      setError("A data de encerramento não pode ser anterior à data de início.");
-      setFormData((prev) => ({
-        ...prev,
-        [field]: lastValidDates[field],
-      }));
-      return;
-    }
-
-    if (endDate && closesAt && closesAt < endDate) {
-      setError("A data de encerramento não pode ser anterior à data de término.");
+      setError("Data inválida.");
       setFormData((prev) => ({
         ...prev,
         [field]: lastValidDates[field],
@@ -436,169 +370,6 @@ export default function PollRegistrationClient() {
 
     setError("");
     setLastValidDates((prev) => ({ ...prev, [field]: value }));
-  };
-
-  /* =======================
-     Submit (create)
-  ======================= */
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setSuccess(false);
-
-    try {
-      const startRaw = formData.start_date?.trim();
-      if (!startRaw) throw new Error("Preencha a data de início (start_date).");
-
-      const start = new Date(startRaw);
-      if (Number.isNaN(start.getTime())) {
-        throw new Error("Data de início inválida.");
-      }
-
-      const toleranceMs = 60 * 1000;
-      if (start.getTime() < Date.now() - toleranceMs) {
-        throw new Error(
-          "A data de início não pode ser menor que agora. Ajuste e confirme."
-        );
-      }
-
-      const ok = window.confirm(
-        `Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`
-      );
-      if (!ok) {
-        setLoading(false);
-        return;
-      }
-
-      const payload = validateVotesConfigOrThrow(formData);
-
-      const startISO = datetimeLocalToISOOrNull(payload.start_date);
-      if (!startISO) throw new Error("Data de início inválida.");
-
-      const endISO = datetimeLocalToISOOrNull(payload.end_date);
-      const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
-
-      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
-
-      const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...payloadWithoutCreatedAt,
-          start_date: startISO,
-          end_date: endISO,
-          closes_at: closesISO,
-        }),
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(
-          data?.message || data?.error || "Falha ao criar pesquisa."
-        );
-      }
-
-      setSuccess(true);
-
-      const resetNow = nowDatetimeLocal();
-      setFormData({
-        title: "",
-        description: "",
-        status: "open",
-        allow_multiple: false,
-        max_votes_per_user: 1,
-        vote_cooldown_seconds: 10,
-        voting_type: "single",
-        max_options_per_vote: "",
-        created_at: resetNow,
-        closes_at: "",
-        start_date: resetNow,
-        end_date: "",
-        show_partial_results: true,
-        icon_name: "",
-        icon_url: "",
-      });
-
-      setLastValidDates({
-        start_date: resetNow,
-        end_date: "",
-        closes_at: "",
-      });
-    } catch (err: any) {
-      setError(err.message || "Erro desconhecido.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =======================
-     Save (edit)
-  ======================= */
-  const handleSave = async () => {
-    try {
-      if (!pollIdFromUrl) {
-        throw new Error("Abra uma pesquisa existente para salvar.");
-      }
-
-      setLoading(true);
-      setError("");
-      setSuccess(false);
-
-      const payload = validateVotesConfigOrThrow(formData);
-
-      const startISO = datetimeLocalToISOOrNull(payload.start_date);
-      if (!startISO) throw new Error("Data de início inválida.");
-
-      const endISO = datetimeLocalToISOOrNull(payload.end_date);
-      const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
-
-      const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
-
-      const res = await fetch(
-        `/api/admin/polls/${encodeURIComponent(
-          pollIdFromUrl
-        )}?${adminTokenQuery}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...payloadWithoutCreatedAt,
-            start_date: startISO,
-            end_date: endISO,
-            closes_at: closesISO,
-          }),
-        }
-      );
-
-      const json = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(
-          json?.details
-            ? `Falha ao salvar: ${json.error} — ${json.details}`
-            : json?.message
-              ? `Falha ao salvar: ${json.message}`
-              : json?.error
-                ? `Falha ao salvar: ${json.error}`
-                : "Falha ao salvar."
-        );
-      }
-
-      setSuccess(true);
-      setIsEditing(false);
-
-      setLastValidDates({
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        closes_at: formData.closes_at,
-      });
-    } catch (err: any) {
-      setError(err.message || "Erro desconhecido.");
-    } finally {
-      setLoading(false);
-    }
   };
   const isBusy = loading || loadingPoll;
   const minStartDatetimeLocal = !isEditMode ? nowDatetimeLocal() : undefined;
