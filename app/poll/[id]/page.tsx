@@ -30,9 +30,6 @@ export default function PollPage() {
   const router = useRouter();
   const id = params?.id as string | undefined;
 
-  /* =======================
-     GUARDA
-  ======================= */
   if (!id || typeof id !== 'string' || id.trim() === '') {
     return (
       <main className="p-6 max-w-xl mx-auto text-center text-red-600">
@@ -51,53 +48,41 @@ export default function PollPage() {
   const [loading, setLoading] = useState(true);
 
   const [rankingMessage, setRankingMessage] = useState<string | null>(null);
+  const [multipleMessage, setMultipleMessage] = useState<string | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
-  /* =======================
-     SENSORS
-  ======================= */
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 5 },
-    })
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
-  /* =======================
-     FETCH
-  ======================= */
   useEffect(() => {
     let mounted = true;
 
     const fetchPollData = async () => {
-      try {
-        const { data: pollData, error } = await supabase
-          .from('polls')
-          .select('*')
-          .eq('id', safeId)
-          .maybeSingle();
+      const { data: pollData } = await supabase
+        .from('polls')
+        .select('*')
+        .eq('id', safeId)
+        .maybeSingle();
 
-        if (!mounted) return;
+      if (!mounted || !pollData || pollData.status === 'draft') {
+        router.replace('/404');
+        return;
+      }
 
-        if (error || !pollData || pollData.status === 'draft') {
-          router.replace('/404');
-          return;
-        }
+      setPoll(pollData);
+      setAllowMultiple(Boolean(pollData.allow_multiple));
+      setVotingType(pollData.voting_type);
 
-        setPoll(pollData);
-        setAllowMultiple(Boolean(pollData.allow_multiple));
-        setVotingType(pollData.voting_type);
+      const { data: optionsData } = await supabase
+        .from('poll_options')
+        .select('id, option_text')
+        .eq('poll_id', safeId);
 
-        const { data: optionsData } = await supabase
-          .from('poll_options')
-          .select('id, option_text')
-          .eq('poll_id', safeId);
-
-        if (!mounted) return;
+      if (mounted) {
         setOptions(optionsData ?? []);
-      } catch {
-        if (mounted) router.replace('/404');
-      } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     };
 
@@ -112,9 +97,7 @@ export default function PollPage() {
         .eq('user_hash', userHash)
         .limit(1);
 
-      if (mounted) {
-        setUserHasVoted(Boolean(data && data.length > 0));
-      }
+      if (mounted) setUserHasVoted(Boolean(data && data.length > 0));
     };
 
     fetchPollData();
@@ -125,9 +108,6 @@ export default function PollPage() {
     };
   }, [safeId, router]);
 
-  /* =======================
-     LOADING / ERRO
-  ======================= */
   if (loading) {
     return <main className="p-6 max-w-xl mx-auto">Carregando…</main>;
   }
@@ -141,75 +121,19 @@ export default function PollPage() {
   }
 
   const isOpen = poll.status === 'open';
-  const isPaused = poll.status === 'paused';
-  const isClosed = poll.status === 'closed';
 
-  /* =======================
-     NAV
-  ======================= */
-  const Navigation = () => (
-    <div className="flex justify-between items-center mb-4 text-sm">
-      <Link href="/" className="text-emerald-600 hover:underline">
-        Auditável
-      </Link>
-
-      {isClosed && (
-        <Link
-          href={`/results/${safeId}`}
-          className="text-emerald-600 hover:underline"
-        >
-          Ver resultados →
-        </Link>
-      )}
-    </div>
-  );
-
-  /* =======================
-     RENDER
-  ======================= */
   return (
     <main className="p-6 max-w-xl mx-auto space-y-5">
-      <Navigation />
+      <div className="flex justify-between text-sm">
+        <Link href="/" className="text-emerald-600 hover:underline">
+          Auditável
+        </Link>
+      </div>
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* STATUS */}
-      {isPaused && (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          <strong>Pesquisa pausada.</strong> As opções estão visíveis, mas novas
-          votações estão temporariamente desabilitadas.
-        </div>
-      )}
-
-      {isClosed && (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-          <strong>Pesquisa encerrada.</strong> Não é mais possível votar.
-        </div>
-      )}
-
-      {/* ALERTAS (APENAS OPEN) */}
-      {isOpen && userHasVoted && votingType !== 'ranking' && !allowMultiple && (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
-          <strong>Atenção:</strong> você já votou nesta pesquisa. Ao escolher uma
-          nova opção, seu voto anterior será substituído.
-        </div>
-      )}
-
-      {isOpen && userHasVoted && votingType !== 'ranking' && allowMultiple && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> você já votou nesta pesquisa e pode votar
-          novamente. Cada novo voto será somado ao total.
-        </div>
-      )}
-
-      {isOpen && userHasVoted && votingType === 'ranking' && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <strong>Informação:</strong> você já enviou uma classificação.
-        </div>
-      )}
-
-      {/* RANKING */}
-      {votingType === 'ranking' ? (
+      {/* ===== RANKING ===== */}
+      {votingType === 'ranking' && (
         <>
           <p className="text-sm text-gray-600">
             Arraste as opções para definir a ordem desejada.
@@ -222,7 +146,7 @@ export default function PollPage() {
               const { active, over } = event;
               if (!over || active.id === over.id) return;
 
-              setOptions((items) => {
+              setOptions(items => {
                 const oldIndex = items.findIndex(i => i.id === active.id);
                 const newIndex = items.findIndex(i => i.id === over.id);
                 return arrayMove(items, oldIndex, newIndex);
@@ -246,33 +170,22 @@ export default function PollPage() {
             </SortableContext>
           </DndContext>
 
-          {rankingMessage && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-              {rankingMessage}
-            </div>
-          )}
-
           {isOpen && (
             <button
               onClick={async () => {
-                setRankingMessage(null);
+                const userHash =
+                  localStorage.getItem('auditavel_uid') ??
+                  crypto.randomUUID();
 
-                let userHash = localStorage.getItem('auditavel_uid');
-                if (!userHash) {
-                  userHash = crypto.randomUUID();
-                  localStorage.setItem('auditavel_uid', userHash);
-                }
-                
+                localStorage.setItem('auditavel_uid', userHash);
                 const participantId = getOrCreateParticipantId();
-                
-                const orderedIds = options.map(o => o.id);
-                
+
                 const res = await fetch('/api/vote', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     poll_id: safeId,
-                    option_ids: orderedIds,
+                    option_ids: options.map(o => o.id),
                     user_hash: userHash,
                     participant_id: participantId,
                   }),
@@ -280,39 +193,107 @@ export default function PollPage() {
 
                 if (!res.ok) {
                   const data = await res.json();
-                  setRankingMessage(
-                    data.message ??
-                      data.error ??
-                      'Não foi possível registrar sua classificação no momento.'
-                  );
+                  setRankingMessage(data.error ?? 'Erro ao votar');
                   return;
                 }
 
-                window.location.href = `/results/${safeId}`;
+                router.push(`/results/${safeId}`);
               }}
-              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition"
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white"
             >
               Enviar classificação
             </button>
           )}
         </>
-      ) : (
-        <div
-  className={`space-y-3 ${
-    !isOpen ? 'pointer-events-none opacity-60' : ''
-  }`}
->
-  {options.map(o => (
-    <VoteButton
-      key={o.id}
-      pollId={safeId}
-      optionId={o.id}
-      text={o.option_text}
-      allowMultiple={allowMultiple}
-      userHasVoted={userHasVoted}
-    />
-  ))}
-</div>
+      )}
+
+      {/* ===== MULTIPLE ===== */}
+      {votingType === 'multiple' && (
+        <>
+          <p className="text-sm text-gray-600">
+            Você pode selecionar uma ou mais opções.
+          </p>
+
+          <div className="space-y-2">
+            {options.map(o => (
+              <label
+                key={o.id}
+                className="flex items-center gap-2 border rounded-lg p-3 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedOptions.includes(o.id)}
+                  onChange={() => {
+                    setSelectedOptions(prev =>
+                      prev.includes(o.id)
+                        ? prev.filter(id => id !== o.id)
+                        : [...prev, o.id]
+                    );
+                  }}
+                />
+                <span>{o.option_text}</span>
+              </label>
+            ))}
+          </div>
+
+          {multipleMessage && (
+            <div className="text-sm text-red-600">{multipleMessage}</div>
+          )}
+
+          {isOpen && (
+            <button
+              disabled={selectedOptions.length === 0}
+              onClick={async () => {
+                setMultipleMessage(null);
+
+                const userHash =
+                  localStorage.getItem('auditavel_uid') ??
+                  crypto.randomUUID();
+
+                localStorage.setItem('auditavel_uid', userHash);
+                const participantId = getOrCreateParticipantId();
+
+                const res = await fetch('/api/vote', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    poll_id: safeId,
+                    option_ids: selectedOptions,
+                    user_hash: userHash,
+                    participant_id: participantId,
+                  }),
+                });
+
+                if (!res.ok) {
+                  const data = await res.json();
+                  setMultipleMessage(data.error ?? 'Erro ao votar');
+                  return;
+                }
+
+                router.push(`/results/${safeId}`);
+              }}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50"
+            >
+              Enviar voto
+            </button>
+          )}
+        </>
+      )}
+
+      {/* ===== SINGLE ===== */}
+      {votingType === 'single' && (
+        <div className="space-y-3">
+          {options.map(o => (
+            <VoteButton
+              key={o.id}
+              pollId={safeId}
+              optionId={o.id}
+              text={o.option_text}
+              allowMultiple={allowMultiple}
+              userHasVoted={userHasVoted}
+            />
+          ))}
+        </div>
       )}
     </main>
   );
