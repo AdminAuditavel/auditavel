@@ -900,7 +900,7 @@ export default function PollRegistrationClient() {
 
         {/* Status + allow_multiple + max_votes_per_user (todos na mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 160 }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 80 }}>
             <label style={styles.label}>Status:</label>
             <select
               name="status"
@@ -916,7 +916,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 170 }}>
             <label style={styles.label}>Permitir múltiplos votos?</label>
             <select
               value={formData.allow_multiple ? "yes" : "no"}
@@ -929,7 +929,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, width: 170, minWidth: 170 }}>
+          <div style={{ ...styles.fieldGroup, width: 170, minWidth: 100 }}>
             <label style={styles.label}>Máximo Permitido:</label>
             <input
               type="number"
