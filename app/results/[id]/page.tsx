@@ -153,81 +153,93 @@ export default async function ResultsPage({
 
   /* =======================
      MULTIPLE
-  ======================= */
-  if (voting_type === "multiple") {
-    const { data: options } = await supabase
-      .from("poll_options")
-      .select("id, option_text")
-      .eq("poll_id", safeId);
-
-    const { data: votes } = await supabase
-      .from("votes")
-      .select("id, user_hash")
-      .eq("poll_id", safeId);
-
-    const { data: marks } = await supabase
-      .from("vote_options")
-      .select("option_id")
-      .in(
-        "vote_id",
-        (votes ?? []).map(v => v.id)
+    ======================= */
+    if (voting_type === "multiple") {
+      const { data: options } = await supabase
+        .from("poll_options")
+        .select("id, option_text")
+        .eq("poll_id", safeId);
+    
+      const { data: votes } = await supabase
+        .from("votes")
+        .select("id, user_hash")
+        .eq("poll_id", safeId);
+    
+      const { data: marks } = await supabase
+        .from("vote_options")
+        .select("option_id")
+        .in(
+          "vote_id",
+          (votes ?? []).map(v => v.id)
+        );
+    
+      const totalSubmissions = votes?.length || 0;
+      const totalParticipants = new Set(
+        (votes ?? []).map(v => v.user_hash)
+      ).size;
+    
+      const count: Record<string, number> = {};
+      marks?.forEach(m => {
+        count[m.option_id] = (count[m.option_id] || 0) + 1;
+      });
+    
+      const sortedOptions =
+        options
+          ?.map(o => ({
+            ...o,
+            marks: count[o.id] || 0,
+          }))
+          .sort((a, b) => b.marks - a.marks) || [];
+    
+      return (
+        <main className="p-6 max-w-xl mx-auto space-y-5">
+          <Navigation />
+    
+          <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
+    
+          <p className="text-sm text-gray-600">
+            Nesta pesquisa, cada participante pôde selecionar mais de uma opção.
+            Os percentuais abaixo representam a proporção de participações em que
+            cada opção foi marcada.
+          </p>
+    
+          <div className="space-y-4">
+            {sortedOptions.map(o => {
+              const pct = totalSubmissions
+                ? Math.round((o.marks / totalSubmissions) * 100)
+                : 0;
+    
+              return (
+                <div key={o.id} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>{o.option_text}</span>
+                    <span className="text-gray-600">
+                      {o.marks} marcas ({pct}%)
+                    </span>
+                  </div>
+    
+                  <div className="h-2 bg-gray-200 rounded">
+                    <div
+                      className="h-2 bg-emerald-500 rounded transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+    
+          <div className="flex justify-between text-xs text-gray-500">
+            {isPartial && <span>Resultados parciais</span>}
+            <span>
+              Participantes: {totalParticipants} · Participações: {totalSubmissions}
+            </span>
+          </div>
+    
+          <AttributesInviteClient pollId={safeId} />
+        </main>
       );
-
-    const totalSubmissions = votes?.length || 0;
-    const totalParticipants = new Set(
-      (votes ?? []).map(v => v.user_hash)
-    ).size;
-
-    const count: Record<string, number> = {};
-    marks?.forEach(m => {
-      count[m.option_id] = (count[m.option_id] || 0) + 1;
-    });
-
-    const sortedOptions =
-      options
-        ?.map(o => ({
-          ...o,
-          votes: count[o.id] || 0,
-        }))
-        .sort((a, b) => b.votes - a.votes) || [];
-
-    return (
-      <main className="p-6 max-w-xl mx-auto space-y-5">
-        <Navigation />
-        <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
-
-        {sortedOptions.map(o => {
-          const pct = totalSubmissions
-            ? Math.round((o.votes / totalSubmissions) * 100)
-            : 0;
-
-          return (
-            <div key={o.id} className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span>{o.option_text}</span>
-                <span>{o.votes} marcas ({pct}%)</span>
-              </div>
-              <div className="h-2 bg-gray-200 rounded">
-                <div
-                  className="h-2 bg-emerald-500 rounded"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-
-        <div className="flex justify-between text-xs text-gray-500">
-          {isPartial && <span>Resultados parciais</span>}
-          <span>
-            Participantes: {totalParticipants} · Participações: {totalSubmissions}
-          </span>
-        </div>
-
-        <AttributesInviteClient pollId={safeId} />
-      </main>
-    );
-  }
+    }
 
   /* =======================
      RANKING (inalterado)
