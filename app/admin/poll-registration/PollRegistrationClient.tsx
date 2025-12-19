@@ -28,7 +28,7 @@ type PollOption = {
   option_text: string;
 };
 
-// Helpers para manipulação de datas e horários
+// Helpers
 function toDatetimeLocal(value?: string | null) {
   if (!value) return "";
   const d = new Date(value);
@@ -72,7 +72,6 @@ export default function PollRegistrationClient() {
   const isEditMode = Boolean(pollIdFromUrl);
   const adminTokenQuery = `token=${encodeURIComponent(tokenFromUrl)}`;
 
-  // Estado inicial do formulário apenas com campos da tabela
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -91,7 +90,6 @@ export default function PollRegistrationClient() {
     max_options_per_vote: "" as number | "",
   });
 
-  // Mantém o último valor válido das datas para validação
   const [lastValidDates, setLastValidDates] = useState({
     start_date: nowDatetimeLocal(),
     end_date: "",
@@ -104,13 +102,12 @@ export default function PollRegistrationClient() {
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(true);
 
-  // Opções da pesquisa (mantém original do projeto)
+  // Opções (mantém lógica e estilo originais)
   const [options, setOptions] = useState<PollOption[]>([]);
   const [optionText, setOptionText] = useState("");
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState("");
   const [optionsSuccess, setOptionsSuccess] = useState(false);
-
   const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
   const [editingOptionText, setEditingOptionText] = useState("");
   const [optionSaving, setOptionSaving] = useState(false);
@@ -151,8 +148,8 @@ export default function PollRegistrationClient() {
             json?.details
               ? `Falha ao carregar pesquisa: ${json.error} — ${json.details}`
               : json?.error
-                ? `Falha ao carregar pesquisa: ${json.error}`
-                : "Falha ao carregar pesquisa."
+              ? `Falha ao carregar pesquisa: ${json.error}`
+              : "Falha ao carregar pesquisa."
           );
         }
         const poll: PollPayload | undefined = json?.poll;
@@ -230,7 +227,7 @@ export default function PollRegistrationClient() {
     loadOptions();
   }, [pollIdFromUrl, adminTokenQuery]);
 
-  // Campo select Sim/Não para allow_multiple, controla max_votes_per_user
+  // Select Sim/Não para allow_multiple, controla max_votes_per_user
   const handleAllowMultipleChange = (
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
@@ -279,7 +276,7 @@ export default function PollRegistrationClient() {
     }));
   };
 
-  // Handling dos demais inputs do formulário
+  // Demais inputs
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -300,7 +297,7 @@ export default function PollRegistrationClient() {
     }));
   };
 
-  // Datas: onChange só atualiza (permite digitação parcial).
+  // Datas
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -308,8 +305,6 @@ export default function PollRegistrationClient() {
       [name]: value,
     }));
   };
-
-  // Datas: valida no onBlur e reverte para último válido se necessário.
   const validateAndCommitDatesOrRevert = (
     field: "start_date" | "end_date" | "closes_at"
   ) => {
@@ -342,8 +337,6 @@ export default function PollRegistrationClient() {
     const startDate = formData.start_date ? new Date(formData.start_date) : null;
     const endDate = formData.end_date ? new Date(formData.end_date) : null;
     const closesAt = formData.closes_at ? new Date(formData.closes_at) : null;
-
-    // Regras sequência datas
     if (
       !Number.isNaN(createdAt.getTime()) &&
       ((startDate && startDate < createdAt) ||
@@ -373,7 +366,7 @@ export default function PollRegistrationClient() {
     setLastValidDates((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Validação dos votos máximos
+  // Valida votos
   const validateVotesConfigOrThrow = (data: typeof formData) => {
     if (!data.allow_multiple) {
       return { ...data, max_votes_per_user: 1 as const };
@@ -388,7 +381,7 @@ export default function PollRegistrationClient() {
     return { ...data, max_votes_per_user: n };
   };
 
-  // Submissão do formulário
+  // Submissão
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -401,7 +394,6 @@ export default function PollRegistrationClient() {
       if (Number.isNaN(start.getTime())) {
         throw new Error("Data de início inválida.");
       }
-      // tolerância 60s (mesma regra do backend)
       const toleranceMs = 60 * 1000;
       if (start.getTime() < Date.now() - toleranceMs) {
         throw new Error("A data de início não pode ser menor que agora. Ajuste e confirme.");
@@ -419,7 +411,6 @@ export default function PollRegistrationClient() {
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
       const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
-
       await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -435,7 +426,6 @@ export default function PollRegistrationClient() {
           throw new Error(data?.message || data?.error || "Falha ao criar pesquisa.");
         }
       });
-
       setSuccess(true);
       const resetNow = nowDatetimeLocal();
       setFormData({
@@ -497,7 +487,7 @@ export default function PollRegistrationClient() {
     setIsEditing(true);
   };
 
-  // Salvar edição
+  // Salvamento (edição já criada)
   const handleSave = async () => {
     try {
       if (!pollIdFromUrl) {
@@ -550,8 +540,6 @@ export default function PollRegistrationClient() {
       setLoading(false);
     }
   };
-
-  // ===== Lógica de manipulação das opções permanece a mesma =====
 
   const isBusy = loading || loadingPoll;
   const minStartDatetimeLocal = !isEditMode ? nowDatetimeLocal() : undefined;
@@ -1077,6 +1065,7 @@ export default function PollRegistrationClient() {
 }
 
 const styles = {
+  // ... (mantenha os estilos originais aqui, igual estava)
   container: {
     maxWidth: "600px",
     margin: "0 auto",
