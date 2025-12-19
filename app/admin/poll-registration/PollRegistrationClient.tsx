@@ -1,3 +1,5 @@
+//app/admin/poll-registration/PollRegistrationClient.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,9 +9,11 @@ type PollPayload = {
   id?: string;
   title?: string | null;
   description?: string | null;
+  type?: string | null;
   status?: string | null;
   allow_multiple?: boolean | null;
   max_votes_per_user?: number | null;
+  allow_custom_option?: boolean | null;
   created_at?: string | null;
   closes_at?: string | null;
   vote_cooldown_seconds?: number | null;
@@ -19,7 +23,6 @@ type PollPayload = {
   show_partial_results?: boolean | null;
   icon_name?: string | null;
   icon_url?: string | null;
-  max_options_per_vote?: number | null;
 };
 
 type PollOption = {
@@ -28,7 +31,7 @@ type PollOption = {
   option_text: string;
 };
 
-// Helpers
+// datetime-local helpers (evita warning do "2025-...Z")
 function toDatetimeLocal(value?: string | null) {
   if (!value) return "";
   const d = new Date(value);
@@ -41,21 +44,32 @@ function toDatetimeLocal(value?: string | null) {
   const mi = pad(d.getMinutes());
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 }
+
 function nowDatetimeLocal() {
   return toDatetimeLocal(new Date().toISOString());
 }
+
 function formatPtBrDateTime(value: string) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleString("pt-BR");
 }
+
+/**
+ * Converte o valor do input `datetime-local` (YYYY-MM-DDTHH:mm) para ISO UTC.
+ * - "" -> null
+ * - inválido -> null
+ */
 function datetimeLocalToISOOrNull(value: string): string | null {
   const s = (value ?? "").trim();
   if (!s) return null;
+
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
+
   return d.toISOString();
 }
+
 function isValidDatetimeLocal(value: string) {
   const s = (value ?? "").trim();
   if (!s) return false;
@@ -70,14 +84,17 @@ export default function PollRegistrationClient() {
   const tokenFromUrl = searchParams.get("token") ?? "";
   const pollIdFromUrl = searchParams.get("poll_id") ?? "";
   const isEditMode = Boolean(pollIdFromUrl);
+
   const adminTokenQuery = `token=${encodeURIComponent(tokenFromUrl)}`;
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    type: "binary",
     status: "open",
     allow_multiple: false,
     max_votes_per_user: 1 as number | "",
+    allow_custom_option: false,
     created_at: nowDatetimeLocal(),
     closes_at: "",
     vote_cooldown_seconds: 10,
@@ -87,9 +104,9 @@ export default function PollRegistrationClient() {
     show_partial_results: true,
     icon_name: "",
     icon_url: "",
-    max_options_per_vote: "" as number | "",
   });
 
+  // Mantém o último valor válido para reverter quando o usuário sai do campo com valor inválido
   const [lastValidDates, setLastValidDates] = useState({
     start_date: nowDatetimeLocal(),
     end_date: "",
@@ -102,24 +119,27 @@ export default function PollRegistrationClient() {
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(true);
 
-  // Opções (mantém lógica e estilo originais)
+  // ===== Opções =====
   const [options, setOptions] = useState<PollOption[]>([]);
   const [optionText, setOptionText] = useState("");
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState("");
   const [optionsSuccess, setOptionsSuccess] = useState(false);
+
   const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
   const [editingOptionText, setEditingOptionText] = useState("");
   const [optionSaving, setOptionSaving] = useState(false);
 
   useEffect(() => {
     if (isEditMode) return;
+
     const currentDate = nowDatetimeLocal();
     setFormData((prevData) => ({
       ...prevData,
       created_at: currentDate,
       start_date: currentDate,
     }));
+
     setLastValidDates((prev) => ({
       ...prev,
       start_date: currentDate,
@@ -129,38 +149,46 @@ export default function PollRegistrationClient() {
   useEffect(() => {
     const loadPoll = async () => {
       if (!pollIdFromUrl) return;
+
       setLoadingPoll(true);
       setError("");
       setSuccess(false);
+
       try {
         const res = await fetch(
           `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
           { method: "GET" }
         );
+
         let json: any = null;
         try {
           json = await res.json();
         } catch {
           json = null;
         }
+
         if (!res.ok) {
           throw new Error(
             json?.details
               ? `Falha ao carregar pesquisa: ${json.error} — ${json.details}`
               : json?.error
-              ? `Falha ao carregar pesquisa: ${json.error}`
-              : "Falha ao carregar pesquisa."
+                ? `Falha ao carregar pesquisa: ${json.error}`
+                : "Falha ao carregar pesquisa."
           );
         }
+
         const poll: PollPayload | undefined = json?.poll;
         if (!poll) throw new Error("Resposta inválida do servidor (poll ausente).");
+
         const nextForm = {
           title: poll.title ?? "",
           description: poll.description ?? "",
+          type: poll.type ?? "binary",
           status: poll.status ?? "open",
           allow_multiple: Boolean(poll.allow_multiple ?? false),
           max_votes_per_user:
             typeof poll.max_votes_per_user === "number" ? poll.max_votes_per_user : 1,
+          allow_custom_option: Boolean(poll.allow_custom_option ?? false),
           created_at: toDatetimeLocal(poll.created_at) || nowDatetimeLocal(),
           closes_at: toDatetimeLocal(poll.closes_at),
           vote_cooldown_seconds:
@@ -172,17 +200,17 @@ export default function PollRegistrationClient() {
             typeof poll.show_partial_results === "boolean" ? poll.show_partial_results : true,
           icon_name: poll.icon_name ?? "",
           icon_url: poll.icon_url ?? "",
-          max_options_per_vote:
-            typeof poll.max_options_per_vote === "number"
-              ? poll.max_options_per_vote
-              : "",
         };
+
         setFormData((prev) => ({ ...prev, ...nextForm }));
+
+        // atualiza lastValidDates com o que veio do backend
         setLastValidDates({
           start_date: nextForm.start_date,
           end_date: nextForm.end_date,
           closes_at: nextForm.closes_at,
         });
+
         setIsEditing(true);
       } catch (err: any) {
         setError(err.message || "Erro desconhecido.");
@@ -190,26 +218,31 @@ export default function PollRegistrationClient() {
         setLoadingPoll(false);
       }
     };
+
     loadPoll();
   }, [pollIdFromUrl, adminTokenQuery]);
 
   useEffect(() => {
     const loadOptions = async () => {
       if (!pollIdFromUrl) return;
+
       setOptionsLoading(true);
       setOptionsError("");
       setOptionsSuccess(false);
+
       try {
         const res = await fetch(
           `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options?${adminTokenQuery}`,
           { method: "GET" }
         );
+
         let json: any = null;
         try {
           json = await res.json();
         } catch {
           json = null;
         }
+
         if (!res.ok) {
           throw new Error(
             json?.error
@@ -217,6 +250,7 @@ export default function PollRegistrationClient() {
               : "Falha ao carregar opções."
           );
         }
+
         setOptions(Array.isArray(json?.options) ? json.options : []);
       } catch (err: any) {
         setOptionsError(err.message || "Erro desconhecido.");
@@ -224,119 +258,102 @@ export default function PollRegistrationClient() {
         setOptionsLoading(false);
       }
     };
+
     loadOptions();
   }, [pollIdFromUrl, adminTokenQuery]);
 
-  // Select Sim/Não para allow_multiple, controla max_votes_per_user
-  const handleAllowMultipleChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const selected = e.target.value === "yes";
-    setFormData((prev) => ({
-      ...prev,
-      allow_multiple: selected,
-      max_votes_per_user: selected ? 2 : 1,
-    }));
-  };
-
-  // Validação do campo max_votes_per_user
-  const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!formData.allow_multiple) {
-      setFormData((prev) => ({
-        ...prev,
-        max_votes_per_user: 1,
-      }));
-      return;
-    }
-    const raw = e.target.value;
-    if (raw === "") {
-      setFormData((prev) => ({
-        ...prev,
-        max_votes_per_user: "",
-      }));
-      return;
-    }
-    const value = parseInt(raw, 10);
-    if (!Number.isFinite(value)) return;
-    setFormData((prev) => ({
-      ...prev,
-      max_votes_per_user: Math.max(2, value),
-    }));
-  };
-
-  // Select para voting_type, abre campo max_options_per_vote para "multiple"
-  const handleVotingTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      voting_type: val,
-      ...(val === "multiple"
-        ? { max_options_per_vote: 1 }
-        : { max_options_per_vote: "" }),
-    }));
-  };
-
-  // Demais inputs
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
     const isCheckbox = type === "checkbox";
+
     setFormData((prev) => ({
       ...prev,
       [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
-  // Cooldown
-  const handleCooldownChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.max(0, parseInt(e.target.value, 10) || 0);
-    setFormData((prev) => ({
-      ...prev,
-      vote_cooldown_seconds: value,
-    }));
+  const handleAllowMultipleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+
+    setFormData((prev) => {
+      if (!checked) {
+        return { ...prev, allow_multiple: false, max_votes_per_user: 1 };
+      }
+
+      const current = prev.max_votes_per_user;
+      const keep =
+        typeof current === "number" && current >= 2 ? current : ("" as const);
+
+      return { ...prev, allow_multiple: true, max_votes_per_user: keep };
+    });
   };
 
-  // Datas
+  const validateVotesConfigOrThrow = (data: typeof formData) => {
+    if (!data.allow_multiple) {
+      return { ...data, max_votes_per_user: 1 as const };
+    }
+
+    if (data.max_votes_per_user === "") {
+      throw new Error("Digite o máximo de votos por usuário (mínimo 2).");
+    }
+
+    const n = Number(data.max_votes_per_user);
+    if (!Number.isFinite(n) || n < 2) {
+      throw new Error("O máximo de votos por usuário deve ser 2 ou mais.");
+    }
+
+    return { ...data, max_votes_per_user: n };
+  };
+
+  // ===== Datas: onChange só atualiza (permite digitação parcial).
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
-  const validateAndCommitDatesOrRevert = (
-    field: "start_date" | "end_date" | "closes_at"
-  ) => {
+
+  // ===== Datas: valida no onBlur e reverte para último válido se necessário.
+  const validateAndCommitDatesOrRevert = (field: "start_date" | "end_date" | "closes_at") => {
     const value = formData[field];
+
+    // end_date/closes_at são opcionais (permitir limpar)
     if ((field === "end_date" || field === "closes_at") && !value) {
       setError("");
       setLastValidDates((prev) => ({ ...prev, [field]: "" }));
       return;
     }
+
+    // start_date é obrigatório (não permitir vazio)
     if (field === "start_date" && !value) {
       setError("Preencha a data de início (start_date).");
-      setFormData((prev) => ({
-        ...prev,
-        start_date: lastValidDates.start_date,
-      }));
+      setFormData((prev) => ({ ...prev, start_date: lastValidDates.start_date }));
       return;
     }
+
+    // formato válido?
     if (!isValidDatetimeLocal(value)) {
       setError(
         field === "start_date"
           ? "Data de início inválida."
           : field === "end_date"
-          ? "Data de término inválida."
-          : "Data de encerramento inválida."
+            ? "Data de término inválida."
+            : "Data de encerramento inválida."
       );
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
+
     const createdAt = new Date(formData.created_at);
     const startDate = formData.start_date ? new Date(formData.start_date) : null;
     const endDate = formData.end_date ? new Date(formData.end_date) : null;
     const closesAt = formData.closes_at ? new Date(formData.closes_at) : null;
+
+    // Regras auditáveis
     if (
       !Number.isNaN(createdAt.getTime()) &&
       ((startDate && startDate < createdAt) ||
@@ -347,57 +364,55 @@ export default function PollRegistrationClient() {
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
+
+    // coerência entre datas
     if (startDate && endDate && endDate < startDate) {
       setError("A data de término não pode ser anterior à data de início.");
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
+
     if (startDate && closesAt && closesAt < startDate) {
       setError("A data de encerramento não pode ser anterior à data de início.");
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
+
     if (endDate && closesAt && closesAt < endDate) {
       setError("A data de encerramento não pode ser anterior à data de término.");
       setFormData((prev) => ({ ...prev, [field]: lastValidDates[field] }));
       return;
     }
+
+    // ok -> grava como último válido
     setError("");
     setLastValidDates((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Valida votos
-  const validateVotesConfigOrThrow = (data: typeof formData) => {
-    if (!data.allow_multiple) {
-      return { ...data, max_votes_per_user: 1 as const };
-    }
-    if (data.max_votes_per_user === "") {
-      throw new Error("Digite o máximo de votos por usuário (mínimo 2).");
-    }
-    const n = Number(data.max_votes_per_user);
-    if (!Number.isFinite(n) || n < 2) {
-      throw new Error("O máximo de votos por usuário deve ser 2 ou mais.");
-    }
-    return { ...data, max_votes_per_user: n };
-  };
-
-  // Submissão
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess(false);
+
     try {
+      // Valida start_date no submit também
       const startRaw = formData.start_date?.trim();
       if (!startRaw) throw new Error("Preencha a data de início (start_date).");
+
       const start = new Date(startRaw);
       if (Number.isNaN(start.getTime())) {
         throw new Error("Data de início inválida.");
       }
+
+      // tolerância 60s (mesma regra do backend)
       const toleranceMs = 60 * 1000;
       if (start.getTime() < Date.now() - toleranceMs) {
-        throw new Error("A data de início não pode ser menor que agora. Ajuste e confirme.");
+        throw new Error(
+          "A data de início não pode ser menor que agora. Ajuste e confirme."
+        );
       }
+
       const ok = window.confirm(
         `Confirmar início da votação em:\n\n${formatPtBrDateTime(startRaw)} ?`
       );
@@ -405,13 +420,18 @@ export default function PollRegistrationClient() {
         setLoading(false);
         return;
       }
+
       const payload = validateVotesConfigOrThrow(formData);
+
       const startISO = datetimeLocalToISOOrNull(payload.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
+
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
+
       const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
-      await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
+
+      const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -420,20 +440,25 @@ export default function PollRegistrationClient() {
           end_date: endISO,
           closes_at: closesISO,
         }),
-      }).then(async (response) => {
-        const data = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(data?.message || data?.error || "Falha ao criar pesquisa.");
-        }
       });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || "Falha ao criar pesquisa.");
+      }
+
       setSuccess(true);
+
       const resetNow = nowDatetimeLocal();
       setFormData({
         title: "",
         description: "",
+        type: "binary",
         status: "open",
         allow_multiple: false,
         max_votes_per_user: 1,
+        allow_custom_option: false,
         created_at: resetNow,
         closes_at: "",
         vote_cooldown_seconds: 10,
@@ -443,8 +468,8 @@ export default function PollRegistrationClient() {
         show_partial_results: true,
         icon_name: "",
         icon_url: "",
-        max_options_per_vote: "",
       });
+
       setLastValidDates({
         start_date: resetNow,
         end_date: "",
@@ -457,15 +482,53 @@ export default function PollRegistrationClient() {
     }
   };
 
-  // Limpa formulário
+  const handleMaxVotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!formData.allow_multiple) {
+      setFormData((prevData) => ({
+        ...prevData,
+        max_votes_per_user: 1,
+      }));
+      return;
+    }
+
+    const raw = e.target.value;
+
+    if (raw === "") {
+      setFormData((prevData) => ({
+        ...prevData,
+        max_votes_per_user: "",
+      }));
+      return;
+    }
+
+    const value = parseInt(raw, 10);
+    if (!Number.isFinite(value)) return;
+
+    setFormData((prevData) => ({
+      ...prevData,
+      max_votes_per_user: Math.max(2, value),
+    }));
+  };
+
+  const handleCooldownChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Math.max(0, parseInt(e.target.value, 10) || 0);
+    setFormData((prevData) => ({
+      ...prevData,
+      vote_cooldown_seconds: value,
+    }));
+  };
+
   const handleClearForm = () => {
     const resetNow = nowDatetimeLocal();
+
     setFormData({
       title: "",
       description: "",
+      type: "binary",
       status: "open",
       allow_multiple: false,
       max_votes_per_user: 1,
+      allow_custom_option: false,
       created_at: resetNow,
       closes_at: "",
       vote_cooldown_seconds: 10,
@@ -475,33 +538,39 @@ export default function PollRegistrationClient() {
       show_partial_results: true,
       icon_name: "",
       icon_url: "",
-      max_options_per_vote: "",
     });
+
     setLastValidDates({
       start_date: resetNow,
       end_date: "",
       closes_at: "",
     });
+
     setError("");
     setSuccess(false);
     setIsEditing(true);
   };
 
-  // Salvamento (edição já criada)
   const handleSave = async () => {
     try {
       if (!pollIdFromUrl) {
         throw new Error("Abra uma pesquisa existente para salvar.");
       }
+
       setLoading(true);
       setError("");
       setSuccess(false);
+
       const payload = validateVotesConfigOrThrow(formData);
+
       const startISO = datetimeLocalToISOOrNull(payload.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
+
       const endISO = datetimeLocalToISOOrNull(payload.end_date);
       const closesISO = datetimeLocalToISOOrNull(payload.closes_at);
+
       const { created_at: _createdAt, ...payloadWithoutCreatedAt } = payload;
+
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
         {
@@ -515,7 +584,9 @@ export default function PollRegistrationClient() {
           }),
         }
       );
+
       const json = await res.json().catch(() => null);
+
       if (!res.ok) {
         throw new Error(
           json?.details
@@ -527,8 +598,11 @@ export default function PollRegistrationClient() {
                 : "Falha ao salvar."
         );
       }
+
       setSuccess(true);
       setIsEditing(false);
+
+      // após salvar com sucesso, atualiza lastValidDates para os valores atuais
       setLastValidDates({
         start_date: formData.start_date,
         end_date: formData.end_date,
@@ -541,7 +615,165 @@ export default function PollRegistrationClient() {
     }
   };
 
+  const handleCreateOption = async () => {
+    setOptionsError("");
+    setOptionsSuccess(false);
+
+    try {
+      if (!pollIdFromUrl) {
+        throw new Error("Abra uma pesquisa existente para cadastrar opções.");
+      }
+
+      const text = optionText.trim();
+      if (!text) {
+        throw new Error("Digite o texto da opção.");
+      }
+
+      setOptionsLoading(true);
+
+      const res = await fetch(
+        `/api/admin/polls/${encodeURIComponent(
+          pollIdFromUrl
+        )}/options?${adminTokenQuery}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ option_text: text }),
+        }
+      );
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          json?.error ? `Falha ao criar opção: ${json.error}` : "Falha ao criar opção."
+        );
+      }
+
+      const created: PollOption | undefined = json?.option;
+      if (!created) throw new Error("Resposta inválida do servidor (option ausente).");
+
+      setOptions((prev) => [...prev, created]);
+      setOptionText("");
+      setOptionsSuccess(true);
+    } catch (err: any) {
+      setOptionsError(err.message || "Erro desconhecido.");
+    } finally {
+      setOptionsLoading(false);
+    }
+  };
+
+  const startEditOption = (opt: PollOption) => {
+    setOptionsError("");
+    setOptionsSuccess(false);
+    setEditingOptionId(opt.id);
+    setEditingOptionText(opt.option_text);
+  };
+
+  const handleSaveOption = async () => {
+    try {
+      setOptionsError("");
+      setOptionsSuccess(false);
+
+      if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para editar opções.");
+      if (!editingOptionId) throw new Error("Nenhuma opção em edição.");
+
+      const text = editingOptionText.trim();
+      if (!text) throw new Error("Digite o texto da opção.");
+
+      setOptionSaving(true);
+
+      const res = await fetch(
+        `/api/admin/polls/${encodeURIComponent(
+          pollIdFromUrl
+        )}/options/${encodeURIComponent(editingOptionId)}?${adminTokenQuery}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ option_text: text }),
+        }
+      );
+
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        json = null;
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          json?.details
+            ? `Falha ao salvar opção: ${json.error} — ${json.details}`
+            : json?.error
+              ? `Falha ao salvar opção: ${json.error}`
+              : "Falha ao salvar opção."
+        );
+      }
+
+      const updated: PollOption | undefined = json?.option;
+      if (!updated) throw new Error("Resposta inválida do servidor (option ausente).");
+
+      setOptions((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+
+      setOptionsSuccess(true);
+      setEditingOptionId(null);
+      setEditingOptionText("");
+    } catch (err: any) {
+      setOptionsError(err.message || "Erro desconhecido.");
+    } finally {
+      setOptionSaving(false);
+    }
+  };
+
+  const handleDeleteOption = async (opt: PollOption) => {
+    try {
+      setOptionsError("");
+      setOptionsSuccess(false);
+
+      if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para remover opções.");
+
+      const ok = window.confirm(`Remover a opção:\n\n"${opt.option_text}"\n\nTem certeza?`);
+      if (!ok) return;
+
+      setOptionsLoading(true);
+
+      const res = await fetch(
+        `/api/admin/polls/${encodeURIComponent(
+          pollIdFromUrl
+        )}/options/${encodeURIComponent(opt.id)}?${adminTokenQuery}`,
+        { method: "DELETE" }
+      );
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          json?.details
+            ? `Falha ao remover opção: ${json.error} — ${json.details}`
+            : json?.error
+              ? `Falha ao remover opção: ${json.error}`
+              : "Falha ao remover opção."
+        );
+      }
+
+      setOptions((prev) => prev.filter((o) => o.id !== opt.id));
+
+      if (editingOptionId === opt.id) {
+        setEditingOptionId(null);
+        setEditingOptionText("");
+      }
+
+      setOptionsSuccess(true);
+    } catch (err: any) {
+      setOptionsError(err.message || "Erro desconhecido.");
+    } finally {
+      setOptionsLoading(false);
+    }
+  };
+
   const isBusy = loading || loadingPoll;
+
   const minStartDatetimeLocal = !isEditMode ? nowDatetimeLocal() : undefined;
 
   return (
@@ -572,7 +804,6 @@ export default function PollRegistrationClient() {
       {loadingPoll && <p style={styles.info}>Carregando dados da pesquisa...</p>}
 
       <form onSubmit={handleFormSubmit} style={styles.form}>
-        {/* Título */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Título:</label>
           <input
@@ -587,7 +818,6 @@ export default function PollRegistrationClient() {
           />
         </div>
 
-        {/* Descrição */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Descrição:</label>
           <textarea
@@ -601,133 +831,134 @@ export default function PollRegistrationClient() {
           />
         </div>
 
-        {/* Status */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Status:</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleInputChange}
-            style={styles.select}
-            disabled={!isEditing || isBusy}
-          >
-            <option value="draft">Rascunho</option>
-            <option value="open">Aberta</option>
-            <option value="paused">Pausada</option>
-            <option value="closed">Encerrada</option>
-          </select>
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Pesquisa:</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="binary">Binária</option>
+              <option value="multiple">Múltipla Escolha</option>
+            </select>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Status:</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="draft">Rascunho</option>
+              <option value="open">Aberta</option>
+              <option value="paused">Pausada</option>
+              <option value="closed">Encerrada</option>
+            </select>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Máximo de Votos por Usuário:</label>
+            <input
+              type="number"
+              name="max_votes_per_user"
+              value={formData.max_votes_per_user as any}
+              onChange={handleMaxVotesChange}
+              style={styles.input}
+              min={formData.allow_multiple ? 2 : 1}
+              required={formData.allow_multiple}
+              disabled={!isEditing || isBusy || !formData.allow_multiple}
+            />
+          </div>
         </div>
 
-        {/* allow_multiple + max_votes_per_user */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Permitir mais de um voto?</label>
-          <select
-            value={formData.allow_multiple ? "yes" : "no"}
-            onChange={handleAllowMultipleChange}
-            style={styles.select}
-            disabled={!isEditing || isBusy}
-          >
-            <option value="no">Não</option>
-            <option value="yes">Sim</option>
-          </select>
-        </div>
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Máximo de votos por usuário:</label>
-          <input
-            type="number"
-            name="max_votes_per_user"
-            value={formData.max_votes_per_user as any}
-            onChange={handleMaxVotesChange}
-            style={styles.input}
-            min={formData.allow_multiple ? 2 : 1}
-            required={formData.allow_multiple}
-            disabled={!isEditing || isBusy || !formData.allow_multiple}
-            readOnly={!formData.allow_multiple}
-          />
+        <div style={styles.inlineFieldGroup}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_multiple"
+              checked={formData.allow_multiple}
+              onChange={handleAllowMultipleChange}
+              style={styles.checkbox}
+              disabled={!isEditing || isBusy}
+            />
+            Permitir mais de um voto por usuário
+          </label>
+
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              name="allow_custom_option"
+              checked={formData.allow_custom_option}
+              onChange={handleInputChange}
+              style={styles.checkbox}
+              disabled={!isEditing || isBusy}
+            />
+            Permitir opções personalizadas
+          </label>
         </div>
 
-        {/* created_at (read-only) */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Criado em:</label>
-          <input
-            type="datetime-local"
-            name="created_at"
-            value={formData.created_at}
-            style={styles.input}
-            readOnly
-            disabled
-          />
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Criado em:</label>
+            <input
+              type="datetime-local"
+              name="created_at"
+              value={formData.created_at}
+              onChange={handleInputChange}
+              style={styles.input}
+              readOnly
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Data de Encerramento:</label>
+            <input
+              type="datetime-local"
+              name="closes_at"
+              value={formData.closes_at}
+              onChange={handleDateChange}
+              onBlur={() => validateAndCommitDatesOrRevert("closes_at")}
+              style={styles.input}
+              disabled={!isEditing || isBusy}
+            />
+          </div>
         </div>
 
-        {/* closes_at */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Data de Encerramento:</label>
-          <input
-            type="datetime-local"
-            name="closes_at"
-            value={formData.closes_at}
-            onChange={handleDateChange}
-            onBlur={() => validateAndCommitDatesOrRevert("closes_at")}
-            style={styles.input}
-            disabled={!isEditing || isBusy}
-          />
-        </div>
-
-        {/* Cooldown */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tempo de espera (segundos):</label>
+          <label style={styles.label}>Tempo de Cooldown de Voto (em segundos):</label>
           <input
             type="number"
             name="vote_cooldown_seconds"
             value={formData.vote_cooldown_seconds}
             onChange={handleCooldownChange}
             style={styles.input}
-            min={0}
+            min="0"
             disabled={!isEditing || isBusy}
           />
         </div>
 
-        {/* voting_type */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Tipo de Voto:</label>
-          <select
-            name="voting_type"
-            value={formData.voting_type}
-            onChange={handleVotingTypeChange}
-            style={styles.select}
-            disabled={!isEditing || isBusy}
-          >
-            <option value="single">Simples</option>
-            <option value="ranking">Ranking</option>
-            <option value="multiple">Multipla</option>
-          </select>
+        <div style={styles.inlineFieldGroup}>
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Tipo de Votação:</label>
+            <select
+              name="voting_type"
+              value={formData.voting_type}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="single">Única Escolha</option>
+              <option value="ranking">Ranking</option>
+            </select>
+          </div>
         </div>
 
-        {/* max_options_per_vote */}
-        {formData.voting_type === "multiple" && (
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Máximo de opções por voto:</label>
-            <input
-              type="number"
-              name="max_options_per_vote"
-              value={formData.max_options_per_vote as any}
-              onChange={e =>
-                setFormData(prev => ({
-                  ...prev,
-                  max_options_per_vote: e.target.value === ""
-                    ? ""
-                    : Math.max(1, Number(e.target.value)),
-                }))
-              }
-              style={styles.input}
-              min={1}
-              disabled={!isEditing || isBusy}
-              required
-            />
-          </div>
-        )}
-
-        {/* start_date + end_date */}
         <div style={styles.inlineFieldGroup}>
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Data de Início:</label>
@@ -743,6 +974,7 @@ export default function PollRegistrationClient() {
               disabled={!isEditing || isBusy}
             />
           </div>
+
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Data de Término:</label>
             <input
@@ -757,9 +989,9 @@ export default function PollRegistrationClient() {
           </div>
         </div>
 
-        {/* show_partial_results */}
         <div style={styles.fieldGroup}>
-          <label style={styles.checkboxLabel}>
+          <label style={styles.label}>
+            Mostrar Resultados Parciais:
             <input
               type="checkbox"
               name="show_partial_results"
@@ -768,11 +1000,9 @@ export default function PollRegistrationClient() {
               style={styles.checkbox}
               disabled={!isEditing || isBusy}
             />
-            Mostrar Resultados Parciais
           </label>
         </div>
 
-        {/* icon_name */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Nome do Ícone:</label>
           <input
@@ -786,7 +1016,6 @@ export default function PollRegistrationClient() {
           />
         </div>
 
-        {/* icon_url */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>URL do Ícone:</label>
           <input
@@ -800,7 +1029,6 @@ export default function PollRegistrationClient() {
           />
         </div>
 
-        {/* Botões */}
         <div style={styles.buttonGroup}>
           {isEditMode && (
             <button
@@ -812,6 +1040,7 @@ export default function PollRegistrationClient() {
               {loading ? "Salvando..." : "Salvar"}
             </button>
           )}
+
           <button
             type="button"
             onClick={handleClearForm}
@@ -820,19 +1049,22 @@ export default function PollRegistrationClient() {
           >
             Limpar
           </button>
+
           {!isEditMode && (
             <button type="submit" style={styles.primaryButton} disabled={isBusy}>
               {loading ? "Cadastrando..." : "Cadastrar"}
             </button>
           )}
         </div>
+
         {success && <p style={styles.success}>Operação realizada com sucesso!</p>}
         {error && <p style={styles.error}>{error}</p>}
       </form>
 
-      {/* ==== Opções da pesquisa mantém original ==== */}
       <div style={styles.divider} />
+
       <h2 style={styles.sectionTitle}>Opções da Pesquisa</h2>
+
       {!isEditMode ? (
         <p style={styles.sectionHint}>
           Para cadastrar opções, abra uma pesquisa existente (modo edição).
@@ -851,53 +1083,23 @@ export default function PollRegistrationClient() {
                 disabled={optionsLoading}
               />
             </div>
+
             <button
               type="button"
-              onClick={async () => {
-                setOptionsError("");
-                setOptionsSuccess(false);
-                try {
-                  if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para cadastrar opções.");
-                  const text = optionText.trim();
-                  if (!text) throw new Error("Digite o texto da opção.");
-                  setOptionsLoading(true);
-                  const res = await fetch(
-                    `/api/admin/polls/${encodeURIComponent(
-                      pollIdFromUrl
-                    )}/options?${adminTokenQuery}`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ option_text: text }),
-                    }
-                  );
-                  const json = await res.json().catch(() => null);
-                  if (!res.ok) {
-                    throw new Error(
-                      json?.error ? `Falha ao criar opção: ${json.error}` : "Falha ao criar opção."
-                    );
-                  }
-                  const created: PollOption | undefined = json?.option;
-                  if (!created) throw new Error("Resposta inválida do servidor (option ausente).");
-                  setOptions((prev) => [...prev, created]);
-                  setOptionText("");
-                  setOptionsSuccess(true);
-                } catch (err: any) {
-                  setOptionsError(err.message || "Erro desconhecido.");
-                } finally {
-                  setOptionsLoading(false);
-                }
-              }}
+              onClick={handleCreateOption}
               style={styles.primaryButton}
               disabled={optionsLoading || !optionText.trim()}
             >
               {optionsLoading ? "Adicionando..." : "Adicionar Opção"}
             </button>
           </div>
+
           {optionsSuccess && <p style={styles.success}>Opção atualizada com sucesso!</p>}
           {optionsError && <p style={styles.error}>{optionsError}</p>}
+
           <div style={styles.optionsTableWrapper}>
             <h3 style={styles.subTitle}>Opções cadastradas</h3>
+
             {optionsLoading ? (
               <p style={styles.info}>Carregando opções...</p>
             ) : options.length === 0 ? (
@@ -910,9 +1112,11 @@ export default function PollRegistrationClient() {
                     <th style={{ ...styles.th, width: 160 }}>Ações</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {options.map((opt) => {
                     const isEditingRow = editingOptionId === opt.id;
+
                     return (
                       <tr key={opt.id}>
                         <td style={styles.td}>
@@ -928,64 +1132,24 @@ export default function PollRegistrationClient() {
                             opt.option_text
                           )}
                         </td>
+
                         <td style={styles.td}>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
                             {!isEditingRow ? (
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setOptionsError("");
-                                    setOptionsSuccess(false);
-                                    setEditingOptionId(opt.id);
-                                    setEditingOptionText(opt.option_text);
-                                  }}
+                                  onClick={() => startEditOption(opt)}
                                   style={styles.iconButton}
                                   title="Editar"
                                   disabled={optionsLoading}
                                 >
                                   ✏️
                                 </button>
+
                                 <button
                                   type="button"
-                                  onClick={async () => {
-                                    try {
-                                      setOptionsError("");
-                                      setOptionsSuccess(false);
-                                      if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para remover opções.");
-                                      const ok = window.confirm(
-                                        `Remover a opção:\n\n"${opt.option_text}"\n\nTem certeza?`
-                                      );
-                                      if (!ok) return;
-                                      setOptionsLoading(true);
-                                      const res = await fetch(
-                                        `/api/admin/polls/${encodeURIComponent(
-                                          pollIdFromUrl
-                                        )}/options/${encodeURIComponent(opt.id)}?${adminTokenQuery}`,
-                                        { method: "DELETE" }
-                                      );
-                                      const json = await res.json().catch(() => null);
-                                      if (!res.ok) {
-                                        throw new Error(
-                                          json?.details
-                                            ? `Falha ao remover opção: ${json.error} — ${json.details}`
-                                            : json?.error
-                                            ? `Falha ao remover opção: ${json.error}`
-                                            : "Falha ao remover opção."
-                                        );
-                                      }
-                                      setOptions((prev) => prev.filter((o) => o.id !== opt.id));
-                                      if (editingOptionId === opt.id) {
-                                        setEditingOptionId(null);
-                                        setEditingOptionText("");
-                                      }
-                                      setOptionsSuccess(true);
-                                    } catch (err: any) {
-                                      setOptionsError(err.message || "Erro desconhecido.");
-                                    } finally {
-                                      setOptionsLoading(false);
-                                    }
-                                  }}
+                                  onClick={() => handleDeleteOption(opt)}
                                   style={styles.iconDangerButton}
                                   title="Excluir"
                                   disabled={optionsLoading}
@@ -996,52 +1160,7 @@ export default function PollRegistrationClient() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={async () => {
-                                  try {
-                                    setOptionsError("");
-                                    setOptionsSuccess(false);
-                                    if (!pollIdFromUrl) throw new Error("Abra uma pesquisa existente para editar opções.");
-                                    if (!editingOptionId) throw new Error("Nenhuma opção em edição.");
-                                    const text = editingOptionText.trim();
-                                    if (!text) throw new Error("Digite o texto da opção.");
-                                    setOptionSaving(true);
-                                    const res = await fetch(
-                                      `/api/admin/polls/${encodeURIComponent(
-                                        pollIdFromUrl
-                                      )}/options/${encodeURIComponent(editingOptionId)}?${adminTokenQuery}`,
-                                      {
-                                        method: "PUT",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ option_text: text }),
-                                      }
-                                    );
-                                    let json: any = null;
-                                    try {
-                                      json = await res.json();
-                                    } catch {
-                                      json = null;
-                                    }
-                                    if (!res.ok) {
-                                      throw new Error(
-                                        json?.details
-                                          ? `Falha ao salvar opção: ${json.error} — ${json.details}`
-                                          : json?.error
-                                          ? `Falha ao salvar opção: ${json.error}`
-                                          : "Falha ao salvar opção."
-                                      );
-                                    }
-                                    const updated: PollOption | undefined = json?.option;
-                                    if (!updated) throw new Error("Resposta inválida do servidor (option ausente).");
-                                    setOptions((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-                                    setOptionsSuccess(true);
-                                    setEditingOptionId(null);
-                                    setEditingOptionText("");
-                                  } catch (err: any) {
-                                    setOptionsError(err.message || "Erro desconhecido.");
-                                  } finally {
-                                    setOptionSaving(false);
-                                  }
-                                }}
+                                onClick={handleSaveOption}
                                 style={styles.iconSuccessButton}
                                 title="Salvar"
                                 disabled={optionSaving || !editingOptionText.trim()}
@@ -1065,7 +1184,6 @@ export default function PollRegistrationClient() {
 }
 
 const styles = {
-  // ... (mantenha os estilos originais aqui, igual estava)
   container: {
     maxWidth: "600px",
     margin: "0 auto",
@@ -1195,6 +1313,7 @@ const styles = {
     fontWeight: "bold",
     cursor: "pointer",
   },
+
   iconButton: {
     width: "38px",
     height: "38px",
@@ -1231,8 +1350,10 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
   },
+
   success: { color: "green", fontSize: "14px", textAlign: "center" as const },
   error: { color: "red", fontSize: "14px", textAlign: "center" as const },
+
   divider: { height: 1, backgroundColor: "#e5e7eb", margin: "24px 0" },
   sectionTitle: { fontSize: "18px", fontWeight: "bold", color: "#111827" },
   sectionHint: { fontSize: "14px", color: "#4b5563", marginBottom: "14px" },
