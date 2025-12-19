@@ -9,7 +9,7 @@ function assertAdmin(req: NextRequest) {
 }
 
 /**
- * ATUALIZEI para refletir o schema real (tabela que você mostrou):
+ * Campos alinhados com a sua tabela atual:
  * id,title,description,status,allow_multiple,max_votes_per_user,created_at,closes_at,
  * vote_cooldown_seconds,voting_type,start_date,end_date,show_partial_results,icon_name,icon_url,max_options_per_vote
  */
@@ -32,11 +32,7 @@ const POLL_SELECT_FIELDS = [
   "icon_url",
 ].join(", ");
 
-/**
- * Normaliza valores vindos do form (datetime-local):
- * - "" / undefined / null -> null
- * - string -> string (trim)
- */
+/** "" / null / undefined -> null ; string -> trim */
 function emptyToNull(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   if (typeof v !== "string") return null;
@@ -44,25 +40,18 @@ function emptyToNull(v: unknown): string | null {
   return t ? t : null;
 }
 
-/**
- * Converte datas recebidas do front para ISO UTC consistente.
- */
+/** datetime-local sem timezone -> ISO UTC ; ISO com timezone -> mantém */
 function toISOOrNull(value: unknown): string | null {
   const s = emptyToNull(value);
   if (!s) return null;
 
-  // Se já tem timezone explícito, mantém
   if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) return s;
 
-  // datetime-local (sem timezone): interpreta como horário local
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
 }
 
-/**
- * Parse para validação. Retorna null se vazio; lança erro se inválido.
- */
 function parseDateOrNull(value: unknown, fieldName: string): Date | null {
   const s = emptyToNull(value);
   if (!s) return null;
@@ -78,13 +67,20 @@ function isValidVotingType(v: any): v is "single" | "ranking" | "multiple" {
   return v === "single" || v === "ranking" || v === "multiple";
 }
 
-export async function GET(req: NextRequest, context: { params: { id: string } }) {
+/**
+ * IMPORTANTÍSSIMO: manter a assinatura do seu projeto:
+ * context: { params: Promise<{ id: string }> }
+ */
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     if (!assertAdmin(req)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const id = context?.params?.id;
+    const { id } = await context.params;
 
     if (!id || typeof id !== "string") {
       return NextResponse.json({ error: "missing_id" }, { status: 400 });
@@ -96,7 +92,7 @@ export async function GET(req: NextRequest, context: { params: { id: string } })
       .eq("id", id)
       .single();
 
-    // Se deu erro no select (ex.: coluna inexistente), isso é 500, não 404
+    // Erro de DB é 500 com details (não mascarar como poll_not_found)
     if (error) {
       console.error("poll GET db error:", error);
       return NextResponse.json(
@@ -116,13 +112,16 @@ export async function GET(req: NextRequest, context: { params: { id: string } })
   }
 }
 
-export async function PUT(req: NextRequest, context: { params: { id: string } }) {
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     if (!assertAdmin(req)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const id = context?.params?.id;
+    const { id } = await context.params;
 
     if (!id || typeof id !== "string") {
       return NextResponse.json({ error: "missing_id" }, { status: 400 });
@@ -156,22 +155,18 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
       if (k in body) update[k] = (body as any)[k];
     }
 
-    // ===== validações mínimas =====
+    // ===== validações básicas =====
 
     if ("title" in update) {
       const t = String(update.title ?? "").trim();
-      if (!t) {
-        return NextResponse.json({ error: "missing_title" }, { status: 400 });
-      }
+      if (!t) return NextResponse.json({ error: "missing_title" }, { status: 400 });
       update.title = t;
     }
 
     if ("status" in update) {
       const s = String(update.status ?? "").trim();
       const ok = s === "draft" || s === "open" || s === "paused" || s === "closed";
-      if (!ok) {
-        return NextResponse.json({ error: "invalid_status" }, { status: 400 });
-      }
+      if (!ok) return NextResponse.json({ error: "invalid_status" }, { status: 400 });
       update.status = s;
     }
 
@@ -188,24 +183,19 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
 
     if ("voting_type" in update) {
       const vt = update.voting_type;
-      if (vt == null) {
-        // permite limpar? melhor não — mas não vou quebrar seu fluxo;
-        // se você quiser obrigatório, basta bloquear aqui.
+      if (vt == null || vt === "") {
         update.voting_type = "single";
       } else if (!isValidVotingType(vt)) {
         return NextResponse.json({ error: "invalid_voting_type" }, { status: 400 });
       }
     }
 
-    // max_votes_per_user / allow_multiple (mesma regra que você já tinha)
+    // max_votes_per_user / allow_multiple
     if ("max_votes_per_user" in update && update.max_votes_per_user != null) {
       const n = Number(update.max_votes_per_user);
       if (!Number.isFinite(n) || n < 1) {
         return NextResponse.json(
-          {
-            error: "invalid_max_votes_per_user",
-            message: "max_votes_per_user deve ser >= 1",
-          },
+          { error: "invalid_max_votes_per_user", message: "max_votes_per_user deve ser >= 1" },
           { status: 400 }
         );
       }
@@ -232,7 +222,7 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
       }
     }
 
-    // max_options_per_vote: só faz sentido quando voting_type === "multiple"
+    // Se max_options_per_vote vier vazio, vira null
     if ("max_options_per_vote" in update) {
       if (update.max_options_per_vote == null || update.max_options_per_vote === "") {
         update.max_options_per_vote = null;
@@ -251,11 +241,10 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
       }
     }
 
-    // Se voting_type não vier no payload, precisamos do atual para validar coerência.
-    // Também precisamos de created_at como âncora das regras de data.
+    // Snapshot atual (para validar datas + coerência com voting_type)
     const { data: current, error: currentError } = await supabase
       .from("polls")
-      .select("created_at, start_date, end_date, closes_at, voting_type")
+      .select("created_at, start_date, end_date, closes_at, voting_type, max_options_per_vote")
       .eq("id", id)
       .single();
 
@@ -272,15 +261,14 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
     }
 
     const nextVotingType: "single" | "ranking" | "multiple" =
-      ("voting_type" in update ? update.voting_type : current.voting_type) ?? "single";
+      (("voting_type" in update ? update.voting_type : current.voting_type) as any) ?? "single";
 
-    // Se não for multiple, max_options_per_vote deve ficar null (não atrapalha listagem nem o front)
+    // Regra: só multiple usa max_options_per_vote
     if (nextVotingType !== "multiple") {
       update.max_options_per_vote = null;
     } else {
-      // multiple: max_options_per_vote obrigatório (>=1)
       const candidate =
-        "max_options_per_vote" in update ? update.max_options_per_vote : (current as any).max_options_per_vote;
+        "max_options_per_vote" in update ? update.max_options_per_vote : current.max_options_per_vote;
 
       const n = Number(candidate);
       if (!Number.isFinite(n) || n < 1) {
@@ -296,10 +284,8 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
     }
 
     /* =========================
-       DATAS — mesmas regras que você já implementou,
-       só mantendo o comportamento e corrigindo o merge.
+       DATAS (mesma lógica auditável)
     ========================= */
-
     if ("start_date" in update) update.start_date = emptyToNull(update.start_date);
     if ("end_date" in update) update.end_date = emptyToNull(update.end_date);
     if ("closes_at" in update) update.closes_at = emptyToNull(update.closes_at);
@@ -338,11 +324,7 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
       if (msg.startsWith("invalid_date:")) {
         const field = msg.split("invalid_date:")[1] || "date";
         return NextResponse.json(
-          {
-            error: "invalid_date_format",
-            field,
-            message: `Formato de data inválido em ${field}.`,
-          },
+          { error: "invalid_date_format", field, message: `Formato de data inválido em ${field}.` },
           { status: 400 }
         );
       }
@@ -375,20 +357,14 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
 
     if (nextEnd && nextEnd.getTime() < createdAt.getTime()) {
       return NextResponse.json(
-        {
-          error: "invalid_end_date_before_created_at",
-          message: "end_date não pode ser menor que created_at.",
-        },
+        { error: "invalid_end_date_before_created_at", message: "end_date < created_at." },
         { status: 400 }
       );
     }
 
     if (nextCloses && nextCloses.getTime() < createdAt.getTime()) {
       return NextResponse.json(
-        {
-          error: "invalid_closes_at_before_created_at",
-          message: "closes_at não pode ser menor que created_at.",
-        },
+        { error: "invalid_closes_at_before_created_at", message: "closes_at < created_at." },
         { status: 400 }
       );
     }
