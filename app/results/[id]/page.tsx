@@ -1,3 +1,5 @@
+// app/results/[id]/page.tsx
+
 import Link from "next/link";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
@@ -49,63 +51,31 @@ export default async function ResultsPage({
     allow_multiple,
   } = pollData;
 
-  /* 🔒 DRAFT */
-  if (status === "draft") {
-    return (
-      <main className="p-6 max-w-xl mx-auto text-center space-y-3">
-        <h1 className="text-xl font-bold">Pesquisa indisponível</h1>
-        <p className="text-sm text-muted-foreground">
-          Esta pesquisa ainda não foi publicada.
-        </p>
-      </main>
-    );
-  }
-
-  /* 🔐 VISIBILIDADE */
   const canShowResults =
     status === "closed" ||
     ((status === "open" || status === "paused") && show_partial_results);
 
   if (!canShowResults) {
     return (
-      <main className="p-6 max-w-xl mx-auto space-y-5 text-center">
+      <main className="p-6 max-w-xl mx-auto text-center space-y-4">
         <h1 className="text-xl font-semibold">Resultados</h1>
-
         <p className="text-sm text-muted-foreground">
-          Os resultados desta pesquisa estão ocultos no momento e serão
-          divulgados ao final da votação.
+          Os resultados serão divulgados ao final da votação.
         </p>
-
-        <div className="flex justify-center gap-4 text-sm">
-          <Link
-            href={`/poll/${safeId}`}
-            className="text-emerald-600 hover:underline"
-          >
-            ← Voltar para a pesquisa
-          </Link>
-
-          <Link href="/" className="text-emerald-600 hover:underline">
-            Auditável
-          </Link>
-        </div>
+        <Link href={`/poll/${safeId}`} className="text-emerald-600 hover:underline">
+          ← Voltar para a pesquisa
+        </Link>
       </main>
     );
   }
 
   const isPartial = status === "open" || status === "paused";
 
-  /* =======================
-     NAVEGAÇÃO
-  ======================= */
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
-      <Link
-        href={`/poll/${safeId}`}
-        className="text-emerald-600 hover:underline"
-      >
+      <Link href={`/poll/${safeId}`} className="text-emerald-600 hover:underline">
         ← Voltar para votação
       </Link>
-
       <Link href="/" className="text-emerald-600 hover:underline">
         Auditável
       </Link>
@@ -113,7 +83,7 @@ export default async function ResultsPage({
   );
 
   /* =======================
-     VOTO SIMPLES
+     SINGLE
   ======================= */
   if (voting_type === "single") {
     const { data: options } = await supabase
@@ -148,113 +118,148 @@ export default async function ResultsPage({
     return (
       <main className="p-6 max-w-xl mx-auto space-y-5">
         <Navigation />
-
         <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
 
-        <div className="space-y-4">
-          {sortedOptions.map(o => {
-            const pct = totalSubmissions
-              ? Math.round((o.votes / totalSubmissions) * 100)
-              : 0;
-
-            return (
-              <div key={o.id} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>{o.option_text}</span>
-                  <span className="text-gray-600">
-                    {o.votes} votos ({pct}%)
-                  </span>
-                </div>
-
-                <div className="h-2 bg-gray-200 rounded">
-                  <div
-                    className="h-2 bg-emerald-500 rounded transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex justify-between text-xs text-gray-500">
-          {isPartial && <span>Resultados parciais</span>}
-
-          {allow_multiple ? (
-            <span>
-              Participantes: {totalParticipants} · Participações:{" "}
-              {totalSubmissions}
-            </span>
-          ) : (
-            <span>Total de votos: {totalSubmissions}</span>
-          )}
-        </div>
-
-        {/* 🔹 CONVITE DE ATRIBUTOS (CLIENT) */}
-        <AttributesInviteClient pollId={safeId} />
-      </main>
-    );
-  }
-
-  /* =======================
-     RANKING
-  ======================= */
-  const json = await getResults(safeId);
-  const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
-
-  const { data: participantsData } = await supabase
-    .from("votes")
-    .select("user_hash")
-    .eq("poll_id", safeId);
-
-  const totalParticipants = new Set(
-    (participantsData ?? []).map(v => v.user_hash)
-  ).size;
-
-  const { count: totalSubmissions } = await supabase
-    .from("votes")
-    .select("*", { count: "exact", head: true })
-    .eq("poll_id", safeId);
-
-  return (
-    <main className="p-6 max-w-xl mx-auto space-y-5">
-      <Navigation />
-
-      <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
-
-      <div className="space-y-4">
-        {json.result.map((row: any, index: number) => {
-          const pct = Math.round((row.score / maxScore) * 100);
+        {sortedOptions.map(o => {
+          const pct = totalSubmissions
+            ? Math.round((o.votes / totalSubmissions) * 100)
+            : 0;
 
           return (
-            <div key={row.option_id} className="space-y-1">
+            <div key={o.id} className="space-y-1">
               <div className="flex justify-between text-sm">
-                <span>
-                  <strong>{index + 1}º</strong> — {row.option_text}
-                </span>
-                <span className="text-gray-600">{row.score} pts</span>
+                <span>{o.option_text}</span>
+                <span>{o.votes} votos ({pct}%)</span>
               </div>
-
               <div className="h-2 bg-gray-200 rounded">
                 <div
-                  className="h-2 bg-emerald-500 rounded transition-all"
+                  className="h-2 bg-emerald-500 rounded"
                   style={{ width: `${pct}%` }}
                 />
               </div>
             </div>
           );
         })}
-      </div>
 
-      <div className="flex justify-between text-xs text-gray-500">
-        {isPartial && <span>Resultados parciais</span>}
-        <span>
-          Participantes: {totalParticipants}
-          {allow_multiple && ` · Participações: ${totalSubmissions ?? 0}`}
-        </span>
-      </div>
+        <div className="flex justify-between text-xs text-gray-500">
+          {isPartial && <span>Resultados parciais</span>}
+          <span>Total de votos: {totalSubmissions}</span>
+        </div>
 
-      {/* 🔹 CONVITE DE ATRIBUTOS (CLIENT) */}
+        <AttributesInviteClient pollId={safeId} />
+      </main>
+    );
+  }
+
+  /* =======================
+     MULTIPLE
+  ======================= */
+  if (voting_type === "multiple") {
+    const { data: options } = await supabase
+      .from("poll_options")
+      .select("id, option_text")
+      .eq("poll_id", safeId);
+
+    const { data: votes } = await supabase
+      .from("votes")
+      .select("id, user_hash")
+      .eq("poll_id", safeId);
+
+    const { data: marks } = await supabase
+      .from("vote_options")
+      .select("option_id")
+      .in(
+        "vote_id",
+        (votes ?? []).map(v => v.id)
+      );
+
+    const totalSubmissions = votes?.length || 0;
+    const totalParticipants = new Set(
+      (votes ?? []).map(v => v.user_hash)
+    ).size;
+
+    const count: Record<string, number> = {};
+    marks?.forEach(m => {
+      count[m.option_id] = (count[m.option_id] || 0) + 1;
+    });
+
+    const sortedOptions =
+      options
+        ?.map(o => ({
+          ...o,
+          votes: count[o.id] || 0,
+        }))
+        .sort((a, b) => b.votes - a.votes) || [];
+
+    return (
+      <main className="p-6 max-w-xl mx-auto space-y-5">
+        <Navigation />
+        <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
+
+        {sortedOptions.map(o => {
+          const pct = totalSubmissions
+            ? Math.round((o.votes / totalSubmissions) * 100)
+            : 0;
+
+          return (
+            <div key={o.id} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>{o.option_text}</span>
+                <span>{o.votes} marcas ({pct}%)</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded">
+                <div
+                  className="h-2 bg-emerald-500 rounded"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="flex justify-between text-xs text-gray-500">
+          {isPartial && <span>Resultados parciais</span>}
+          <span>
+            Participantes: {totalParticipants} · Participações: {totalSubmissions}
+          </span>
+        </div>
+
+        <AttributesInviteClient pollId={safeId} />
+      </main>
+    );
+  }
+
+  /* =======================
+     RANKING (inalterado)
+  ======================= */
+  const json = await getResults(safeId);
+  const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
+
+  return (
+    <main className="p-6 max-w-xl mx-auto space-y-5">
+      <Navigation />
+      <h1 className="text-2xl font-bold text-emerald-600">{title}</h1>
+
+      {json.result.map((row: any, index: number) => {
+        const pct = Math.round((row.score / maxScore) * 100);
+        return (
+          <div key={row.option_id} className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span>
+                <strong>{index + 1}º</strong> — {row.option_text}
+              </span>
+              <span>{row.score} pts</span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded">
+              <div
+                className="h-2 bg-emerald-500 rounded"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+
       <AttributesInviteClient pollId={safeId} />
     </main>
   );
