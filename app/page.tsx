@@ -330,8 +330,8 @@ export default async function Home() {
                 className="absolute inset-0 z-20"
               />
 
-              {/* IMAGEM GRANDE */}
-              <div className="h-80 w-full overflow-hidden bg-gray-50">
+              {/* IMAGEM (MENOR) */}
+              <div className="h-56 md:h-64 w-full overflow-hidden bg-gray-50">
                 <PollImage
                   src={iconSrc}
                   fallbackSrc={DEFAULT_POLL_ICON}
