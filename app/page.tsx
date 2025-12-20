@@ -19,6 +19,7 @@ type Poll = {
   status: "draft" | "open" | "paused" | "closed";
   show_partial_results: boolean;
   icon_url?: string | null;
+  max_votes_per_user?: number | null;
 };
 
 type PollOption = {
@@ -126,7 +127,7 @@ export default async function Home({
   const { data: pollsData } = await supabase
     .from("polls")
     .select(
-      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url"
+      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user"
     )
     .order("created_at", { ascending: false });
 
@@ -391,17 +392,35 @@ export default async function Home({
                 </h2>
       
                 {/* DATA (vermelho) + TIPO NA MESMA LINHA */}
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                  <span className="text-red-700">
-                    Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
-                  </span>
-      
-                  <span className="text-gray-400">•</span>
-      
-                  <span className="text-gray-700 font-medium">{featuredTypeLabel}</span>
+                <div className="mt-2 text-sm">
+                <div className="text-red-700">
+                  Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+                </div>
+              
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-gray-700">
+                  <span className="text-gray-500">Pesquisa tipo:</span>
+                  <span className="font-medium">{featuredTypeLabel}</span>
+              
+                  {(() => {
+                    const maxVotes = typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
+                    const isSingleParticipation = maxVotes === 1;
+              
+                    const badgeClass = isSingleParticipation
+                      ? "bg-red-100 text-red-800 border border-red-200"
+                      : "bg-sky-100 text-sky-800 border border-sky-200";
+              
+                    const badgeText = isSingleParticipation
+                      ? "Participação Única"
+                      : "Múltiplas Participações";
+              
+                    return (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}>
+                        {badgeText}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
-            </div>
       
             {/* ABAIXO: 60/40 (texto à esquerda + posições à direita) */}
             <div className="mt-5 flex flex-col md:flex-row gap-6">
