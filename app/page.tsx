@@ -118,7 +118,7 @@ function showResultsButton(p: Poll) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: { featured?: string };
+  searchParams?: any;
 }) {
   /* =======================
      POLLS
@@ -137,11 +137,25 @@ export default async function Home({
     return <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>;
   }
 
-  const featuredId = searchParams?.featured?.trim();
+  // Compatível com searchParams como objeto, Promise, string ou string[]
+  const resolvedSearchParams =
+    searchParams && typeof searchParams.then === "function"
+      ? await searchParams
+      : searchParams;
+  
+  const rawFeatured = resolvedSearchParams?.featured;
+  
+  const featuredId =
+    typeof rawFeatured === "string"
+      ? rawFeatured.trim()
+      : Array.isArray(rawFeatured) && typeof rawFeatured[0] === "string"
+        ? rawFeatured[0].trim()
+        : undefined;
+  
   const featuredPoll =
     (featuredId && visiblePolls.find((x) => x.id === featuredId)) || visiblePolls[0];
   
-  const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id)
+  const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id);
 
   const pollIds = visiblePolls.map((p) => p.id);
 
