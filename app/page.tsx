@@ -495,28 +495,31 @@ export default async function Home({
       {/* LISTA COMPACTA */}
       <section className="space-y-4">
         {otherPolls.length > 0 && (
-          <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
+          <h3 className="text-sm font-semibold text-gray-700">
+            Outras pesquisas
+          </h3>
         )}
-
+      
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {otherPolls.map((p) => {
             const iconSrc = normalizeIconUrl(p.icon_url);
-            const typeLabel = votingTypeLabel(p.voting_type);
-            const showResults = showResultsButton(p);
-
+      
             return (
               <div
                 key={p.id}
-                className="relative group flex gap-5 p-6 border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition min-h-[140px]"
+                className="relative group border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition overflow-hidden"
               >
+                {/* Clique promove para o card principal */}
                 <Link
-                  href={`/poll/${p.id}`}
-                  aria-label={`Abrir pesquisa: ${p.title}`}
+                  href={`/?featured=${encodeURIComponent(p.id)}#top`}
+                  aria-label={`Destacar pesquisa: ${p.title}`}
                   className="absolute inset-0 z-20"
                 />
-
-                <div className="relative z-10 pointer-events-none flex gap-5 w-full">
-                  <div className="w-40 h-28 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+      
+                {/* Conteúdo (não captura clique) */}
+                <div className="relative z-10 pointer-events-none flex gap-4 p-4">
+                  {/* IMAGEM */}
+                  <div className="w-20 h-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                     <PollImage
                       src={iconSrc}
                       fallbackSrc={DEFAULT_POLL_ICON}
@@ -524,56 +527,29 @@ export default async function Home({
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
-
+      
+                  {/* TÍTULO + STATUS */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
-                      <h4 className={`text-lg font-semibold truncate ${titleColor(p.status)}`}>
+                      {/* Fonte menor e sem truncate para caber mais texto */}
+                      <h4
+                        className={`text-sm md:text-base font-semibold leading-snug ${titleColor(
+                          p.status
+                        )}`}
+                      >
                         {p.title}
                       </h4>
-
+      
                       <span
-                        className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(
+                        className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColor(
                           p.status
                         )}`}
                       >
                         {statusLabel(p.status)}
                       </span>
                     </div>
-
-                    <div className="mt-1 text-xs text-gray-600">
-                      Tipo: {typeLabel} · Início: {formatDate(p.start_date)} · Fim:{" "}
-                      {formatDate(p.end_date)}
-                    </div>
-
-                    {p.description && (
-                      <div className="mt-2 text-sm text-gray-700 line-clamp-2">
-                        {p.description}
-                      </div>
-                    )}
                   </div>
                 </div>
-
-                <div className="absolute bottom-4 left-6 z-30 pointer-events-auto">
-                  <Link
-                    href={`/poll/${p.id}`}
-                    className="inline-flex items-center px-3 py-2 rounded-xl
-                               text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                  >
-                    {primaryCtaLabel(p)}
-                  </Link>
-                </div>
-
-                {showResults && (
-                  <div className="absolute bottom-4 right-4 z-30 pointer-events-auto">
-                    <Link
-                      href={`/results/${p.id}`}
-                      className="inline-flex items-center px-3 py-2 rounded-xl
-                                 text-xs font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                    >
-                      Resultados
-                    </Link>
-                  </div>
-                )}
               </div>
             );
           })}
