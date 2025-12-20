@@ -84,21 +84,27 @@ function normalizeIconUrl(raw?: string | null) {
   const s = (raw || "").trim();
   if (!s) return DEFAULT_POLL_ICON;
 
-  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  // Verifique as extensões permitidas
+  const allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.svg'];
+  const ext = s.substring(s.lastIndexOf('.')).toLowerCase();
 
-  if (s.startsWith("/")) return s;
+  if (allowedExtensions.includes(ext)) {
+    if (s.startsWith("http://") || s.startsWith("https://")) return s;
 
-  if (s.startsWith("public/")) {
-    return "/" + s.replace(/^public\//, "");
-  }
+    if (s.startsWith("/")) return s;
 
-  if (s.startsWith("polls/")) {
-    return "/" + s;
-  }
+    if (s.startsWith("public/")) {
+      return "/" + s.replace(/^public\//, "");
+    }
 
-  const idx = s.indexOf("polls/");
-  if (idx >= 0) {
-    return "/" + s.slice(idx);
+    if (s.startsWith("polls/")) {
+      return "/" + s;
+    }
+
+    const idx = s.indexOf("polls/");
+    if (idx >= 0) {
+      return "/" + s.slice(idx);
+    }
   }
 
   return DEFAULT_POLL_ICON;
