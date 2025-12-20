@@ -358,7 +358,6 @@ export default async function Home({
       
           {/* CONTEÚDO */}
           <div className="p-6 md:p-7 pb-20 relative z-10 pointer-events-none">
-            {/* TOPO: imagem à esquerda + meta/título à direita */}
             <div className="flex gap-5">
               {/* IMAGEM */}
               <div className="w-40 h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
@@ -378,7 +377,7 @@ export default async function Home({
                   <span className="text-sm text-red-700">
                     Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
                   </span>
-              
+      
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                       p.status
@@ -387,53 +386,49 @@ export default async function Home({
                     {statusLabel(p.status)}
                   </span>
                 </div>
-              
-                {/* PERGUNTA */}
+      
+                {/* PERGUNTA (preto) */}
                 <h2 className="mt-3 text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words">
                   {p.title}
                 </h2>
-              </div>
       
-                {/* DATA (vermelho) + linha abaixo com "Pesquisa tipo:" + badge participação */}
-                <div className="mt-2 text-sm">
-                  <div className="text-red-700">
-                    Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
-                  </div>
+                {/* LINHA: Pesquisa tipo + badges */}
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                  <span className="text-gray-500">Pesquisa tipo:</span>
       
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-gray-700">
-                    <span className="text-gray-500">Pesquisa tipo:</span>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
-                      {featuredTypeLabel}
-                    </span>
+                  {/* BADGE do tipo */}
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                    {featuredTypeLabel}
+                  </span>
       
-                    {(() => {
-                      const maxVotes =
-                        typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
+                  {/* BADGE participação */}
+                  {(() => {
+                    const maxVotes =
+                      typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
       
-                      const isSingleParticipation = maxVotes === 1;
+                    const isSingleParticipation = maxVotes === 1;
       
-                      const badgeClass = isSingleParticipation
-                        ? "bg-red-100 text-red-800 border border-red-200"
-                        : "bg-sky-100 text-sky-800 border border-sky-200";
+                    const badgeClass = isSingleParticipation
+                      ? "bg-red-100 text-red-800 border border-red-200"
+                      : "bg-sky-100 text-sky-800 border border-sky-200";
       
-                      const badgeText = isSingleParticipation
-                        ? "Participação Única"
-                        : "Múltiplas Participações";
+                    const badgeText = isSingleParticipation
+                      ? "Participação Única"
+                      : "Múltiplas Participações";
       
-                      return (
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
-                        >
-                          {badgeText}
-                        </span>
-                      );
-                    })()}
-                  </div>
+                    return (
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
+                      >
+                        {badgeText}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
       
-            {/* ABAIXO: 60/40 (texto à esquerda + posições à direita) */}
+            {/* ABAIXO: 60/40 */}
             <div className="mt-5 flex flex-col md:flex-row gap-6">
               {/* TEXTO — 60% */}
               <div className="md:w-3/5">
@@ -444,7 +439,7 @@ export default async function Home({
                 </p>
               </div>
       
-              {/* POSIÇÕES — 40% (sem retângulo externo) */}
+              {/* POSIÇÕES — 40% */}
               {featuredShowResults && featuredBars && (
                 <div className="md:w-2/5">
                   {!featuredBars.isRanking ? (
