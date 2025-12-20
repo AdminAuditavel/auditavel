@@ -4,8 +4,6 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { existsSync } from "fs";
-import path from "path";
 
 const DEFAULT_POLL_ICON = "/polls/Enquete_Copa2026.png";
 
@@ -66,51 +64,39 @@ function votingTypeLabel(vt: Poll["voting_type"]) {
 }
 
 /**
- * Resolve imagem com fallback (sem handlers no client).
- * - Path local (/polls/xxx.png): valida existência em /public
- * - URL externa (http/https): tenta HEAD (com timeout curto)
+ * Normaliza icon_url para funcionar com assets no /public e URLs externas.
+ * Aceita formatos comuns:
+ * - https://...
+ * - /polls/x.png
+ * - polls/x.png
+ * - public/polls/x.png
  */
-async function resolveIconUrl(raw?: string | null, cache?: Map<string, string>) {
-  const url = (raw || "").trim();
-  if (!url) return DEFAULT_POLL_ICON;
+function normalizeIconUrl(raw?: string | null) {
+  const s = (raw || "").trim();
+  if (!s) return DEFAULT_POLL_ICON;
 
-  if (cache?.has(url)) return cache.get(url)!;
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
 
-  // Local path
-  if (url.startsWith("/")) {
-    // Mapeia /polls/x.png => <cwd>/public/polls/x.png
-    const filePath = path.join(process.cwd(), "public", url.replace(/^\/+/, ""));
-    const ok = existsSync(filePath);
-    const chosen = ok ? url : DEFAULT_POLL_ICON;
-    cache?.set(url, chosen);
-    return chosen;
+  // já é path público
+  if (s.startsWith("/")) return s;
+
+  // public/polls/x.png -> /polls/x.png
+  if (s.startsWith("public/")) {
+    return "/" + s.replace(/^public\//, "");
   }
 
-  // External URL
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 1500);
-
-    try {
-      const res = await fetch(url, {
-        method: "HEAD",
-        signal: controller.signal,
-        // evita cache agressivo de erro
-        cache: "no-store",
-      });
-      const chosen = res.ok ? url : DEFAULT_POLL_ICON;
-      cache?.set(url, chosen);
-      return chosen;
-    } catch {
-      cache?.set(url, DEFAULT_POLL_ICON);
-      return DEFAULT_POLL_ICON;
-    } finally {
-      clearTimeout(t);
-    }
+  // polls/x.png -> /polls/x.png
+  if (s.startsWith("polls/")) {
+    return "/" + s;
   }
 
-  // Qualquer outro formato estranho -> fallback
-  cache?.set(url, DEFAULT_POLL_ICON);
+  // qualquer coisa que contenha "polls/..." (ex.: "assets/polls/x.png")
+  const idx = s.indexOf("polls/");
+  if (idx >= 0) {
+    return "/" + s.slice(idx);
+  }
+
+  // fallback seguro
   return DEFAULT_POLL_ICON;
 }
 
@@ -186,19 +172,6 @@ export default async function Home() {
     if (!rankingsByOption.has(r.option_id)) rankingsByOption.set(r.option_id, []);
     rankingsByOption.get(r.option_id)!.push(r);
   });
-
-  /* =======================
-     ICONS RESOLVIDOS (COM FALLBACK)
-  ======================= */
-  const iconCache = new Map<string, string>();
-  const iconByPollId = new Map<string, string>();
-
-  await Promise.all(
-    visiblePolls.map(async (p) => {
-      const resolved = await resolveIconUrl(p.icon_url, iconCache);
-      iconByPollId.set(p.id, resolved);
-    })
-  );
 
   /* =======================
      HELPERS (RESULTADOS)
@@ -285,135 +258,135 @@ export default async function Home() {
       <hr className="border-gray-200" />
 
       {/* DESTAQUE */}
-      {featuredPoll && (() => {
-        const p = featuredPoll;
-        const iconSrc = iconByPollId.get(p.id) || DEFAULT_POLL_ICON;
-        const typeLabel = votingTypeLabel(p.voting_type);
-        const showResults = canShowResults(p);
+      {featuredPoll &&
+        (() => {
+          const p = featuredPoll;
+          const iconSrc = normalizeIconUrl(p.icon_url);
+          const typeLabel = votingTypeLabel(p.voting_type);
+          const showResults = canShowResults(p);
+          const { isRanking, topSingle, topRanking } = computeTopBars(p);
 
-        const { isRanking, topSingle, topRanking } = computeTopBars(p);
-
-        return (
-          <div className="relative group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-            {/* overlay link (card inteiro clicável em QUALQUER área) */}
-            <Link
-              href={`/poll/${p.id}`}
-              aria-label={`Abrir pesquisa: ${p.title}`}
-              className="absolute inset-0 z-20"
-            />
-
-            {/* IMAGEM GRANDE */}
-            <div className="h-64 w-full overflow-hidden">
-              <img
-                src={iconSrc}
-                alt={p.title}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          return (
+            <div className="relative group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
+              {/* overlay link (card inteiro clicável em qualquer área) */}
+              <Link
+                href={`/poll/${p.id}`}
+                aria-label={`Abrir pesquisa: ${p.title}`}
+                className="absolute inset-0 z-20"
               />
-            </div>
 
-            {/* Conteúdo não captura clique (deixa passar para o overlay) */}
-            <div className="p-6 relative z-10 pointer-events-none">
-              {/* STATUS */}
-              <span
-                className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                  p.status
-                )}`}
-              >
-                {statusLabel(p.status)}
-              </span>
-
-              {/* TÍTULO (preto) */}
-              <h2 className="text-2xl font-bold text-gray-900 pr-28">{p.title}</h2>
-
-              {/* META */}
-              <div className="mt-2 text-sm text-gray-600">
-                Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} · Tipo:{" "}
-                {typeLabel}
+              {/* IMAGEM GRANDE */}
+              <div className="h-64 w-full overflow-hidden">
+                <img
+                  src={iconSrc}
+                  alt={p.title}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
 
-              {/* DESCRIÇÃO */}
-              <p className="mt-4 text-gray-700 leading-relaxed">
-                {p.description
-                  ? p.description
-                  : "Participe desta decisão e ajude a construir informação pública confiável."}
-              </p>
+              {/* Conteúdo não captura clique (deixa passar para o overlay) */}
+              <div className="p-6 relative z-10 pointer-events-none">
+                {/* STATUS */}
+                <span
+                  className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                    p.status
+                  )}`}
+                >
+                  {statusLabel(p.status)}
+                </span>
 
-              {/* PRINCIPAIS POSIÇÕES (apenas) */}
-              {showResults && (
-                <div className="mt-5">
-                  <div className="rounded-lg border bg-gray-50 p-4">
-                    <div className="text-xs font-semibold text-gray-600 mb-2">
-                      Principais posições
+                {/* TÍTULO (preto) */}
+                <h2 className="text-2xl font-bold text-gray-900 pr-28">{p.title}</h2>
+
+                {/* META */}
+                <div className="mt-2 text-sm text-gray-600">
+                  Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} · Tipo:{" "}
+                  {typeLabel}
+                </div>
+
+                {/* DESCRIÇÃO */}
+                <p className="mt-4 text-gray-700 leading-relaxed">
+                  {p.description
+                    ? p.description
+                    : "Participe desta decisão e ajude a construir informação pública confiável."}
+                </p>
+
+                {/* PRINCIPAIS POSIÇÕES */}
+                {showResults && (
+                  <div className="mt-5">
+                    <div className="rounded-lg border bg-gray-50 p-4">
+                      <div className="text-xs font-semibold text-gray-600 mb-2">
+                        Principais posições
+                      </div>
+
+                      {!isRanking &&
+                        (topSingle.length ? (
+                          <div className="space-y-2">
+                            {topSingle.map((o, i) => (
+                              <div key={i} className="text-xs">
+                                <div className="flex justify-between gap-2">
+                                  <span className="truncate text-gray-800">{o.text}</span>
+                                  <span className="shrink-0 text-gray-700">{o.percent}%</span>
+                                </div>
+                                <div className="h-1.5 bg-gray-200 rounded">
+                                  <div
+                                    className="h-1.5 bg-emerald-500 rounded"
+                                    style={{ width: `${o.percent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500">
+                            Ainda sem votos suficientes para exibir.
+                          </div>
+                        ))}
+
+                      {isRanking &&
+                        (topRanking.length ? (
+                          <div className="space-y-2">
+                            {topRanking.map((o, i) => (
+                              <div key={i} className="text-xs">
+                                <div className="flex justify-between gap-2">
+                                  <span className="truncate text-gray-800">
+                                    <strong>{i + 1}º</strong> {o.text}
+                                  </span>
+                                </div>
+                                <div className="h-1.5 bg-gray-200 rounded">
+                                  <div
+                                    className="h-1.5 bg-emerald-500 rounded"
+                                    style={{ width: `${o.score}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500">
+                            Ainda sem rankings suficientes para exibir.
+                          </div>
+                        ))}
                     </div>
-
-                    {!isRanking &&
-                      (topSingle.length ? (
-                        <div className="space-y-2">
-                          {topSingle.map((o, i) => (
-                            <div key={i} className="text-xs">
-                              <div className="flex justify-between gap-2">
-                                <span className="truncate text-gray-800">{o.text}</span>
-                                <span className="shrink-0 text-gray-700">{o.percent}%</span>
-                              </div>
-                              <div className="h-1.5 bg-gray-200 rounded">
-                                <div
-                                  className="h-1.5 bg-emerald-500 rounded"
-                                  style={{ width: `${o.percent}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-500">
-                          Ainda sem votos suficientes para exibir.
-                        </div>
-                      ))}
-
-                    {isRanking &&
-                      (topRanking.length ? (
-                        <div className="space-y-2">
-                          {topRanking.map((o, i) => (
-                            <div key={i} className="text-xs">
-                              <div className="flex justify-between gap-2">
-                                <span className="truncate text-gray-800">
-                                  <strong>{i + 1}º</strong> {o.text}
-                                </span>
-                              </div>
-                              <div className="h-1.5 bg-gray-200 rounded">
-                                <div
-                                  className="h-1.5 bg-emerald-500 rounded"
-                                  style={{ width: `${o.score}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-500">
-                          Ainda sem rankings suficientes para exibir.
-                        </div>
-                      ))}
                   </div>
+                )}
+              </div>
+
+              {/* LINK RESULTADOS (clicável acima do overlay) */}
+              {showResults && (
+                <div className="absolute bottom-5 right-5 z-30 pointer-events-auto">
+                  <Link
+                    href={`/results/${p.id}`}
+                    className="inline-flex items-center px-3 py-2 rounded-lg
+                               text-sm font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                  >
+                    Ver resultados
+                  </Link>
                 </div>
               )}
             </div>
-
-            {/* LINK RESULTADOS (clicável e acima do overlay) */}
-            {showResults && (
-              <div className="absolute bottom-5 right-5 z-30 pointer-events-auto">
-                <Link
-                  href={`/results/${p.id}`}
-                  className="inline-flex items-center px-3 py-2 rounded-lg
-                             text-sm font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                >
-                  Ver resultados
-                </Link>
-              </div>
-            )}
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* LISTA COMPACTA */}
       <section className="space-y-4">
@@ -423,7 +396,7 @@ export default async function Home() {
 
         <div className="grid grid-cols-1 gap-4">
           {otherPolls.map((p) => {
-            const iconSrc = iconByPollId.get(p.id) || DEFAULT_POLL_ICON;
+            const iconSrc = normalizeIconUrl(p.icon_url);
             const typeLabel = votingTypeLabel(p.voting_type);
             const showResults = canShowResults(p);
 
@@ -432,7 +405,7 @@ export default async function Home() {
                 key={p.id}
                 className="relative group flex gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
               >
-                {/* overlay link (card inteiro clicável em QUALQUER área) */}
+                {/* overlay link (card inteiro clicável em qualquer área) */}
                 <Link
                   href={`/poll/${p.id}`}
                   aria-label={`Abrir pesquisa: ${p.title}`}
@@ -477,9 +450,7 @@ export default async function Home() {
                       </div>
                     )}
 
-                    <div className="mt-2 text-xs text-gray-500">
-                      Clique para participar
-                    </div>
+                    <div className="mt-2 text-xs text-gray-500">Clique para participar</div>
                   </div>
                 </div>
 
