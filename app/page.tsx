@@ -342,7 +342,7 @@ export default async function Home() {
               </div>
 
               {/* Conteúdo não captura clique (deixa passar para o overlay) */}
-              <div className="p-8 relative z-10 pointer-events-none">
+              <div className="p-8 pb-28 relative z-10 pointer-events-none">
                 {/* TOPO (mobile: empilha; desktop: mantém badge/status no topo) */}
                 <div className="flex flex-col gap-3 md:block">
                   {/* Linha superior: tipo à esquerda e status à direita (sem absolute no mobile) */}
