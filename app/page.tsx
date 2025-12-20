@@ -478,13 +478,13 @@ export default async function Home() {
         {otherPolls.length > 0 && (
           <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
         )}
-
+      
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {otherPolls.map((p) => {
-            const iconSrc = normalizeIconUrl(p.icon_url);
+            const iconSrc = normalizeIconUrl(p.icon_url);  // Aqui: pega a imagem correta de cada pesquisa
             const typeLabel = votingTypeLabel(p.voting_type);
             const showResults = showResultsButton(p);
-
+      
             return (
               <div
                 key={p.id}
@@ -496,26 +496,26 @@ export default async function Home() {
                   aria-label={`Abrir pesquisa: ${p.title}`}
                   className="absolute inset-0 z-20"
                 />
-
+      
                 {/* Conteúdo não captura clique */}
                 <div className="relative z-10 pointer-events-none flex gap-5 w-full">
                   {/* IMAGEM */}
                   <div className="w-40 h-28 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                     <PollImage
                       src={iconSrc}
-                      fallbackSrc={DEFAULT_POLL_ICON}
+                      fallbackSrc={DEFAULT_POLL_ICON}  // Fallback para imagem padrão
                       alt={p.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
-
+      
                   {/* TEXTO */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
                       <h4 className={`text-lg font-semibold truncate ${titleColor(p.status)}`}>
                         {p.title}
                       </h4>
-
+      
                       <span
                         className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(
                           p.status
@@ -524,12 +524,12 @@ export default async function Home() {
                         {statusLabel(p.status)}
                       </span>
                     </div>
-
+      
                     <div className="mt-1 text-xs text-gray-600">
                       Tipo: {typeLabel} · Início: {formatDate(p.start_date)} · Fim:{" "}
                       {formatDate(p.end_date)}
                     </div>
-
+      
                     {p.description && (
                       <div className="mt-2 text-sm text-gray-700 line-clamp-2">
                         {p.description}
@@ -537,7 +537,7 @@ export default async function Home() {
                     )}
                   </div>
                 </div>
-
+      
                 {/* CTA (clicável acima do overlay) */}
                 <div className="absolute bottom-4 left-6 z-30 pointer-events-auto">
                   <Link
@@ -548,7 +548,7 @@ export default async function Home() {
                     {primaryCtaLabel(p)}
                   </Link>
                 </div>
-
+      
                 {/* RESULTADOS (clicável acima do overlay) */}
                 {showResults && (
                   <div className="absolute bottom-4 right-4 z-30 pointer-events-auto">
