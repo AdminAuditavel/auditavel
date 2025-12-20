@@ -360,7 +360,7 @@ export default async function Home({
             {/* TOPO: imagem à esquerda + meta/título à direita */}
             <div className="flex gap-5">
               {/* IMAGEM */}
-              <div className="w-32 h-28 md:w-48 md:h-36 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+              <div className="w-48 h-40 md:w-72 md:h-56 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
                 <PollImage
                   src={featuredIconSrc}
                   fallbackSrc={DEFAULT_POLL_ICON}
