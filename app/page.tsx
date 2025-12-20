@@ -40,7 +40,6 @@ type VoteRanking = {
   ranking: number;
 };
 
-/** PATCH (1/4): vote_options rows for MULTIPLE */
 type VoteOptionRow = {
   vote_id: string;
   option_id: string;
@@ -78,30 +77,25 @@ function votingTypeLabel(vt: Poll["voting_type"]) {
   return "Voto simples";
 }
 
-/**
- * Normaliza icon_url para funcionar com assets no /public e URLs externas.
- * Aceita formatos comuns:
- * - https://...
- * - /polls/x.png
- * - polls/x.png
- * - public/polls/x.png
- */
 function normalizeIconUrl(raw?: string | null) {
   const s = (raw || "").trim();
   if (!s) return DEFAULT_POLL_ICON;
 
+  // Remove espaços internos acidentais como "/polls /X.png"
+  const cleaned = s.replace(/\s+/g, "");
+
   const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".svg"];
-  const dot = s.lastIndexOf(".");
-  const ext = dot >= 0 ? s.substring(dot).toLowerCase() : "";
+  const dot = cleaned.lastIndexOf(".");
+  const ext = dot >= 0 ? cleaned.substring(dot).toLowerCase() : "";
 
   if (allowedExtensions.includes(ext)) {
-    if (s.startsWith("http://") || s.startsWith("https://")) return s;
-    if (s.startsWith("/")) return s;
-    if (s.startsWith("public/")) return "/" + s.replace(/^public\//, "");
-    if (s.startsWith("polls/")) return "/" + s;
+    if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) return cleaned;
+    if (cleaned.startsWith("/")) return cleaned;
+    if (cleaned.startsWith("public/")) return "/" + cleaned.replace(/^public\//, "");
+    if (cleaned.startsWith("polls/")) return "/" + cleaned;
 
-    const idx = s.indexOf("polls/");
-    if (idx >= 0) return "/" + s.slice(idx);
+    const idx = cleaned.indexOf("polls/");
+    if (idx >= 0) return "/" + cleaned.slice(idx);
   }
 
   return DEFAULT_POLL_ICON;
@@ -145,7 +139,7 @@ export default async function Home() {
   const pollIds = visiblePolls.map((p) => p.id);
 
   /* =======================
-     OPTIONS (filtra por polls visíveis)
+     OPTIONS
   ======================= */
   const { data: optionsData } = await supabase
     .from("poll_options")
@@ -155,7 +149,7 @@ export default async function Home() {
   const options: PollOption[] = optionsData || [];
 
   /* =======================
-     VOTES (inclui id para filtrar rankings)
+     VOTES
   ======================= */
   const { data: votesData } = await supabase
     .from("votes")
@@ -166,7 +160,7 @@ export default async function Home() {
   const voteIds = votes.map((v) => v.id).filter(Boolean);
 
   /* =======================
-     RANKINGS (PERFORMANCE: filtra pelos voteIds)
+     RANKINGS
   ======================= */
   let rankings: VoteRanking[] = [];
   if (voteIds.length) {
@@ -179,8 +173,7 @@ export default async function Home() {
   }
 
   /* =======================
-     PATCH (2/4): VOTE_OPTIONS (para MULTIPLE)
-     Filtra pelos voteIds
+     VOTE_OPTIONS (MULTIPLE)
   ======================= */
   let voteOptions: VoteOptionRow[] = [];
   if (voteIds.length) {
@@ -213,11 +206,8 @@ export default async function Home() {
     rankingsByOption.get(r.option_id)!.push(r);
   }
 
-  /* =======================
-     PATCH (3/4): MAP option_id -> Set(user_hash) para MULTIPLE
-  ======================= */
+  // MULTIPLE: option_id -> Set(user_hash)
   const multiUsersByOption = new Map<string, Set<string>>();
-
   const userByVoteId = new Map<string, string>();
   for (const v of votes) userByVoteId.set(v.id, v.user_hash);
 
@@ -232,7 +222,7 @@ export default async function Home() {
   }
 
   /* =======================
-     HELPERS (RESULTADOS)
+     HELPERS
   ======================= */
   function canShowResults(p: Poll) {
     return (
@@ -241,12 +231,6 @@ export default async function Home() {
     );
   }
 
-  /**
-   * computeTopBars
-   * - single: percent = votos / participantes
-   * - multiple: percent = participantes que marcaram a opção / participantes (não estoura 100%)
-   * - ranking: score relativo (quanto maior, melhor) baseado no melhor (menor avg ranking)
-   */
   function computeTopBars(p: Poll) {
     const opts = optionsByPoll.get(p.id) || [];
     const show = canShowResults(p);
@@ -260,8 +244,6 @@ export default async function Home() {
 
     if (!isRanking) {
       const pollVotes = votesByPoll.get(p.id) || [];
-
-      // participantes = usuários únicos
       const users = new Set(pollVotes.map((v) => v.user_hash));
       participants = users.size;
 
@@ -269,9 +251,6 @@ export default async function Home() {
         const vt = p.voting_type; // "single" | "multiple"
         const count = new Map<string, number>();
 
-        /* =======================
-           PATCH (4/4): MULTIPLE usa vote_options
-        ======================= */
         if (vt === "multiple") {
           for (const o of opts) {
             const set = multiUsersByOption.get(o.id);
@@ -295,6 +274,10 @@ export default async function Home() {
           }));
       }
     } else {
+      const pollVotes = votesByPoll.get(p.id) || [];
+      const users = new Set(pollVotes.map((v) => v.user_hash));
+      participants = users.size;
+
       const summaries = opts
         .map((o) => {
           const rs = rankingsByOption.get(o.id) || [];
@@ -343,7 +326,7 @@ export default async function Home() {
       {/* DESTAQUE */}
       {p ? (
         <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-          {/* overlay link (card inteiro clicável) */}
+          {/* overlay link */}
           <Link
             href={`/poll/${p.id}`}
             aria-label={`Abrir pesquisa: ${p.title}`}
@@ -361,9 +344,8 @@ export default async function Home() {
             />
           </div>
 
-          {/* Conteúdo não captura clique (deixa passar para o overlay) */}
+          {/* Conteúdo */}
           <div className="p-8 pb-28 relative z-10 pointer-events-none">
-            {/* TOPO */}
             <div className="flex flex-col gap-3 md:block">
               <div className="flex items-start justify-between gap-3 md:block">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
@@ -398,164 +380,105 @@ export default async function Home() {
                 : "Participe desta decisão e ajude a construir informação pública confiável."}
             </p>
 
-            {/* DESTAQUE */}
-            {p ? (
-              <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-                {/* overlay link (card inteiro clicável) */}
-                <Link
-                  href={`/poll/${p.id}`}
-                  aria-label={`Abrir pesquisa: ${p.title}`}
-                  className="absolute inset-0 z-20"
-                />
-            
-                {/* IMAGEM */}
-                <div className="h-44 md:h-64 w-full overflow-hidden bg-gray-50">
-                  <PollImage
-                    src={featuredIconSrc}
-                    fallbackSrc={DEFAULT_POLL_ICON}
-                    alt={p.title}
-                    priority
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-            
-                {/* Conteúdo não captura clique (deixa passar para o overlay) */}
-                <div className="p-8 pb-28 relative z-10 pointer-events-none">
-                  {/* TOPO */}
-                  <div className="flex flex-col gap-3 md:block">
-                    <div className="flex items-start justify-between gap-3 md:block">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
-                        {featuredTypeLabel}
-                      </span>
-            
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                          p.status
-                        )} md:absolute md:top-6 md:right-6`}
-                      >
-                        {statusLabel(p.status)}
-                      </span>
+            {/* PRINCIPAIS POSIÇÕES */}
+            {featuredShowResults && featuredBars && (
+              <div className="mt-6">
+                <div className="rounded-xl border bg-gray-50 p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="text-xs font-semibold text-gray-600">
+                      Principais posições
                     </div>
-            
-                    <h2
-                      className={`text-xl md:text-2xl font-bold ${titleColor(
-                        p.status
-                      )} break-words`}
-                    >
-                      {p.title}
-                    </h2>
                   </div>
-            
-                  <div className="mt-2 text-sm text-gray-600">
-                    Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
-                  </div>
-            
-                  <p className="mt-5 text-gray-700 leading-relaxed text-base">
-                    {p.description
-                      ? p.description
-                      : "Participe desta decisão e ajude a construir informação pública confiável."}
-                  </p>
-            
-                  {/* PRINCIPAIS POSIÇÕES */}
-                  {featuredShowResults && featuredBars && (
-                    <div className="mt-6">
-                      <div className="rounded-xl border bg-gray-50 p-5">
-                        <div className="flex items-center justify-between gap-3 mb-3">
-                          <div className="text-xs font-semibold text-gray-600">
-                            Principais posições
-                          </div>
-                        </div>
-            
-                        {/* SINGLE / MULTIPLE */}
-                        {!featuredBars.isRanking ? (
-                          featuredBars.topSingle.length > 0 ? (
-                            <div className="space-y-3">
-                              {featuredBars.topSingle.map((o, i) => (
-                                <div key={i} className="text-xs">
-                                  <div className="flex justify-between gap-2">
-                                    <span className="truncate text-gray-800">{o.text}</span>
-                                    <span className="shrink-0 text-gray-700">{o.percent}%</span>
-                                  </div>
-                                  <div className="h-2 bg-gray-200 rounded">
-                                    <div
-                                      className="h-2 bg-emerald-500 rounded"
-                                      style={{ width: `${o.percent}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
+
+                  {!featuredBars.isRanking ? (
+                    featuredBars.topSingle.length > 0 ? (
+                      <div className="space-y-3">
+                        {featuredBars.topSingle.map((o, i) => (
+                          <div key={i} className="text-xs">
+                            <div className="flex justify-between gap-2">
+                              <span className="truncate text-gray-800">{o.text}</span>
+                              <span className="shrink-0 text-gray-700">{o.percent}%</span>
                             </div>
-                          ) : (
-                            <div className="text-xs text-gray-600">
-                              {featuredBars.participants > 0
-                                ? "Ainda não há votos válidos para exibição."
-                                : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                            <div className="h-2 bg-gray-200 rounded">
+                              <div
+                                className="h-2 bg-emerald-500 rounded"
+                                style={{ width: `${o.percent}%` }}
+                              />
                             </div>
-                          )
-                        ) : featuredBars.topRanking.length > 0 ? (
-                          <div className="space-y-3">
-                            {featuredBars.topRanking.map((o, i) => (
-                              <div key={i} className="text-xs">
-                                <div className="flex justify-between gap-2">
-                                  <span className="truncate text-gray-800">
-                                    <strong>{i + 1}º</strong> {o.text}
-                                  </span>
-                                </div>
-                                <div className="h-2 bg-gray-200 rounded">
-                                  <div
-                                    className="h-2 bg-emerald-500 rounded"
-                                    style={{ width: `${o.score}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
                           </div>
-                        ) : (
-                          <div className="text-xs text-gray-600">
-                            Ainda não há rankings suficientes — participe para iniciar o resultado.
-                          </div>
-                        )}
-            
-                        {/* RODAPÉ DO BLOCO */}
-                        <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
-                          <span>Resultados parciais</span>
-                          <span>
-                            Total de Participações:{" "}
-                            <span className="text-gray-500 font-semibold">
-                              {featuredBars.participants}
-                            </span>
-                          </span>
-                        </div>
+                        ))}
                       </div>
+                    ) : (
+                      <div className="text-xs text-gray-600">
+                        {featuredBars.participants > 0
+                          ? "Ainda não há votos válidos para exibição."
+                          : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                      </div>
+                    )
+                  ) : featuredBars.topRanking.length > 0 ? (
+                    <div className="space-y-3">
+                      {featuredBars.topRanking.map((o, i) => (
+                        <div key={i} className="text-xs">
+                          <div className="flex justify-between gap-2">
+                            <span className="truncate text-gray-800">
+                              <strong>{i + 1}º</strong> {o.text}
+                            </span>
+                          </div>
+                          <div className="h-2 bg-gray-200 rounded">
+                            <div
+                              className="h-2 bg-emerald-500 rounded"
+                              style={{ width: `${o.score}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-600">
+                      Ainda não há rankings suficientes — participe para iniciar o resultado.
                     </div>
                   )}
-                </div>
-            
-                {/* CTA */}
-                <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
-                  <Link
-                    href={`/poll/${p.id}`}
-                    className="inline-flex items-center px-4 py-2.5 rounded-xl
-                               text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                  >
-                    {primaryCtaLabel(p)}
-                  </Link>
-                </div>
-            
-                {/* RESULTADOS */}
-                {featuredShowResults && (
-                  <div className="absolute bottom-6 right-6 z-30 pointer-events-auto">
-                    <Link
-                      href={`/results/${p.id}`}
-                      className="inline-flex items-center px-4 py-2.5 rounded-xl
-                                 text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                    >
-                      Ver resultados
-                    </Link>
+
+                  {/* RODAPÉ DO BLOCO */}
+                  <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
+                    <span>Resultados parciais</span>
+                    <span>
+                      Total de Participações:{" "}
+                      <span className="text-gray-500 font-semibold">
+                        {featuredBars.participants}
+                      </span>
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
-            ) : null}
+            )}
+          </div>
+
+          {/* CTA */}
+          <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
+            <Link
+              href={`/poll/${p.id}`}
+              className="inline-flex items-center px-4 py-2.5 rounded-xl
+                         text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+            >
+              {primaryCtaLabel(p)}
+            </Link>
+          </div>
+
+          {/* RESULTADOS */}
+          {featuredShowResults && (
+            <div className="absolute bottom-6 right-6 z-30 pointer-events-auto">
+              <Link
+                href={`/results/${p.id}`}
+                className="inline-flex items-center px-4 py-2.5 rounded-xl
+                           text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+              >
+                Ver resultados
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* LISTA COMPACTA */}
       <section className="space-y-4">
@@ -574,16 +497,13 @@ export default async function Home() {
                 key={p.id}
                 className="relative group flex gap-5 p-6 border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition min-h-[140px]"
               >
-                {/* overlay link (card inteiro clicável) */}
                 <Link
                   href={`/poll/${p.id}`}
                   aria-label={`Abrir pesquisa: ${p.title}`}
                   className="absolute inset-0 z-20"
                 />
 
-                {/* Conteúdo não captura clique */}
                 <div className="relative z-10 pointer-events-none flex gap-5 w-full">
-                  {/* IMAGEM */}
                   <div className="w-40 h-28 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                     <PollImage
                       src={iconSrc}
@@ -593,7 +513,6 @@ export default async function Home() {
                     />
                   </div>
 
-                  {/* TEXTO */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
                       <h4 className={`text-lg font-semibold truncate ${titleColor(p.status)}`}>
@@ -622,7 +541,6 @@ export default async function Home() {
                   </div>
                 </div>
 
-                {/* CTA */}
                 <div className="absolute bottom-4 left-6 z-30 pointer-events-auto">
                   <Link
                     href={`/poll/${p.id}`}
@@ -633,7 +551,6 @@ export default async function Home() {
                   </Link>
                 </div>
 
-                {/* RESULTADOS */}
                 {showResults && (
                   <div className="absolute bottom-4 right-4 z-30 pointer-events-auto">
                     <Link
@@ -651,7 +568,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* RODAPÉ */}
       <footer className="pt-8 border-t text-center text-sm text-gray-600">
         Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
       </footer>
