@@ -407,7 +407,8 @@ export default async function Home() {
                       Principais posições
                     </div>
                   </div>
-
+            
+                  {/* SINGLE / MULTIPLE */}
                   {!featuredBars.isRanking ? (
                     featuredBars.topSingle.length > 0 ? (
                       <div className="space-y-3">
@@ -456,10 +457,21 @@ export default async function Home() {
                       Ainda não há rankings suficientes — participe para iniciar o resultado.
                     </div>
                   )}
+            
+                  {/* RODAPÉ DO BLOCO */}
+                  <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
+                    <span>Resultados parciais</span>
+            
+                    <span>
+                      Total de Participações:{" "}
+                      <span className="text-gray-500 font-semibold">
+                        {featuredBars.participants}
+                      </span>
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
-          </div>
 
           {/* CTA */}
           <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
