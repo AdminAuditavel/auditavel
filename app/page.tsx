@@ -373,6 +373,7 @@ export default async function Home({
       
               {/* META + TÍTULO */}
               <div className="flex-1 min-w-0">
+                {/* APENAS STATUS (removido badge do tipo aqui) */}
                 <div className="flex items-start justify-end">
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
@@ -382,7 +383,7 @@ export default async function Home({
                     {statusLabel(p.status)}
                   </span>
                 </div>
-
+      
                 <h2
                   className={`mt-3 text-xl md:text-2xl font-bold ${titleColor(
                     p.status
@@ -391,36 +392,42 @@ export default async function Home({
                   {p.title}
                 </h2>
       
-                {/* DATA (vermelho) + TIPO NA MESMA LINHA */}
+                {/* DATA (vermelho) + linha abaixo com "Pesquisa tipo:" + badge participação */}
                 <div className="mt-2 text-sm">
-                <div className="text-red-700">
-                  Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
-                </div>
-              
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-gray-700">
-                  <span className="text-gray-500">Pesquisa tipo:</span>
-                  <span className="font-medium">{featuredTypeLabel}</span>
-              
-                  {(() => {
-                    const maxVotes = typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-                    const isSingleParticipation = maxVotes === 1;
-              
-                    const badgeClass = isSingleParticipation
-                      ? "bg-red-100 text-red-800 border border-red-200"
-                      : "bg-sky-100 text-sky-800 border border-sky-200";
-              
-                    const badgeText = isSingleParticipation
-                      ? "Participação Única"
-                      : "Múltiplas Participações";
-              
-                    return (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}>
-                        {badgeText}
-                      </span>
-                    );
-                  })()}
+                  <div className="text-red-700">
+                    Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+                  </div>
+      
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-gray-700">
+                    <span className="text-gray-500">Pesquisa tipo:</span>
+                    <span className="font-medium">{featuredTypeLabel}</span>
+      
+                    {(() => {
+                      const maxVotes =
+                        typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
+      
+                      const isSingleParticipation = maxVotes === 1;
+      
+                      const badgeClass = isSingleParticipation
+                        ? "bg-red-100 text-red-800 border border-red-200"
+                        : "bg-sky-100 text-sky-800 border border-sky-200";
+      
+                      const badgeText = isSingleParticipation
+                        ? "Participação Única"
+                        : "Múltiplas Participações";
+      
+                      return (
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
+                        >
+                          {badgeText}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
+            </div>
       
             {/* ABAIXO: 60/40 (texto à esquerda + posições à direita) */}
             <div className="mt-5 flex flex-col md:flex-row gap-6">
@@ -433,7 +440,7 @@ export default async function Home({
                 </p>
               </div>
       
-              {/* POSIÇÕES — 40% (SEM WRAPPER EXTERNO) */}
+              {/* POSIÇÕES — 40% (sem retângulo externo) */}
               {featuredShowResults && featuredBars && (
                 <div className="md:w-2/5">
                   {!featuredBars.isRanking ? (
