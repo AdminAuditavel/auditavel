@@ -408,77 +408,80 @@ export default async function Home({
                 <div className="rounded-xl border bg-gray-50 p-5">
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div className="text-xs font-semibold text-gray-600">
-                      Principais posições
+                      Resumo das posições
                     </div>
                   </div>
 
                   {!featuredBars.isRanking ? (
-                    featuredBars.topSingle.length > 0 ? (
-                      <div className="space-y-3">
-                        {featuredBars.topSingle.map((o, i) => (
-                          <div key={i} className="text-xs">
-                            <div className="flex justify-between gap-2">
-                              <span className="truncate text-gray-800">{o.text}</span>
-                              <span className="shrink-0 text-gray-700">{o.percent}%</span>
-                            </div>
-                            <div className="h-2 bg-gray-200 rounded">
-                              <div
-                                className="h-2 bg-emerald-500 rounded"
-                                style={{ width: `${o.percent}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-600">
-                        {featuredBars.participants > 0
-                          ? "Ainda não há votos válidos para exibição."
-                          : "Seja o primeiro a participar — seu voto inicia o resultado público."}
-                      </div>
-                    )
-                  ) : featuredBars.topRanking.length > 0 ? (
-                    <div className="space-y-3">
-                      {featuredBars.topRanking.map((o, i) => (
-                        <div key={i} className="text-xs">
-                          <div className="flex justify-between gap-2">
-                            <span className="truncate text-gray-800">
-                              <strong>{i + 1}º</strong> {o.text}
+                  featuredBars.topSingle.length > 0 ? (
+                    <ol className="space-y-2">
+                      {featuredBars.topSingle.map((o, i) => (
+                        <li
+                          key={i}
+                          className="flex items-start justify-between gap-3 rounded-lg bg-white border border-gray-200 px-3 py-2"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <span className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-900 text-white text-xs font-bold">
+                              {i + 1}º
                             </span>
+                
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
+                                {o.text}
+                              </div>
+                              <div className="text-[11px] text-gray-500">
+                                Percentual sobre participantes
+                              </div>
+                            </div>
                           </div>
-                          <div className="h-2 bg-gray-200 rounded">
-                            <div
-                              className="h-2 bg-emerald-500 rounded"
-                              style={{ width: `${o.score}%` }}
-                            />
+                
+                          <div className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
+                            {o.percent}%
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <div className="text-sm text-gray-600">
+                      {featuredBars.participants > 0
+                        ? "Ainda não há votos válidos para exibição."
+                        : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                    </div>
+                  )
+                ) : featuredBars.topRanking.length > 0 ? (
+                  <ol className="space-y-2">
+                    {featuredBars.topRanking.map((o, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start justify-between gap-3 rounded-lg bg-white border border-gray-200 px-3 py-2"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <span className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-900 text-white text-xs font-bold">
+                            {i + 1}º
+                          </span>
+                
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
+                              {o.text}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              Índice relativo (melhor = maior)
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-600">
-                      Ainda não há rankings suficientes — participe para iniciar o resultado.
-                    </div>
-                  )}
-
-                  {/* RODAPÉ DO BLOCO */}
-                  <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 text-[11px] font-medium text-gray-500">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300" />
-                      Resultados parciais
-                    </span>
-                  
-                    <span className="text-[11px] text-gray-500">
-                      Total de participações:{" "}
-                      <span className="text-gray-700 font-semibold">
-                        {featuredBars.participants}
-                      </span>
-                    </span>
+                
+                        <div className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
+                          {o.score}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="text-sm text-gray-600">
+                    Ainda não há rankings suficientes — participe para iniciar o resultado.
                   </div>
-                </div>
-              </div>
-            )}
-          </div>
+                )}
+
 
           {/* CTA */}
           <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
