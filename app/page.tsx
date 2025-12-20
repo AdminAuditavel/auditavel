@@ -70,7 +70,7 @@ export default async function Home() {
     return <p className="p-6 text-center">Nenhuma pesquisa disponível.</p>;
   }
 
-  const pollIds = polls.map(p => p.id);
+  const pollIds = polls.map((p) => p.id);
 
   /* =======================
      OPTIONS
@@ -105,30 +105,28 @@ export default async function Home() {
      AGRUPAMENTOS
   ======================= */
   const optionsByPoll = new Map<string, PollOption[]>();
-  options.forEach(o => {
+  options.forEach((o) => {
     if (!optionsByPoll.has(o.poll_id)) optionsByPoll.set(o.poll_id, []);
     optionsByPoll.get(o.poll_id)!.push(o);
   });
 
   const votesByPoll = new Map<string, Vote[]>();
-  votes.forEach(v => {
+  votes.forEach((v) => {
     if (!votesByPoll.has(v.poll_id)) votesByPoll.set(v.poll_id, []);
     votesByPoll.get(v.poll_id)!.push(v);
   });
 
   const rankingsByOption = new Map<string, VoteRanking[]>();
-  rankings.forEach(r => {
-    if (!rankingsByOption.has(r.option_id))
-      rankingsByOption.set(r.option_id, []);
+  rankings.forEach((r) => {
+    if (!rankingsByOption.has(r.option_id)) rankingsByOption.set(r.option_id, []);
     rankingsByOption.get(r.option_id)!.push(r);
   });
 
   const rankingVotesByPoll = new Map<string, Set<string>>();
-  rankings.forEach(r => {
-    const opt = options.find(o => o.id === r.option_id);
+  rankings.forEach((r) => {
+    const opt = options.find((o) => o.id === r.option_id);
     if (!opt) return;
-    if (!rankingVotesByPoll.has(opt.poll_id))
-      rankingVotesByPoll.set(opt.poll_id, new Set());
+    if (!rankingVotesByPoll.has(opt.poll_id)) rankingVotesByPoll.set(opt.poll_id, new Set());
     rankingVotesByPoll.get(opt.poll_id)!.add(r.vote_id);
   });
 
@@ -139,9 +137,7 @@ export default async function Home() {
     <main className="p-6 max-w-3xl mx-auto space-y-10">
       {/* HERO */}
       <section className="text-center space-y-3">
-        <h1 className="text-4xl font-bold text-emerald-700">
-          Auditável
-        </h1>
+        <h1 className="text-4xl font-bold text-emerald-700">Auditável</h1>
         <p className="text-lg font-medium text-gray-800">
           Onde decisões públicas podem ser verificadas.
         </p>
@@ -151,52 +147,47 @@ export default async function Home() {
 
       {/* CARDS */}
       <section className="space-y-6">
-        {polls.map(p => {
+        {polls.map((p) => {
           if (p.status === "draft") return null;
 
           const opts = optionsByPoll.get(p.id) || [];
           const isRanking = p.voting_type === "ranking";
           const isMultiple = p.voting_type === "multiple";
-          
-          const votingTypeLabel = isRanking
-            ? "Ranking"
-            : isMultiple
-              ? "Múltipla"
-              : "Voto simples";
+
+          const votingTypeLabel = isRanking ? "Ranking" : isMultiple ? "Múltipla" : "Voto simples";
 
           const canShowResults =
             p.status === "closed" ||
-            ((p.status === "open" || p.status === "paused") &&
-              p.show_partial_results);
+            ((p.status === "open" || p.status === "paused") && p.show_partial_results);
 
           let totalVotes = 0;
           let topSingle: { text: string; percent: number }[] = [];
           let topRanking: { text: string; score: number }[] = [];
 
-          /* ===== SINGLE ===== */
+          /* ===== SINGLE (inclui múltipla, pois resultados ainda vêm de votes) ===== */
           if (!isRanking) {
             const pollVotes = votesByPoll.get(p.id) || [];
 
             totalVotes = p.allow_multiple
               ? pollVotes.length
-              : new Set(pollVotes.map(v => v.user_hash)).size;
+              : new Set(pollVotes.map((v) => v.user_hash)).size;
 
             if (canShowResults && totalVotes > 0) {
               const count = new Map<string, number>();
-              pollVotes.forEach(v => {
+              pollVotes.forEach((v) => {
                 if (!v.option_id) return;
                 count.set(v.option_id, (count.get(v.option_id) || 0) + 1);
               });
 
               topSingle = opts
-                .map(o => ({
+                .map((o) => ({
                   text: o.option_text,
                   votes: count.get(o.id) || 0,
                 }))
-                .filter(o => o.votes > 0)
+                .filter((o) => o.votes > 0)
                 .sort((a, b) => b.votes - a.votes)
                 .slice(0, 3)
-                .map(o => ({
+                .map((o) => ({
                   text: o.text,
                   percent: Math.round((o.votes / totalVotes) * 100),
                 }));
@@ -206,7 +197,7 @@ export default async function Home() {
           /* ===== RANKING ===== */
           if (isRanking && canShowResults) {
             const summaries = opts
-              .map(o => {
+              .map((o) => {
                 const rs = rankingsByOption.get(o.id) || [];
                 if (!rs.length) return null;
                 const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
@@ -215,11 +206,11 @@ export default async function Home() {
               .filter(Boolean) as { text: string; score: number }[];
 
             if (summaries.length) {
-              const best = Math.min(...summaries.map(s => s.score));
+              const best = Math.min(...summaries.map((s) => s.score));
               topRanking = summaries
                 .sort((a, b) => a.score - b.score)
                 .slice(0, 3)
-                .map(s => ({
+                .map((s) => ({
                   text: s.text,
                   score: Math.round((best / s.score) * 100),
                 }));
@@ -227,100 +218,120 @@ export default async function Home() {
           }
 
           return (
-            <div
-              key={p.id}
-              className="relative p-5 border border-gray-200 rounded-xl bg-white shadow-sm"
-            >
-              {/* STATUS */}
-              <span
-                className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                  p.status
-                )}`}
+            <div key={p.id} className="relative">
+              {/* Card inteiro clicável */}
+              <Link
+                href={`/poll/${p.id}`}
+                className="
+                  block
+                  p-5
+                  border border-gray-200
+                  rounded-xl
+                  bg-white
+                  shadow-sm
+                  transition
+                  hover:shadow-md
+                  hover:-translate-y-0.5
+                  hover:border-gray-300
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-emerald-300
+                "
               >
-                {statusLabel(p.status)}
-              </span>
-
-              {/* TITLE */}
-              <h2 className="text-lg font-semibold text-emerald-700 pr-24">
-                {p.title}
-              </h2>
-
-              {/* META */}
-              <div className="text-sm text-gray-600 mt-1">
-                Início: {formatDate(p.start_date)} · Fim:{" "}
-                {formatDate(p.end_date)} · Tipo:{" "}
-                {votingTypeLabel}
-              </div>
-
-
-              {/* CONTENT + GRAPH */}
-              {canShowResults && (
-                <div className="mt-4 flex gap-4 items-start">
-                  <div className="flex-1 text-sm text-gray-700">
-                    {p.description ? (
-                      <p>{p.description}</p>
-                    ) : (
-                      <p className="text-gray-600">
-                        Participe desta decisão e acompanhe como outras pessoas
-                        estão se posicionando.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="w-40 space-y-2">
-                    {!isRanking &&
-                      topSingle.map((o, i) => (
-                        <div key={i} className="text-xs">
-                          <div className="flex justify-between">
-                            <span className="truncate">{o.text}</span>
-                            <span>{o.percent}%</span>
-                          </div>
-                          <div className="h-1.5 bg-gray-200 rounded">
-                            <div
-                              className="h-1.5 bg-emerald-500 rounded"
-                              style={{ width: `${o.percent}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-
-                    {isRanking &&
-                      topRanking.map((o, i) => (
-                        <div key={i} className="text-xs">
-                          <div className="flex justify-between">
-                            <span className="truncate">
-                              <strong>{i + 1}º</strong> {o.text}
-                            </span>
-                          </div>
-                          <div className="h-1.5 bg-gray-200 rounded">
-                            <div
-                              className="h-1.5 bg-emerald-500 rounded"
-                              style={{ width: `${o.score}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* CTA */}
-              <div className="mt-4">
-                <Link
-                  href={`/poll/${p.id}`}
-                  className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                {/* STATUS */}
+                <span
+                  className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                    p.status
+                  )}`}
                 >
-                  Participar
-                </Link>
-              </div>
+                  {statusLabel(p.status)}
+                </span>
 
-              {/* BADGE RESULTADOS */}
+                {/* TITLE (preto) */}
+                <h2 className="text-lg font-semibold text-gray-900 pr-24">{p.title}</h2>
+
+                {/* META */}
+                <div className="text-sm text-gray-600 mt-1">
+                  Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)} · Tipo:{" "}
+                  {votingTypeLabel}
+                </div>
+
+                {/* CONTENT + GRAPH */}
+                {canShowResults && (
+                  <div className="mt-4 flex gap-4 items-start">
+                    <div className="flex-1 text-sm text-gray-700">
+                      {p.description ? (
+                        <p>{p.description}</p>
+                      ) : (
+                        <p className="text-gray-600">
+                          Participe desta decisão e acompanhe como outras pessoas estão se
+                          posicionando.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="w-40 space-y-2">
+                      {!isRanking &&
+                        topSingle.map((o, i) => (
+                          <div key={i} className="text-xs">
+                            <div className="flex justify-between">
+                              <span className="truncate">{o.text}</span>
+                              <span>{o.percent}%</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-200 rounded">
+                              <div
+                                className="h-1.5 bg-emerald-500 rounded"
+                                style={{ width: `${o.percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                      {isRanking &&
+                        topRanking.map((o, i) => (
+                          <div key={i} className="text-xs">
+                            <div className="flex justify-between">
+                              <span className="truncate">
+                                <strong>{i + 1}º</strong> {o.text}
+                              </span>
+                            </div>
+                            <div className="h-1.5 bg-gray-200 rounded">
+                              <div
+                                className="h-1.5 bg-emerald-500 rounded"
+                                style={{ width: `${o.score}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hint discreto */}
+                <div className="mt-4 text-xs text-gray-500">Clique para participar</div>
+              </Link>
+
+              {/* BADGE RESULTADOS (fora do Link do card, para não conflitar) */}
               {canShowResults && (
                 <Link
                   href={`/results/${p.id}`}
-                  className="absolute bottom-4 right-4 inline-flex items-center px-3 py-1 rounded-full
-                             text-xs font-semibold bg-orange-100 text-orange-800
-                             hover:bg-orange-200 transition"
+                  className="
+                    absolute
+                    bottom-4
+                    right-4
+                    inline-flex
+                    items-center
+                    px-3
+                    py-1
+                    rounded-full
+                    text-xs
+                    font-semibold
+                    bg-orange-100
+                    text-orange-800
+                    hover:bg-orange-200
+                    transition
+                  "
+                  onClick={(e) => e.stopPropagation()}
                 >
                   Resultados
                 </Link>
@@ -332,8 +343,7 @@ export default async function Home() {
 
       {/* RODAPÉ */}
       <footer className="pt-6 border-t text-center text-sm text-gray-600">
-        Uma plataforma para coletar dados, gerar informação e produzir
-        conhecimento público confiável.
+        Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
       </footer>
     </main>
   );
