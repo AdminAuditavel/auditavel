@@ -329,8 +329,8 @@ export default async function Home() {
                 className="absolute inset-0 z-20"
               />
 
-              {/* IMAGEM GRANDE */}
-              <div className="h-80 w-full overflow-hidden bg-gray-50">
+              {/* IMAGEM (MENOR) */}
+              <div className="h-44 md:h-64 w-full overflow-hidden bg-gray-50">
                 <PollImage
                   src={iconSrc}
                   fallbackSrc={DEFAULT_POLL_ICON}
@@ -341,25 +341,29 @@ export default async function Home() {
               </div>
 
               {/* Conteúdo não captura clique (deixa passar para o overlay) */}
-              <div className="p-8 relative z-10 pointer-events-none">
-                {/* STATUS */}
-                <span
-                  className={`absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                    p.status
-                  )}`}
-                >
-                  {statusLabel(p.status)}
-                </span>
-
-                {/* BADGE TIPO */}
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
-                  {typeLabel}
-                </span>
-
-                {/* TÍTULO */}
-                <h2 className={`mt-3 text-3xl font-bold pr-36 ${titleColor(p.status)}`}>
-                  {p.title}
-                </h2>
+              <div className="p-8 pb-28 relative z-10 pointer-events-none">
+                {/* TOPO (mobile: empilha; desktop: mantém badge/status no topo) */}
+                <div className="flex flex-col gap-3 md:block">
+                  {/* Linha superior: tipo à esquerda e status à direita (sem absolute no mobile) */}
+                  <div className="flex items-start justify-between gap-3 md:block">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                      {typeLabel}
+                    </span>
+                
+                    {/* Status: no mobile fica na linha; no desktop continua no canto */}
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(p.status)}
+                                  md:absolute md:top-6 md:right-6`}
+                    >
+                      {statusLabel(p.status)}
+                    </span>
+                  </div>
+                
+                  {/* Título: ocupa 100% no mobile e quebra de forma natural */}
+                  <h2 className={`text-xl md:text-2xl font-bold ${titleColor(p.status)} break-words`}>
+                    {p.title}
+                  </h2>
+                </div>
 
                 {/* META */}
                 <div className="mt-2 text-sm text-gray-600">
