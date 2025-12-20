@@ -127,12 +127,13 @@ export default async function Home({
   const { data: pollsData } = await supabase
     .from("polls")
     .select(
-      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user"
+      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user, is_featured"
     )
     .order("created_at", { ascending: false });
 
   const polls: Poll[] = pollsData || [];
   const visiblePolls = polls.filter((p) => p.status !== "draft");
+  is_featured?: boolean | null;
 
   if (!visiblePolls.length) {
     return <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>;
