@@ -331,7 +331,7 @@ export default async function Home() {
               />
 
               {/* IMAGEM (MENOR) */}
-              <div className="h-56 md:h-64 w-full overflow-hidden bg-gray-50">
+              <div className="h-44 md:h-52 w-full overflow-hidden bg-gray-50">
                 <PollImage
                   src={iconSrc}
                   fallbackSrc={DEFAULT_POLL_ICON}
@@ -358,7 +358,7 @@ export default async function Home() {
                 </span>
 
                 {/* TÍTULO */}
-                <h2 className={`mt-3 text-3xl font-bold pr-36 ${titleColor(p.status)}`}>
+                <h2 className={`mt-3 text-xl md:text-2xl font-bold pr-36 ${titleColor(p.status)}`}>
                   {p.title}
                 </h2>
 
