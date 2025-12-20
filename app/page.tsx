@@ -412,39 +412,23 @@ export default async function Home({
             
                   {!featuredBars.isRanking ? (
                   featuredBars.topSingle.length > 0 ? (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                      <div className="grid grid-cols-[56px_1fr_70px] gap-0 border-b border-gray-200 bg-gray-50 px-3 py-2 text-[11px] font-semibold text-gray-600">
-                        <div>Pos.</div>
-                        <div>Opção</div>
-                        <div className="text-right">%</div>
-                      </div>
+                    <ol className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+                      {featuredBars.topSingle.map((o, i) => (
+                        <li key={i} className="flex items-start gap-3 px-3 py-2">
+                          <span className="w-10 shrink-0 text-sm font-bold text-gray-900 tabular-nums">
+                            {i + 1}º
+                          </span>
                 
-                      <ol className="divide-y divide-gray-200">
-                        {featuredBars.topSingle.map((o, i) => (
-                          <li
-                            key={i}
-                            className="grid grid-cols-[56px_1fr_70px] items-start gap-0 px-3 py-2"
-                          >
-                            <div className="text-sm font-bold text-gray-900 tabular-nums">
-                              {i + 1}º
-                            </div>
+                          <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                            {o.text}
+                          </span>
                 
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
-                                {o.text}
-                              </div>
-                              <div className="text-[11px] text-gray-500">
-                                Base: {featuredBars.participants} participantes
-                              </div>
-                            </div>
-                
-                            <div className="text-right text-sm font-bold text-gray-900 tabular-nums">
-                              {o.percent}%
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
+                          <span className="w-14 shrink-0 text-right text-sm font-bold text-gray-900 tabular-nums">
+                            {o.percent}%
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
                   ) : (
                     <div className="text-sm text-gray-600">
                       {featuredBars.participants > 0
@@ -453,44 +437,29 @@ export default async function Home({
                     </div>
                   )
                 ) : featuredBars.topRanking.length > 0 ? (
-                  <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                    <div className="grid grid-cols-[56px_1fr_70px] gap-0 border-b border-gray-200 bg-gray-50 px-3 py-2 text-[11px] font-semibold text-gray-600">
-                      <div>Pos.</div>
-                      <div>Opção</div>
-                      <div className="text-right">Índice</div>
-                    </div>
+                  <ol className="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+                    {featuredBars.topRanking.map((o, i) => (
+                      <li key={i} className="flex items-start gap-3 px-3 py-2">
+                        <span className="w-10 shrink-0 text-sm font-bold text-gray-900 tabular-nums">
+                          {i + 1}º
+                        </span>
                 
-                    <ol className="divide-y divide-gray-200">
-                      {featuredBars.topRanking.map((o, i) => (
-                        <li
-                          key={i}
-                          className="grid grid-cols-[56px_1fr_70px] items-start gap-0 px-3 py-2"
-                        >
-                          <div className="text-sm font-bold text-gray-900 tabular-nums">
-                            {i + 1}º
-                          </div>
+                        <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                          {o.text}
+                        </span>
                 
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
-                              {o.text}
-                            </div>
-                            <div className="text-[11px] text-gray-500">
-                              Índice relativo (melhor = maior)
-                            </div>
-                          </div>
-                
-                          <div className="text-right text-sm font-bold text-gray-900 tabular-nums">
-                            {o.score}
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
+                        <span className="w-14 shrink-0 text-right text-sm font-bold text-gray-900 tabular-nums">
+                          {o.score}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
                 ) : (
                   <div className="text-sm text-gray-600">
                     Ainda não há rankings suficientes — participe para iniciar o resultado.
                   </div>
                 )}
+
                 </div>
               </div>
             )}
