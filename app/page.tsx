@@ -108,7 +108,18 @@ function primaryCtaLabel(p: Poll) {
   return "Abrir";
 }
 
-export default async function Home({ searchParams }: { searchParams?: any }) {
+function showResultsButton(p: Poll) {
+  return (
+    p.status === "closed" ||
+    ((p.status === "open" || p.status === "paused") && p.show_partial_results)
+  );
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: any;
+}) {
   /* =======================
      POLLS
   ======================= */
@@ -128,20 +139,22 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
 
   // Compatível com searchParams como objeto, Promise, string ou string[]
   const resolvedSearchParams =
-    searchParams && typeof searchParams.then === "function" ? await searchParams : searchParams;
-
+    searchParams && typeof searchParams.then === "function"
+      ? await searchParams
+      : searchParams;
+  
   const rawFeatured = resolvedSearchParams?.featured;
-
+  
   const featuredId =
     typeof rawFeatured === "string"
       ? rawFeatured.trim()
       : Array.isArray(rawFeatured) && typeof rawFeatured[0] === "string"
         ? rawFeatured[0].trim()
         : undefined;
-
+  
   const featuredPoll =
     (featuredId && visiblePolls.find((x) => x.id === featuredId)) || visiblePolls[0];
-
+  
   const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id);
 
   const pollIds = visiblePolls.map((p) => p.id);
@@ -256,7 +269,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
       participants = users.size;
 
       if (participants > 0) {
-        const vt = p.voting_type;
+        const vt = p.voting_type; // "single" | "multiple"
         const count = new Map<string, number>();
 
         if (vt === "multiple") {
@@ -321,6 +334,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
   ======================= */
   return (
     <main id="top" className="p-8 max-w-6xl mx-auto space-y-12">
+
       {/* HERO */}
       <section className="text-center space-y-3">
         <h1 className="text-5xl font-bold text-emerald-700">Auditável</h1>
@@ -353,7 +367,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
           </div>
 
           {/* Conteúdo */}
-          <div className="p-8 pb-32 relative z-10 pointer-events-none">
+          <div className="p-8 pb-28 relative z-10 pointer-events-none">
             <div className="flex flex-col gap-3 md:block">
               <div className="flex items-start justify-between gap-3 md:block">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
@@ -382,8 +396,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
               Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
             </div>
 
-            {/* descrição: justificado + melhor quebra */}
-            <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify hyphens-auto text-pretty max-w-3xl">
+            <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify">
               {p.description
                 ? p.description
                 : "Participe desta decisão e ajude a construir informação pública confiável."}
@@ -448,33 +461,16 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
                     </div>
                   )}
 
-                  {/* RODAPÉ DO BLOCO (mais elegante) */}
-                  <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between gap-4">
-                    <span
-                      className={[
-                        "inline-flex items-center gap-2 rounded-full px-3 py-1",
-                        "text-[11px] font-semibold",
-                        p.status === "closed"
-                          ? "bg-gray-200 text-gray-800"
-                          : "bg-emerald-50 text-emerald-800 border border-emerald-100",
-                      ].join(" ")}
-                    >
-                      <span
-                        className={[
-                          "inline-block w-1.5 h-1.5 rounded-full",
-                          p.status === "closed"
-                            ? "bg-gray-500"
-                            : "bg-emerald-600 animate-pulse",
-                        ].join(" ")}
-                      />
-                      {p.status === "closed"
-                        ? "Resultado final"
-                        : "Resultados parciais • ao vivo"}
+                  {/* RODAPÉ DO BLOCO */}
+                  <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-[11px] font-medium text-gray-500">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      Resultados parciais
                     </span>
-
+                  
                     <span className="text-[11px] text-gray-500">
-                      Participações:{" "}
-                      <span className="text-gray-800 font-bold tabular-nums">
+                      Total de participações:{" "}
+                      <span className="text-gray-700 font-semibold">
                         {featuredBars.participants}
                       </span>
                     </span>
@@ -484,53 +480,44 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
             )}
           </div>
 
-          {/* ACTION BAR (fora do bloco acima; evita sobreposição) */}
-          <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto">
-            <div className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 shadow-sm">
-              <div className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="text-xs text-gray-600">
-                  <span className="font-semibold text-gray-800">
-                    {statusLabel(p.status)}
-                  </span>
-                  <span className="mx-2 text-gray-300">•</span>
-                  <span>{featuredTypeLabel}</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {featuredShowResults && (
-                    <Link
-                      href={`/results/${p.id}`}
-                      className="inline-flex items-center px-4 py-2 rounded-xl
-                                 text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                    >
-                      Ver resultados
-                    </Link>
-                  )}
-
-                  <Link
-                    href={`/poll/${p.id}`}
-                    className="inline-flex items-center px-4 py-2 rounded-xl
-                               text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                  >
-                    {primaryCtaLabel(p)}
-                  </Link>
-                </div>
-              </div>
-            </div>
+          {/* CTA */}
+          <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
+            <Link
+              href={`/poll/${p.id}`}
+              className="inline-flex items-center px-4 py-2.5 rounded-xl
+                         text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+            >
+              {primaryCtaLabel(p)}
+            </Link>
           </div>
+
+          {/* RESULTADOS */}
+          {featuredShowResults && (
+            <div className="absolute bottom-6 right-6 z-30 pointer-events-auto">
+              <Link
+                href={`/results/${p.id}`}
+                className="inline-flex items-center px-4 py-2.5 rounded-xl
+                           text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+              >
+                Ver resultados
+              </Link>
+            </div>
+          )}
         </div>
       ) : null}
 
       {/* LISTA COMPACTA */}
       <section className="space-y-4">
         {otherPolls.length > 0 && (
-          <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
+          <h3 className="text-sm font-semibold text-gray-700">
+            Outras pesquisas
+          </h3>
         )}
-
+      
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {otherPolls.map((p) => {
             const iconSrc = normalizeIconUrl(p.icon_url);
-
+      
             return (
               <div
                 key={p.id}
@@ -542,7 +529,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
                   aria-label={`Destacar pesquisa: ${p.title}`}
                   className="absolute inset-0 z-20"
                 />
-
+      
                 {/* Conteúdo (não captura clique) */}
                 <div className="relative z-10 pointer-events-none flex gap-4 p-4">
                   {/* IMAGEM */}
@@ -554,10 +541,11 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
-
+      
                   {/* TÍTULO + STATUS */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
+                      {/* Fonte menor e sem truncate para caber mais texto */}
                       <h4
                         className={`text-sm md:text-base font-semibold leading-snug ${titleColor(
                           p.status
@@ -565,7 +553,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
                       >
                         {p.title}
                       </h4>
-
+      
                       <span
                         className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColor(
                           p.status
