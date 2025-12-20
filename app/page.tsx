@@ -302,6 +302,12 @@ export default async function Home() {
     return { show, isRanking, participants, topSingle, topRanking };
   }
 
+  const p = featuredPoll;
+  const featuredIconSrc = p ? normalizeIconUrl(p.icon_url) : DEFAULT_POLL_ICON;
+  const featuredTypeLabel = p ? votingTypeLabel(p.voting_type) : "";
+  const featuredShowResults = p ? canShowResults(p) : false;
+  const featuredBars = p ? computeTopBars(p) : null;
+
   /* =======================
      RENDER
   ======================= */
@@ -318,165 +324,150 @@ export default async function Home() {
       <hr className="border-gray-200" />
 
       {/* DESTAQUE */}
-      {featuredPoll &&
-        (() => {
-          const p = featuredPoll;
-          const iconSrc = normalizeIconUrl(p.icon_url);
-          const typeLabel = votingTypeLabel(p.voting_type);
-          const showResults = canShowResults(p);
-          const { isRanking, topSingle, topRanking, participants } = computeTopBars(p);
-
-          return (
-            <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-              {/* overlay link (card inteiro clicável) */}
-              <Link
-                href={`/poll/${p.id}`}
-                aria-label={`Abrir pesquisa: ${p.title}`}
-                className="absolute inset-0 z-20"
-              />
-
-              {/* IMAGEM (MENOR) */}
-              <div className="h-44 md:h-64 w-full overflow-hidden bg-gray-50">
-                <PollImage
-                  src={iconSrc}
-                  fallbackSrc={DEFAULT_POLL_ICON}
-                  alt={p.title}
-                  priority
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+      {p ? (
+        <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
+          {/* overlay link (card inteiro clicável) */}
+          <Link
+            href={`/poll/${p.id}`}
+            aria-label={`Abrir pesquisa: ${p.title}`}
+            className="absolute inset-0 z-20"
+          />
+      
+          {/* IMAGEM (MENOR) */}
+          <div className="h-44 md:h-64 w-full overflow-hidden bg-gray-50">
+            <PollImage
+              src={featuredIconSrc}
+              fallbackSrc={DEFAULT_POLL_ICON}
+              alt={p.title}
+              priority
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          </div>
+      
+          {/* Conteúdo não captura clique (deixa passar para o overlay) */}
+          <div className="p-8 pb-28 relative z-10 pointer-events-none">
+            {/* TOPO */}
+            <div className="flex flex-col gap-3 md:block">
+              <div className="flex items-start justify-between gap-3 md:block">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                  {featuredTypeLabel}
+                </span>
+      
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(p.status)}
+                              md:absolute md:top-6 md:right-6`}
+                >
+                  {statusLabel(p.status)}
+                </span>
               </div>
-
-              {/* Conteúdo não captura clique (deixa passar para o overlay) */}
-              <div className="p-8 pb-28 relative z-10 pointer-events-none">
-                {/* TOPO (mobile: empilha; desktop: mantém badge/status no topo) */}
-                <div className="flex flex-col gap-3 md:block">
-                  {/* Linha superior: tipo à esquerda e status à direita (sem absolute no mobile) */}
-                  <div className="flex items-start justify-between gap-3 md:block">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
-                      {typeLabel}
-                    </span>
-                
-                    {/* Status: no mobile fica na linha; no desktop continua no canto */}
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(p.status)}
-                                  md:absolute md:top-6 md:right-6`}
-                    >
-                      {statusLabel(p.status)}
-                    </span>
-                  </div>
-                
-                  {/* Título: ocupa 100% no mobile e quebra de forma natural */}
-                  <h2 className={`text-xl md:text-2xl font-bold ${titleColor(p.status)} break-words`}>
-                    {p.title}
-                  </h2>
-                </div>
-
-                {/* META */}
-                <div className="mt-2 text-sm text-gray-600">
-                  Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
-                </div>
-
-                {/* DESCRIÇÃO */}
-                <p className="mt-5 text-gray-700 leading-relaxed text-base">
-                  {p.description
-                    ? p.description
-                    : "Participe desta decisão e ajude a construir informação pública confiável."}
-                </p>
-
-                {/* PRINCIPAIS POSIÇÕES */}
-                {showResults && (
-                  <div className="mt-6">
-                    <div className="rounded-xl border bg-gray-50 p-5">
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <div className="text-xs font-semibold text-gray-600">
-                          Principais posições
-                        </div>
-                      </div>
-                
-                      {/* SINGLE / MULTIPLE */}
-                      {!isRanking && (
-                        topSingle.length > 0 ? (
-                          <div className="space-y-3">
-                            {topSingle.map((o, i) => (
-                              <div key={i} className="text-xs">
-                                <div className="flex justify-between gap-2">
-                                  <span className="truncate text-gray-800">{o.text}</span>
-                                  <span className="shrink-0 text-gray-700">{o.percent}%</span>
-                                </div>
-                                <div className="h-2 bg-gray-200 rounded">
-                                  <div
-                                    className="h-2 bg-emerald-500 rounded"
-                                    style={{ width: `${o.percent}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-600">
-                            {participants > 0
-                              ? "Ainda não há votos válidos para exibição."
-                              : "Seja o primeiro a participar — seu voto inicia o resultado público."}
-                          </div>
-                        )
-                      )}
-                
-                      {/* RANKING */}
-                      {isRanking && (
-                        topRanking.length > 0 ? (
-                          <div className="space-y-3">
-                            {topRanking.map((o, i) => (
-                              <div key={i} className="text-xs">
-                                <div className="flex justify-between gap-2">
-                                  <span className="truncate text-gray-800">
-                                    <strong>{i + 1}º</strong> {o.text}
-                                  </span>
-                                </div>
-                                <div className="h-2 bg-gray-200 rounded">
-                                  <div
-                                    className="h-2 bg-emerald-500 rounded"
-                                    style={{ width: `${o.score}%` }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-600">
-                            Ainda não há rankings suficientes — participe para iniciar o resultado.
-                          </div>
-                        )
-                      )}
+      
+              <h2 className={`text-xl md:text-2xl font-bold ${titleColor(p.status)} break-words`}>
+                {p.title}
+              </h2>
+            </div>
+      
+            <div className="mt-2 text-sm text-gray-600">
+              Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+            </div>
+      
+            <p className="mt-5 text-gray-700 leading-relaxed text-base">
+              {p.description
+                ? p.description
+                : "Participe desta decisão e ajude a construir informação pública confiável."}
+            </p>
+      
+            {/* PRINCIPAIS POSIÇÕES (usa featuredBars) */}
+            {featuredShowResults && featuredBars && (
+              <div className="mt-6">
+                <div className="rounded-xl border bg-gray-50 p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="text-xs font-semibold text-gray-600">
+                      Principais posições
                     </div>
                   </div>
-                )}
-
-              {/* CTA (clicável acima do overlay) */}
-              <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
-                <Link
-                  href={`/poll/${p.id}`}
-                  className="inline-flex items-center px-4 py-2.5 rounded-xl
-                             text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                >
-                  {primaryCtaLabel(p)}
-                </Link>
-              </div>
-
-              {/* RESULTADOS (clicável acima do overlay) */}
-              {showResults && (
-                <div className="absolute bottom-6 right-6 z-30 pointer-events-auto">
-                  <Link
-                    href={`/results/${p.id}`}
-                    className="inline-flex items-center px-4 py-2.5 rounded-xl
-                               text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                  >
-                    Ver resultados
-                  </Link>
+      
+                  {!featuredBars.isRanking && (
+                    featuredBars.topSingle.length > 0 ? (
+                      <div className="space-y-3">
+                        {featuredBars.topSingle.map((o, i) => (
+                          <div key={i} className="text-xs">
+                            <div className="flex justify-between gap-2">
+                              <span className="truncate text-gray-800">{o.text}</span>
+                              <span className="shrink-0 text-gray-700">{o.percent}%</span>
+                            </div>
+                            <div className="h-2 bg-gray-200 rounded">
+                              <div
+                                className="h-2 bg-emerald-500 rounded"
+                                style={{ width: `${o.percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-600">
+                        {featuredBars.participants > 0
+                          ? "Ainda não há votos válidos para exibição."
+                          : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                      </div>
+                    )
+                  )}
+      
+                  {featuredBars.isRanking && (
+                    featuredBars.topRanking.length > 0 ? (
+                      <div className="space-y-3">
+                        {featuredBars.topRanking.map((o, i) => (
+                          <div key={i} className="text-xs">
+                            <div className="flex justify-between gap-2">
+                              <span className="truncate text-gray-800">
+                                <strong>{i + 1}º</strong> {o.text}
+                              </span>
+                            </div>
+                            <div className="h-2 bg-gray-200 rounded">
+                              <div
+                                className="h-2 bg-emerald-500 rounded"
+                                style={{ width: `${o.score}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-600">
+                        Ainda não há rankings suficientes — participe para iniciar o resultado.
+                      </div>
+                    )
+                  )}
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+      
+          {/* CTA */}
+          <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
+            <Link
+              href={`/poll/${p.id}`}
+              className="inline-flex items-center px-4 py-2.5 rounded-xl
+                         text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+            >
+              {primaryCtaLabel(p)}
+            </Link>
+          </div>
+      
+          {/* RESULTADOS */}
+          {featuredShowResults && (
+            <div className="absolute bottom-6 right-6 z-30 pointer-events-auto">
+              <Link
+                href={`/results/${p.id}`}
+                className="inline-flex items-center px-4 py-2.5 rounded-xl
+                           text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+              >
+                Ver resultados
+              </Link>
             </div>
-          );
-        })()}
+          )}
+        </div>
+      ) : null}
 
       {/* LISTA COMPACTA (maior e em grid 2 colunas no desktop) */}
       <section className="space-y-4">
