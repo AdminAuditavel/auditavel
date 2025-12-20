@@ -411,72 +411,86 @@ export default async function Home({
                   </div>
             
                   {!featuredBars.isRanking ? (
-                    featuredBars.topSingle.length > 0 ? (
-                      <ol className="space-y-2">
+                  featuredBars.topSingle.length > 0 ? (
+                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                      <div className="grid grid-cols-[56px_1fr_70px] gap-0 border-b border-gray-200 bg-gray-50 px-3 py-2 text-[11px] font-semibold text-gray-600">
+                        <div>Pos.</div>
+                        <div>Opção</div>
+                        <div className="text-right">%</div>
+                      </div>
+                
+                      <ol className="divide-y divide-gray-200">
                         {featuredBars.topSingle.map((o, i) => (
                           <li
                             key={i}
-                            className="flex items-start justify-between gap-3 rounded-lg bg-white border border-gray-200 px-3 py-2"
+                            className="grid grid-cols-[56px_1fr_70px] items-start gap-0 px-3 py-2"
                           >
-                            <div className="flex items-start gap-3 min-w-0">
-                              <span className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-900 text-white text-xs font-bold">
-                                {i + 1}º
-                              </span>
-            
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
-                                  {o.text}
-                                </div>
-                                <div className="text-[11px] text-gray-500">Percentual sobre participantes</div>
-                              </div>
-                            </div>
-            
-                            <div className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
-                              {o.percent}%
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : (
-                      <div className="text-sm text-gray-600">
-                        {featuredBars.participants > 0
-                          ? "Ainda não há votos válidos para exibição."
-                          : "Seja o primeiro a participar — seu voto inicia o resultado público."}
-                      </div>
-                    )
-                  ) : featuredBars.topRanking.length > 0 ? (
-                    <ol className="space-y-2">
-                      {featuredBars.topRanking.map((o, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start justify-between gap-3 rounded-lg bg-white border border-gray-200 px-3 py-2"
-                        >
-                          <div className="flex items-start gap-3 min-w-0">
-                            <span className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-900 text-white text-xs font-bold">
+                            <div className="text-sm font-bold text-gray-900 tabular-nums">
                               {i + 1}º
-                            </span>
-            
+                            </div>
+                
                             <div className="min-w-0">
                               <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
                                 {o.text}
                               </div>
                               <div className="text-[11px] text-gray-500">
-                                Índice relativo (melhor = maior)
+                                Base: {featuredBars.participants} participantes
                               </div>
                             </div>
+                
+                            <div className="text-right text-sm font-bold text-gray-900 tabular-nums">
+                              {o.percent}%
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600">
+                      {featuredBars.participants > 0
+                        ? "Ainda não há votos válidos para exibição."
+                        : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                    </div>
+                  )
+                ) : featuredBars.topRanking.length > 0 ? (
+                  <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                    <div className="grid grid-cols-[56px_1fr_70px] gap-0 border-b border-gray-200 bg-gray-50 px-3 py-2 text-[11px] font-semibold text-gray-600">
+                      <div>Pos.</div>
+                      <div>Opção</div>
+                      <div className="text-right">Índice</div>
+                    </div>
+                
+                    <ol className="divide-y divide-gray-200">
+                      {featuredBars.topRanking.map((o, i) => (
+                        <li
+                          key={i}
+                          className="grid grid-cols-[56px_1fr_70px] items-start gap-0 px-3 py-2"
+                        >
+                          <div className="text-sm font-bold text-gray-900 tabular-nums">
+                            {i + 1}º
                           </div>
-            
-                          <div className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
+                
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
+                              {o.text}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              Índice relativo (melhor = maior)
+                            </div>
+                          </div>
+                
+                          <div className="text-right text-sm font-bold text-gray-900 tabular-nums">
                             {o.score}
                           </div>
                         </li>
                       ))}
                     </ol>
-                  ) : (
-                    <div className="text-sm text-gray-600">
-                      Ainda não há rankings suficientes — participe para iniciar o resultado.
-                    </div>
-                  )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-600">
+                    Ainda não há rankings suficientes — participe para iniciar o resultado.
+                  </div>
+                )}
                 </div>
               </div>
             )}
