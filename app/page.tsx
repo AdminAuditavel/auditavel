@@ -354,7 +354,7 @@ export default async function Home({
             aria-label={`Abrir pesquisa: ${p.title}`}
             className="absolute inset-0 z-20"
           />
-
+      
           {/* IMAGEM */}
           <div className="h-44 md:h-64 w-full overflow-hidden bg-gray-50">
             <PollImage
@@ -365,7 +365,7 @@ export default async function Home({
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           </div>
-
+      
           {/* Conteúdo */}
           <div className="p-8 pb-28 relative z-10 pointer-events-none">
             <div className="flex flex-col gap-3 md:block">
@@ -373,7 +373,7 @@ export default async function Home({
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
                   {featuredTypeLabel}
                 </span>
-
+      
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                     p.status
@@ -382,7 +382,7 @@ export default async function Home({
                   {statusLabel(p.status)}
                 </span>
               </div>
-
+      
               <h2
                 className={`text-xl md:text-2xl font-bold ${titleColor(
                   p.status
@@ -391,25 +391,27 @@ export default async function Home({
                 {p.title}
               </h2>
             </div>
-
+      
             <div className="mt-2 text-sm text-gray-600">
               Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
             </div>
-
+      
             <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify">
               {p.description
                 ? p.description
                 : "Participe desta decisão e ajude a construir informação pública confiável."}
             </p>
-
-           {/* PRINCIPAIS POSIÇÕES */}
+      
+            {/* PRINCIPAIS POSIÇÕES */}
             {featuredShowResults && featuredBars && (
               <div className="mt-6">
                 <div className="rounded-xl border bg-gray-50 p-5">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="text-xs font-semibold text-gray-600">Resumo das posições</div>
+                    <div className="text-xs font-semibold text-gray-600">
+                      Resumo das posições
+                    </div>
                   </div>
-            
+      
                   {!featuredBars.isRanking ? (
                     featuredBars.topSingle.length > 0 ? (
                       <div className="space-y-2">
@@ -420,7 +422,7 @@ export default async function Home({
                               : i === 1
                               ? "bg-gray-300 text-gray-800"
                               : "bg-amber-700 text-amber-100";
-            
+      
                           return (
                             <div
                               key={i}
@@ -431,11 +433,11 @@ export default async function Home({
                               >
                                 {i + 1}º
                               </span>
-            
+      
                               <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
                                 {o.text}
                               </span>
-            
+      
                               <span className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
                                 {o.percent}%
                               </span>
@@ -459,7 +461,7 @@ export default async function Home({
                             : i === 1
                             ? "bg-gray-300 text-gray-800"
                             : "bg-amber-700 text-amber-100";
-            
+      
                         return (
                           <div
                             key={i}
@@ -470,11 +472,11 @@ export default async function Home({
                             >
                               {i + 1}º
                             </span>
-            
+      
                             <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
                               {o.text}
                             </span>
-            
+      
                             <span className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
                               {o.score}
                             </span>
@@ -484,13 +486,15 @@ export default async function Home({
                     </div>
                   ) : (
                     <div className="text-sm text-gray-600">
-                      Ainda não há rankings suficientes — participe para iniciar o resultado.
+                      Ainda não há rankings suficientes — participe para iniciar o
+                      resultado.
                     </div>
                   )}
                 </div>
               </div>
             )}
-  
+          </div>
+      
           {/* CTA */}
           <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
             <Link
@@ -501,7 +505,7 @@ export default async function Home({
               {primaryCtaLabel(p)}
             </Link>
           </div>
-
+      
           {/* RESULTADOS */}
           {featuredShowResults && (
             <div className="absolute bottom-6 right-6 z-30 pointer-events-auto">
