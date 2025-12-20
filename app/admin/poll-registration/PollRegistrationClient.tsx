@@ -974,7 +974,7 @@ export default function PollRegistrationClient() {
 
         {/* Tempo de espera + Tipo de Voto + Máx. opções por voto (mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, width: 240, minWidth: 80 }}>
+          <div style={{ ...styles.fieldGroup, width: 140, minWidth: 80 }}>
             <label style={styles.label}>Tempo de espera (seg):</label>
             <input
               type="number"
