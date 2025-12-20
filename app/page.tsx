@@ -482,7 +482,6 @@ export default async function Home({
                   </div>
                 )}
 
-
           {/* CTA */}
           <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
             <Link
