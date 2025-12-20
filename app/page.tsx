@@ -397,7 +397,38 @@ export default async function Home() {
                     </div>
                   </div>
                 )}
+
+                {/* DESCRIÇÃO */}
+                <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify">
+                  {p.description
+                    ? p.description
+                    : "Participe desta decisão e ajude a construir informação pública confiável."}
+                </p>
               </div>
+
+              {/* CTA (clicável acima do overlay) */}
+              <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
+                <Link
+                  href={`/poll/${p.id}`}
+                  className="inline-flex items-center px-4 py-2.5 rounded-xl
+                             text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                >
+                  {primaryCtaLabel(p)}
+                </Link>
+              </div>
+
+              {/* RESULTADOS (clicável acima do overlay) */}
+              {showResults && (
+                <div className="absolute bottom-6 right-6 z-30 pointer-events-auto">
+                  <Link
+                    href={`/results/${p.id}`}
+                    className="inline-flex items-center px-4 py-2.5 rounded-xl
+                               text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                  >
+                    Ver resultados
+                  </Link>
+                </div>
+              )}
             </div>
           );
         })()}
