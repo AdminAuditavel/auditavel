@@ -115,7 +115,11 @@ function showResultsButton(p: Poll) {
   );
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: { featured?: string };
+}) {
   /* =======================
      POLLS
   ======================= */
@@ -133,8 +137,11 @@ export default async function Home() {
     return <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>;
   }
 
-  const featuredPoll = visiblePolls[0];
-  const otherPolls = visiblePolls.slice(1);
+  const featuredId = searchParams?.featured?.trim();
+  const featuredPoll =
+    (featuredId && visiblePolls.find((x) => x.id === featuredId)) || visiblePolls[0];
+  
+  const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id)
 
   const pollIds = visiblePolls.map((p) => p.id);
 
@@ -312,7 +319,8 @@ export default async function Home() {
      RENDER
   ======================= */
   return (
-    <main className="p-8 max-w-6xl mx-auto space-y-12">
+    <main id="top" className="p-8 max-w-6xl mx-auto space-y-12">
+
       {/* HERO */}
       <section className="text-center space-y-3">
         <h1 className="text-5xl font-bold text-emerald-700">Auditável</h1>
