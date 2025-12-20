@@ -315,23 +315,9 @@ export default async function Home() {
               {canShowResults && (
                 <Link
                   href={`/results/${p.id}`}
-                  className="
-                    absolute
-                    bottom-4
-                    right-4
-                    inline-flex
-                    items-center
-                    px-3
-                    py-1
-                    rounded-full
-                    text-xs
-                    font-semibold
-                    bg-orange-100
-                    text-orange-800
-                    hover:bg-orange-200
-                    transition
-                  "
-                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-4 right-4 inline-flex items-center px-3 py-1 rounded-full
+                             text-xs font-semibold bg-orange-100 text-orange-800
+                             hover:bg-orange-200 transition z-10"
                 >
                   Resultados
                 </Link>
