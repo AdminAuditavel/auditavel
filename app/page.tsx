@@ -20,6 +20,7 @@ type Poll = {
   show_partial_results: boolean;
   icon_url?: string | null;
   max_votes_per_user?: number | null;
+  is_featured?: boolean | null;
 };
 
 type PollOption = {
@@ -133,7 +134,6 @@ export default async function Home({
 
   const polls: Poll[] = pollsData || [];
   const visiblePolls = polls.filter((p) => p.status !== "draft");
-  is_featured?: boolean | null;
 
   if (!visiblePolls.length) {
     return <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>;
