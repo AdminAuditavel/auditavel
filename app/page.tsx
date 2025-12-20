@@ -73,8 +73,8 @@ function titleColor(status: Poll["status"]) {
 
 function votingTypeLabel(vt: Poll["voting_type"]) {
   if (vt === "ranking") return "Ranking";
-  if (vt === "multiple") return "Múltipla";
-  return "Voto simples";
+  if (vt === "multiple") return "Múltiplas Opções";
+  return "Uma Opção";
 }
 
 function normalizeIconUrl(raw?: string | null) {
