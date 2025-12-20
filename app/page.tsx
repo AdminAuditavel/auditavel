@@ -340,6 +340,13 @@ export default async function Home() {
 
               {/* Conteúdo não captura clique (deixa passar para o overlay) */}
               <div className="p-8 pb-28 relative z-10 pointer-events-none">
+                {/* DESCRIÇÃO */}
+                <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify">
+                  {p.description
+                    ? p.description
+                    : "Participe desta decisão e ajude a construir informação pública confiável."}
+                </p>
+
                 {/* Principais posições */}
                 {showResults && (
                   <div className="mt-6">
@@ -397,13 +404,6 @@ export default async function Home() {
                     </div>
                   </div>
                 )}
-
-                {/* DESCRIÇÃO */}
-                <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify">
-                  {p.description
-                    ? p.description
-                    : "Participe desta decisão e ajude a construir informação pública confiável."}
-                </p>
               </div>
 
               {/* CTA (clicável acima do overlay) */}
