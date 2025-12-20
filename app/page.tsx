@@ -411,16 +411,55 @@ export default async function Home({
                   </div>
             
                   {!featuredBars.isRanking ? (
-                  featuredBars.topSingle.length > 0 ? (
+                    featuredBars.topSingle.length > 0 ? (
+                      <div className="space-y-2">
+                        {featuredBars.topSingle.map((o, i) => {
+                          const medal =
+                            i === 0
+                              ? "bg-yellow-400 text-yellow-900"
+                              : i === 1
+                              ? "bg-gray-300 text-gray-800"
+                              : "bg-amber-700 text-amber-100";
+            
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center gap-3 rounded-lg bg-white border border-gray-200 px-3 py-2"
+                            >
+                              <span
+                                className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${medal}`}
+                              >
+                                {i + 1}º
+                              </span>
+            
+                              <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                                {o.text}
+                              </span>
+            
+                              <span className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
+                                {o.percent}%
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-600">
+                        {featuredBars.participants > 0
+                          ? "Ainda não há votos válidos para exibição."
+                          : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                      </div>
+                    )
+                  ) : featuredBars.topRanking.length > 0 ? (
                     <div className="space-y-2">
-                      {featuredBars.topSingle.map((o, i) => {
+                      {featuredBars.topRanking.map((o, i) => {
                         const medal =
                           i === 0
                             ? "bg-yellow-400 text-yellow-900"
                             : i === 1
                             ? "bg-gray-300 text-gray-800"
                             : "bg-amber-700 text-amber-100";
-                
+            
                         return (
                           <div
                             key={i}
@@ -431,13 +470,13 @@ export default async function Home({
                             >
                               {i + 1}º
                             </span>
-                
+            
                             <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
                               {o.text}
                             </span>
-                
+            
                             <span className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
-                              {o.percent}%
+                              {o.score}
                             </span>
                           </div>
                         );
@@ -445,50 +484,13 @@ export default async function Home({
                     </div>
                   ) : (
                     <div className="text-sm text-gray-600">
-                      {featuredBars.participants > 0
-                        ? "Ainda não há votos válidos para exibição."
-                        : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                      Ainda não há rankings suficientes — participe para iniciar o resultado.
                     </div>
-                  )
-                ) : featuredBars.topRanking.length > 0 ? (
-                  <div className="space-y-2">
-                    {featuredBars.topRanking.map((o, i) => {
-                      const medal =
-                        i === 0
-                          ? "bg-yellow-400 text-yellow-900"
-                          : i === 1
-                          ? "bg-gray-300 text-gray-800"
-                          : "bg-amber-700 text-amber-100";
-                
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-center gap-3 rounded-lg bg-white border border-gray-200 px-3 py-2"
-                        >
-                          <span
-                            className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${medal}`}
-                          >
-                            {i + 1}º
-                          </span>
-                
-                          <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
-                            {o.text}
-                          </span>
-                
-                          <span className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
-                            {o.score}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-600">
-                    Ainda não há rankings suficientes — participe para iniciar o resultado.
-                  </div>
-                )}
-              </div>   
-
+                  )}
+                </div>
+              </div>
+            )}
+  
           {/* CTA */}
           <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
             <Link
