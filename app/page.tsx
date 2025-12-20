@@ -4,6 +4,8 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { existsSync } from "fs";
+import path from "path";
 
 const DEFAULT_POLL_ICON = "/polls/Enquete_Copa2026.png";
 
@@ -61,6 +63,55 @@ function votingTypeLabel(vt: Poll["voting_type"]) {
   if (vt === "ranking") return "Ranking";
   if (vt === "multiple") return "Múltipla";
   return "Voto simples";
+}
+
+/**
+ * Resolve imagem com fallback (sem handlers no client).
+ * - Path local (/polls/xxx.png): valida existência em /public
+ * - URL externa (http/https): tenta HEAD (com timeout curto)
+ */
+async function resolveIconUrl(raw?: string | null, cache?: Map<string, string>) {
+  const url = (raw || "").trim();
+  if (!url) return DEFAULT_POLL_ICON;
+
+  if (cache?.has(url)) return cache.get(url)!;
+
+  // Local path
+  if (url.startsWith("/")) {
+    // Mapeia /polls/x.png => <cwd>/public/polls/x.png
+    const filePath = path.join(process.cwd(), "public", url.replace(/^\/+/, ""));
+    const ok = existsSync(filePath);
+    const chosen = ok ? url : DEFAULT_POLL_ICON;
+    cache?.set(url, chosen);
+    return chosen;
+  }
+
+  // External URL
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 1500);
+
+    try {
+      const res = await fetch(url, {
+        method: "HEAD",
+        signal: controller.signal,
+        // evita cache agressivo de erro
+        cache: "no-store",
+      });
+      const chosen = res.ok ? url : DEFAULT_POLL_ICON;
+      cache?.set(url, chosen);
+      return chosen;
+    } catch {
+      cache?.set(url, DEFAULT_POLL_ICON);
+      return DEFAULT_POLL_ICON;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // Qualquer outro formato estranho -> fallback
+  cache?.set(url, DEFAULT_POLL_ICON);
+  return DEFAULT_POLL_ICON;
 }
 
 export default async function Home() {
@@ -135,6 +186,19 @@ export default async function Home() {
     if (!rankingsByOption.has(r.option_id)) rankingsByOption.set(r.option_id, []);
     rankingsByOption.get(r.option_id)!.push(r);
   });
+
+  /* =======================
+     ICONS RESOLVIDOS (COM FALLBACK)
+  ======================= */
+  const iconCache = new Map<string, string>();
+  const iconByPollId = new Map<string, string>();
+
+  await Promise.all(
+    visiblePolls.map(async (p) => {
+      const resolved = await resolveIconUrl(p.icon_url, iconCache);
+      iconByPollId.set(p.id, resolved);
+    })
+  );
 
   /* =======================
      HELPERS (RESULTADOS)
@@ -223,19 +287,19 @@ export default async function Home() {
       {/* DESTAQUE */}
       {featuredPoll && (() => {
         const p = featuredPoll;
-        const iconSrc = (p.icon_url && p.icon_url.trim()) || DEFAULT_POLL_ICON;
+        const iconSrc = iconByPollId.get(p.id) || DEFAULT_POLL_ICON;
         const typeLabel = votingTypeLabel(p.voting_type);
         const showResults = canShowResults(p);
 
         const { isRanking, topSingle, topRanking } = computeTopBars(p);
 
         return (
-          <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-            {/* overlay link (card inteiro clicável) */}
+          <div className="relative group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
+            {/* overlay link (card inteiro clicável em QUALQUER área) */}
             <Link
               href={`/poll/${p.id}`}
               aria-label={`Abrir pesquisa: ${p.title}`}
-              className="absolute inset-0 z-10"
+              className="absolute inset-0 z-20"
             />
 
             {/* IMAGEM GRANDE */}
@@ -243,11 +307,12 @@ export default async function Home() {
               <img
                 src={iconSrc}
                 alt={p.title}
-                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
             </div>
 
-            <div className="p-6 relative z-20">
+            {/* Conteúdo não captura clique (deixa passar para o overlay) */}
+            <div className="p-6 relative z-10 pointer-events-none">
               {/* STATUS */}
               <span
                 className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
@@ -330,26 +395,22 @@ export default async function Home() {
                         </div>
                       ))}
                   </div>
-
-                  {/* LINK RESULTADOS (clicável acima do overlay) */}
-                  <div className="mt-3 flex justify-end">
-                    <Link
-                      href={`/results/${p.id}`}
-                      className="relative z-30 inline-flex items-center px-3 py-2 rounded-lg
-                                 text-sm font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                    >
-                      Ver resultados
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {!showResults && (
-                <div className="mt-5 flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Clique no card para participar.</span>
                 </div>
               )}
             </div>
+
+            {/* LINK RESULTADOS (clicável e acima do overlay) */}
+            {showResults && (
+              <div className="absolute bottom-5 right-5 z-30 pointer-events-auto">
+                <Link
+                  href={`/results/${p.id}`}
+                  className="inline-flex items-center px-3 py-2 rounded-lg
+                             text-sm font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                >
+                  Ver resultados
+                </Link>
+              </div>
+            )}
           </div>
         );
       })()}
@@ -362,72 +423,78 @@ export default async function Home() {
 
         <div className="grid grid-cols-1 gap-4">
           {otherPolls.map((p) => {
-            const iconSrc = (p.icon_url && p.icon_url.trim()) || DEFAULT_POLL_ICON;
+            const iconSrc = iconByPollId.get(p.id) || DEFAULT_POLL_ICON;
             const typeLabel = votingTypeLabel(p.voting_type);
             const showResults = canShowResults(p);
 
             return (
               <div
                 key={p.id}
-                className="relative flex gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
+                className="relative group flex gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
               >
-                {/* overlay link (card inteiro clicável) */}
+                {/* overlay link (card inteiro clicável em QUALQUER área) */}
                 <Link
                   href={`/poll/${p.id}`}
                   aria-label={`Abrir pesquisa: ${p.title}`}
-                  className="absolute inset-0 z-10"
+                  className="absolute inset-0 z-20"
                 />
 
-                {/* IMAGEM PEQUENA */}
-                <div className="relative z-20 w-28 h-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                  <img
-                    src={iconSrc}
-                    alt={p.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                {/* TEXTO */}
-                <div className="relative z-20 flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <h4 className="text-base font-semibold text-gray-900 truncate">
-                      {p.title}
-                    </h4>
-
-                    <span
-                      className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor(
-                        p.status
-                      )}`}
-                    >
-                      {statusLabel(p.status)}
-                    </span>
+                {/* Conteúdo não captura clique */}
+                <div className="relative z-10 pointer-events-none flex gap-4 w-full">
+                  {/* IMAGEM PEQUENA */}
+                  <div className="w-28 h-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                    <img
+                      src={iconSrc}
+                      alt={p.title}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
                   </div>
 
-                  <div className="mt-1 text-xs text-gray-600">
-                    Tipo: {typeLabel} · Início: {formatDate(p.start_date)} · Fim:{" "}
-                    {formatDate(p.end_date)}
-                  </div>
+                  {/* TEXTO */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="text-base font-semibold text-gray-900 truncate">
+                        {p.title}
+                      </h4>
 
-                  {p.description && (
-                    <div className="mt-2 text-sm text-gray-700 line-clamp-2">
-                      {p.description}
-                    </div>
-                  )}
-
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <span className="text-xs text-gray-500">Clique para participar</span>
-
-                    {showResults && (
-                      <Link
-                        href={`/results/${p.id}`}
-                        className="relative z-30 inline-flex items-center px-3 py-1.5 rounded-lg
-                                   text-xs font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor(
+                          p.status
+                        )}`}
                       >
-                        Resultados
-                      </Link>
+                        {statusLabel(p.status)}
+                      </span>
+                    </div>
+
+                    <div className="mt-1 text-xs text-gray-600">
+                      Tipo: {typeLabel} · Início: {formatDate(p.start_date)} · Fim:{" "}
+                      {formatDate(p.end_date)}
+                    </div>
+
+                    {p.description && (
+                      <div className="mt-2 text-sm text-gray-700 line-clamp-2">
+                        {p.description}
+                      </div>
                     )}
+
+                    <div className="mt-2 text-xs text-gray-500">
+                      Clique para participar
+                    </div>
                   </div>
                 </div>
+
+                {/* RESULTADOS (clicável e acima do overlay) */}
+                {showResults && (
+                  <div className="absolute bottom-3 right-3 z-30 pointer-events-auto">
+                    <Link
+                      href={`/results/${p.id}`}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg
+                                 text-xs font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                    >
+                      Resultados
+                    </Link>
+                  </div>
+                )}
               </div>
             );
           })}
