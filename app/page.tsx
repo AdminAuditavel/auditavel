@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import PollImage from "./components/PollImage";
+import PollImage from "@/app/components/PollImage";
 
 const DEFAULT_POLL_ICON = "/polls/Enquete_Copa2026.png";
 
@@ -171,6 +171,8 @@ export default async function Home() {
   ======================= */
   let rankings: VoteRanking[] = [];
   if (voteIds.length) {
+    // Observação: se houver limite de .in(...) muito grande,
+    // podemos otimizar depois com RPC/SQL view. Por ora, já melhora muito.
     const { data: rankingsData } = await supabase
       .from("vote_rankings")
       .select("vote_id, option_id, ranking")
@@ -243,7 +245,7 @@ export default async function Home() {
 
         if (vt === "multiple") {
           // map option_id -> Set(user_hash)
-          const uniq = new Map<string, Set<string>>(); 
+          const uniq = new Map<string, Set<string>>();
           for (const v of pollVotes) {
             if (!v.option_id) continue;
             if (!uniq.has(v.option_id)) uniq.set(v.option_id, new Set<string>());
@@ -327,8 +329,8 @@ export default async function Home() {
                 className="absolute inset-0 z-20"
               />
 
-              {/* IMAGEM (MENOR) */}
-              <div className="h-44 md:h-64 w-full overflow-hidden bg-gray-50">
+              {/* IMAGEM GRANDE */}
+              <div className="h-80 w-full overflow-hidden bg-gray-50">
                 <PollImage
                   src={iconSrc}
                   fallbackSrc={DEFAULT_POLL_ICON}
@@ -339,24 +341,74 @@ export default async function Home() {
               </div>
 
               {/* Conteúdo não captura clique (deixa passar para o overlay) */}
-              <div className="p-8 pb-28 relative z-10 pointer-events-none">
+              <div className="p-8 relative z-10 pointer-events-none">
+                {/* STATUS */}
+                <span
+                  className={`absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                    p.status
+                  )}`}
+                >
+                  {statusLabel(p.status)}
+                </span>
+
+                {/* BADGE TIPO */}
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                  {typeLabel}
+                </span>
+
+                {/* TÍTULO */}
+                <h2 className={`mt-3 text-3xl font-bold pr-36 ${titleColor(p.status)}`}>
+                  {p.title}
+                </h2>
+
+                {/* META */}
+                <div className="mt-2 text-sm text-gray-600">
+                  Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+                </div>
+
                 {/* DESCRIÇÃO */}
-                <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify">
+                <p className="mt-5 text-gray-700 leading-relaxed text-base">
                   {p.description
                     ? p.description
                     : "Participe desta decisão e ajude a construir informação pública confiável."}
                 </p>
 
-                {/* Principais posições */}
+                {/* PRINCIPAIS POSIÇÕES */}
                 {showResults && (
                   <div className="mt-6">
                     <div className="rounded-xl border bg-gray-50 p-5">
-                      <div className="text-xs font-semibold text-gray-600 mb-3">
-                        Principais posições
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <div className="text-xs font-semibold text-gray-600">
+                          Principais posições
+                        </div>
                       </div>
 
-                      {isRanking ? (
-                        topRanking.length > 0 ? (
+                      {!isRanking &&
+                        (topSingle.length ? (
+                          <div className="space-y-3">
+                            {topSingle.map((o, i) => (
+                              <div key={i} className="text-xs">
+                                <div className="flex justify-between gap-2">
+                                  <span className="truncate text-gray-800">{o.text}</span>
+                                  <span className="shrink-0 text-gray-700">{o.percent}%</span>
+                                </div>
+                                <div className="h-2 bg-gray-200 rounded">
+                                  <div
+                                    className="h-2 bg-emerald-500 rounded"
+                                    style={{ width: `${o.percent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500">
+                            Ainda sem votos suficientes para exibir.
+                          </div>
+                        ))}
+
+                      {isRanking &&
+                        (topRanking.length ? (
                           <div className="space-y-3">
                             {topRanking.map((o, i) => (
                               <div key={i} className="text-xs">
@@ -378,29 +430,7 @@ export default async function Home() {
                           <div className="text-xs text-gray-500">
                             Ainda sem rankings suficientes para exibir.
                           </div>
-                        )
-                      ) : topSingle.length > 0 ? (
-                        <div className="space-y-3">
-                          {topSingle.map((o, i) => (
-                            <div key={i} className="text-xs">
-                              <div className="flex justify-between gap-2">
-                                <span className="truncate text-gray-800">{o.text}</span>
-                                <span className="shrink-0 text-gray-700">{o.percent}%</span>
-                              </div>
-                              <div className="h-2 bg-gray-200 rounded">
-                                <div
-                                  className="h-2 bg-emerald-500 rounded"
-                                  style={{ width: `${o.percent}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-500">
-                          Ainda sem votos suficientes para exibir.
-                        </div>
-                      )}
+                        ))}
                     </div>
                   </div>
                 )}
@@ -432,14 +462,17 @@ export default async function Home() {
             </div>
           );
         })()}
-      {/* Lista de outras pesquisas */}
+
+      {/* LISTA COMPACTA (maior e em grid 2 colunas no desktop) */}
       <section className="space-y-4">
         {otherPolls.length > 0 && (
           <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
         )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {otherPolls.map((p) => {
             const iconSrc = normalizeIconUrl(p.icon_url);
+            const typeLabel = votingTypeLabel(p.voting_type);
             const showResults = showResultsButton(p);
 
             return (
@@ -447,8 +480,16 @@ export default async function Home() {
                 key={p.id}
                 className="relative group flex gap-5 p-6 border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition min-h-[140px]"
               >
+                {/* overlay link (card inteiro clicável) */}
+                <Link
+                  href={`/poll/${p.id}`}
+                  aria-label={`Abrir pesquisa: ${p.title}`}
+                  className="absolute inset-0 z-20"
+                />
+
                 {/* Conteúdo não captura clique */}
                 <div className="relative z-10 pointer-events-none flex gap-5 w-full">
+                  {/* IMAGEM */}
                   <div className="w-40 h-28 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                     <PollImage
                       src={iconSrc}
@@ -457,22 +498,69 @@ export default async function Home() {
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
+
+                  {/* TEXTO */}
                   <div className="flex-1 min-w-0">
-                    <h4 className={`text-lg font-semibold text-gray-900 truncate ${titleColor(p.status)}`}>
-                      {p.title}
-                    </h4>
-                    {showResults && (
-                      <div className="text-xs text-gray-600 mt-1">
-                        Resultados disponíveis.
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className={`text-lg font-semibold truncate ${titleColor(p.status)}`}>
+                        {p.title}
+                      </h4>
+
+                      <span
+                        className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(
+                          p.status
+                        )}`}
+                      >
+                        {statusLabel(p.status)}
+                      </span>
+                    </div>
+
+                    <div className="mt-1 text-xs text-gray-600">
+                      Tipo: {typeLabel} · Início: {formatDate(p.start_date)} · Fim:{" "}
+                      {formatDate(p.end_date)}
+                    </div>
+
+                    {p.description && (
+                      <div className="mt-2 text-sm text-gray-700 line-clamp-2">
+                        {p.description}
                       </div>
                     )}
                   </div>
                 </div>
+
+                {/* CTA (clicável acima do overlay) */}
+                <div className="absolute bottom-4 left-6 z-30 pointer-events-auto">
+                  <Link
+                    href={`/poll/${p.id}`}
+                    className="inline-flex items-center px-3 py-2 rounded-xl
+                               text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                  >
+                    {primaryCtaLabel(p)}
+                  </Link>
+                </div>
+
+                {/* RESULTADOS (clicável acima do overlay) */}
+                {showResults && (
+                  <div className="absolute bottom-4 right-4 z-30 pointer-events-auto">
+                    <Link
+                      href={`/results/${p.id}`}
+                      className="inline-flex items-center px-3 py-2 rounded-xl
+                                 text-xs font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                    >
+                      Resultados
+                    </Link>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </section>
+
+      {/* RODAPÉ */}
+      <footer className="pt-8 border-t text-center text-sm text-gray-600">
+        Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
+      </footer>
     </main>
   );
 }
