@@ -374,7 +374,7 @@ export default async function Home() {
               Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
             </div>
 
-            <p className="mt-5 text-gray-700 leading-relaxed text-base">
+            <p className="mt-5 text-gray-700 leading-relaxed text-base text-justify">
               {p.description
                 ? p.description
                 : "Participe desta decisão e ajude a construir informação pública confiável."}
@@ -440,11 +440,15 @@ export default async function Home() {
                   )}
 
                   {/* RODAPÉ DO BLOCO */}
-                  <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
-                    <span>Resultados parciais</span>
-                    <span>
-                      Total de Participações:{" "}
-                      <span className="text-gray-500 font-semibold">
+                  <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-[11px] font-medium text-gray-500">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      Resultados parciais
+                    </span>
+                  
+                    <span className="text-[11px] text-gray-500">
+                      Total de participações:{" "}
+                      <span className="text-gray-700 font-semibold">
                         {featuredBars.participants}
                       </span>
                     </span>
