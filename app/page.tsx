@@ -235,7 +235,7 @@ export default async function Home() {
             <Link
               href={`/poll/${p.id}`}
               aria-label={`Abrir pesquisa: ${p.title}`}
-              className="absolute inset-0 z-0"
+              className="absolute inset-0 z-10"
             />
 
             {/* IMAGEM GRANDE */}
@@ -247,7 +247,7 @@ export default async function Home() {
               />
             </div>
 
-            <div className="p-6 relative z-10">
+            <div className="p-6 relative z-20">
               {/* STATUS */}
               <span
                 className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
@@ -273,9 +273,9 @@ export default async function Home() {
                   : "Participe desta decisão e ajude a construir informação pública confiável."}
               </p>
 
-              {/* MINI RESUMO (TOP 3) — só no destaque */}
+              {/* PRINCIPAIS POSIÇÕES (apenas) */}
               {showResults && (
-                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="mt-5">
                   <div className="rounded-lg border bg-gray-50 p-4">
                     <div className="text-xs font-semibold text-gray-600 mb-2">
                       Principais posições
@@ -331,25 +331,15 @@ export default async function Home() {
                       ))}
                   </div>
 
-                  <div className="rounded-lg border bg-white p-4">
-                    <div className="text-xs font-semibold text-gray-600 mb-2">
-                      Ações rápidas
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-700">
-                        Clique no card para participar.
-                      </span>
-
-                      {showResults && (
-                        <Link
-                          href={`/results/${p.id}`}
-                          className="relative z-20 ml-auto inline-flex items-center px-3 py-2 rounded-lg
-                                     text-sm font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                        >
-                          Ver resultados
-                        </Link>
-                      )}
-                    </div>
+                  {/* LINK RESULTADOS (clicável acima do overlay) */}
+                  <div className="mt-3 flex justify-end">
+                    <Link
+                      href={`/results/${p.id}`}
+                      className="relative z-30 inline-flex items-center px-3 py-2 rounded-lg
+                                 text-sm font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                    >
+                      Ver resultados
+                    </Link>
                   </div>
                 </div>
               )}
@@ -385,11 +375,11 @@ export default async function Home() {
                 <Link
                   href={`/poll/${p.id}`}
                   aria-label={`Abrir pesquisa: ${p.title}`}
-                  className="absolute inset-0 z-0"
+                  className="absolute inset-0 z-10"
                 />
 
                 {/* IMAGEM PEQUENA */}
-                <div className="relative z-10 w-28 h-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                <div className="relative z-20 w-28 h-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
                   <img
                     src={iconSrc}
                     alt={p.title}
@@ -398,7 +388,7 @@ export default async function Home() {
                 </div>
 
                 {/* TEXTO */}
-                <div className="relative z-10 flex-1 min-w-0">
+                <div className="relative z-20 flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
                     <h4 className="text-base font-semibold text-gray-900 truncate">
                       {p.title}
@@ -430,7 +420,7 @@ export default async function Home() {
                     {showResults && (
                       <Link
                         href={`/results/${p.id}`}
-                        className="relative z-20 inline-flex items-center px-3 py-1.5 rounded-lg
+                        className="relative z-30 inline-flex items-center px-3 py-1.5 rounded-lg
                                    text-xs font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
                       >
                         Resultados
