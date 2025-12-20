@@ -487,6 +487,7 @@ export default async function Home({
                     Ainda não há rankings suficientes — participe para iniciar o resultado.
                   </div>
                 )}
+              </div>   
 
           {/* CTA */}
           <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
