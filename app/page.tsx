@@ -4,7 +4,8 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import PollImage from "@/app/components/PollImage";
+import PollImage from "./components/PollImage";
+
 
 const DEFAULT_POLL_ICON = "/polls/Enquete_Copa2026.png";
 
