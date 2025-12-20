@@ -154,8 +154,16 @@ export default async function Home({
         ? rawFeatured[0].trim()
         : undefined;
   
-  const featuredPoll =
-    (featuredId && visiblePolls.find((x) => x.id === featuredId)) || visiblePolls[0];
+  // 1) featured via URL (clique temporário do usuário)
+  const featuredFromUrl =
+    featuredId ? visiblePolls.find((x) => x.id === featuredId) : undefined;
+  
+  // 2) featured automático (setado pelo job via is_featured)
+  const featuredFromAuto =
+    visiblePolls.find((x) => x.is_featured === true) || undefined;
+  
+  // 3) fallback seguro
+  const featuredPoll = featuredFromUrl || featuredFromAuto || visiblePolls[0];
   
   const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id);
 
