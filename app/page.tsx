@@ -249,8 +249,9 @@ export default async function Home() {
               <div className="text-sm text-gray-600 mt-1">
                 Início: {formatDate(p.start_date)} · Fim:{" "}
                 {formatDate(p.end_date)} · Tipo:{" "}
-                {isRanking ? "Ranking" : "Voto simples"}
+                {votingTypeLabel}
               </div>
+
 
               {/* CONTENT + GRAPH */}
               {canShowResults && (
