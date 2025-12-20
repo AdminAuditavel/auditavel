@@ -400,7 +400,9 @@ export default async function Home({
       
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-gray-700">
                     <span className="text-gray-500">Pesquisa tipo:</span>
-                    <span className="font-medium">{featuredTypeLabel}</span>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                      {featuredTypeLabel}
+                    </span>
       
                     {(() => {
                       const maxVotes =
