@@ -393,7 +393,7 @@ export default async function Home({
                 </h2>
       
                 {/* LINHA: Pesquisa tipo + badges */}
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   <span className="text-gray-500">Pesquisa tipo:</span>
       
                   {/* BADGE do tipo */}
