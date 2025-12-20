@@ -324,7 +324,7 @@ export default async function Home() {
           const iconSrc = normalizeIconUrl(p.icon_url);
           const typeLabel = votingTypeLabel(p.voting_type);
           const showResults = canShowResults(p);
-          const { isRanking, topSingle, topRanking } = computeTopBars(p);
+          const { isRanking, topSingle, topRanking, participants } = computeTopBars(p);
 
           return (
             <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
@@ -392,9 +392,10 @@ export default async function Home() {
                           Principais posições
                         </div>
                       </div>
-
-                      {!isRanking &&
-                        (topSingle.length ? (
+                
+                      {/* SINGLE / MULTIPLE */}
+                      {!isRanking && (
+                        topSingle.length > 0 ? (
                           <div className="space-y-3">
                             {topSingle.map((o, i) => (
                               <div key={i} className="text-xs">
@@ -412,13 +413,17 @@ export default async function Home() {
                             ))}
                           </div>
                         ) : (
-                          <div className="text-xs text-gray-500">
-                            Ainda sem votos suficientes para exibir.
+                          <div className="text-xs text-gray-600">
+                            {participants > 0
+                              ? "Ainda não há votos válidos para exibição."
+                              : "Seja o primeiro a participar — seu voto inicia o resultado público."}
                           </div>
-                        ))}
-
-                      {isRanking &&
-                        (topRanking.length ? (
+                        )
+                      )}
+                
+                      {/* RANKING */}
+                      {isRanking && (
+                        topRanking.length > 0 ? (
                           <div className="space-y-3">
                             {topRanking.map((o, i) => (
                               <div key={i} className="text-xs">
@@ -437,14 +442,14 @@ export default async function Home() {
                             ))}
                           </div>
                         ) : (
-                          <div className="text-xs text-gray-500">
-                            Ainda sem rankings suficientes para exibir.
+                          <div className="text-xs text-gray-600">
+                            Ainda não há rankings suficientes — participe para iniciar o resultado.
                           </div>
-                        ))}
+                        )
+                      )}
                     </div>
                   </div>
                 )}
-              </div>
 
               {/* CTA (clicável acima do overlay) */}
               <div className="absolute bottom-6 left-6 z-30 pointer-events-auto">
