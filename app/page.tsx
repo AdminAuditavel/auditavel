@@ -11,7 +11,7 @@ type Poll = {
   description?: string | null;
   start_date?: string | null;
   end_date?: string | null;
-  voting_type: "single" | "ranking";
+  voting_type: "single" | "ranking" | "multiple";
   allow_multiple: boolean;
   status: "draft" | "open" | "paused" | "closed";
   show_partial_results: boolean;
@@ -156,6 +156,13 @@ export default async function Home() {
 
           const opts = optionsByPoll.get(p.id) || [];
           const isRanking = p.voting_type === "ranking";
+          const isMultiple = p.voting_type === "multiple";
+          
+          const votingTypeLabel = isRanking
+            ? "Ranking"
+            : isMultiple
+              ? "Múltipla"
+              : "Voto simples";
 
           const canShowResults =
             p.status === "closed" ||
