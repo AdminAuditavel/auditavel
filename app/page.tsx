@@ -373,8 +373,12 @@ export default async function Home({
       
               {/* META + TÍTULO */}
               <div className="flex-1 min-w-0">
-                {/* APENAS STATUS (removido badge do tipo aqui) */}
-                <div className="flex items-start justify-end">
+                {/* DATA + STATUS (MESMA LINHA) */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-red-700">
+                    Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+                  </span>
+              
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                       p.status
@@ -383,14 +387,12 @@ export default async function Home({
                     {statusLabel(p.status)}
                   </span>
                 </div>
-      
-                <h2
-                  className={`mt-3 text-xl md:text-2xl font-bold ${titleColor(
-                    p.status
-                  )} leading-snug break-words`}
-                >
+              
+                {/* PERGUNTA */}
+                <h2 className="mt-3 text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words">
                   {p.title}
                 </h2>
+              </div>
       
                 {/* DATA (vermelho) + linha abaixo com "Pesquisa tipo:" + badge participação */}
                 <div className="mt-2 text-sm">
