@@ -254,103 +254,102 @@ export default async function Home({
 
   /* =======================
    HELPERS
-    ======================= */
-    function canShowResults(p: Poll) {
-      return (
-        p.status === "closed" ||
-        ((p.status === "open" || p.status === "paused") && p.show_partial_results)
-      );
-    }
-    
-    function computeTopBars(p: Poll) {
-      const opts = optionsByPoll.get(p.id) || [];
-      const show = canShowResults(p);
-      const isRanking = p.voting_type === "ranking";
-    
-      let participants = 0;
-      let topSingle: { text: string; percent: number }[] = [];
-      let topRanking: { text: string; score: number }[] = [];
-    
-      if (!show) return { show, isRanking, participants, topSingle, topRanking };
-    
-      const pollVotes = votesByPoll.get(p.id) || [];
-      const users = new Set(pollVotes.map((v) => v.user_hash));
-      participants = users.size;
-    
-      if (!isRanking) {
-        if (participants > 0) {
-          const vt = p.voting_type; // "single" | "multiple"
-          const count = new Map<string, number>();
-    
-          if (vt === "multiple") {
-            // múltiplas opções: conta usuários únicos por opção (evita inflar)
-            for (const o of opts) {
-              const set = multiUsersByOption.get(o.id);
-              if (set) count.set(o.id, set.size);
-            }
-          } else {
-            // opção única: conta votos brutos (múltiplas participações podem repetir)
-            for (const v of pollVotes) {
-              if (!v.option_id) continue;
-              count.set(v.option_id, (count.get(v.option_id) || 0) + 1);
-            }
+  ======================= */
+  
+  function computeTopBars(p: Poll) {
+    const opts = optionsByPoll.get(p.id) || [];
+  
+    const show =
+      p.status === "closed" ||
+      ((p.status === "open" || p.status === "paused") && p.show_partial_results);
+  
+    const isRanking = p.voting_type === "ranking";
+  
+    let participants = 0;
+    let topSingle: { text: string; percent: number }[] = [];
+    let topRanking: { text: string; score: number }[] = [];
+  
+    if (!show) return { show, isRanking, participants, topSingle, topRanking };
+  
+    const pollVotes = votesByPoll.get(p.id) || [];
+    const users = new Set(pollVotes.map((v) => v.user_hash));
+    participants = users.size;
+  
+    if (!isRanking) {
+      if (participants > 0) {
+        const vt = p.voting_type; // "single" | "multiple"
+        const count = new Map<string, number>();
+  
+        if (vt === "multiple") {
+          // múltiplas opções: conta usuários únicos por opção (evita inflar)
+          for (const o of opts) {
+            const set = multiUsersByOption.get(o.id);
+            if (set) count.set(o.id, set.size);
           }
-    
-          // ✅ Denominador correto para o percentual:
-          // - Opção única + múltiplas participações => % sobre total de votos
-          // - Opção única + participação única (max_votes_per_user=1) => % sobre participantes
-          // - Múltiplas opções => % sobre participantes (pois usamos distinct users por opção)
-          const maxVotes =
-            typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-    
-          const percentBase =
-            vt === "single"
-              ? maxVotes === 1
-                ? participants
-                : pollVotes.length
-              : participants;
-    
-          topSingle = opts
-            .map((o) => ({ text: o.option_text, n: count.get(o.id) || 0 }))
-            .filter((o) => o.n > 0)
-            .sort((a, b) => b.n - a.n)
-            .slice(0, 3)
-            .map((o) => ({
-              text: o.text,
-              percent: percentBase > 0 ? Math.round((o.n / percentBase) * 100) : 0,
-            }));
+        } else {
+          // opção única: conta votos brutos (múltiplas participações podem repetir)
+          for (const v of pollVotes) {
+            if (!v.option_id) continue;
+            count.set(v.option_id, (count.get(v.option_id) || 0) + 1);
+          }
         }
-      } else {
-        // ranking: mantém lógica atual
-        const summaries = opts
-          .map((o) => {
-            const rs = rankingsByOption.get(o.id) || [];
-            if (!rs.length) return null;
-            const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
-            return { text: o.option_text, score: avg };
-          })
-          .filter(Boolean) as { text: string; score: number }[];
-    
-        if (summaries.length) {
-          const best = Math.min(...summaries.map((s) => s.score));
-          topRanking = summaries
-            .sort((a, b) => a.score - b.score)
-            .slice(0, 3)
-            .map((s) => ({
-              text: s.text,
-              score: Math.round((best / s.score) * 100),
-            }));
-        }
+  
+        const maxVotes =
+          typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
+  
+        const percentBase =
+          vt === "single"
+            ? maxVotes === 1
+              ? participants
+              : pollVotes.length
+            : participants;
+  
+        topSingle = opts
+          .map((o) => ({ text: o.option_text, n: count.get(o.id) || 0 }))
+          .filter((o) => o.n > 0)
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 3)
+          .map((o) => ({
+            text: o.text,
+            percent: percentBase > 0 ? Math.round((o.n / percentBase) * 100) : 0,
+          }));
       }
-    
-      return { show, isRanking, participants, topSingle, topRanking };
+    } else {
+      // ranking: mantém lógica atual
+      const summaries = opts
+        .map((o) => {
+          const rs = rankingsByOption.get(o.id) || [];
+          if (!rs.length) return null;
+          const avg = rs.reduce((s, r) => s + r.ranking, 0) / rs.length;
+          return { text: o.option_text, score: avg };
+        })
+        .filter(Boolean) as { text: string; score: number }[];
+  
+      if (summaries.length) {
+        const best = Math.min(...summaries.map((s) => s.score));
+        topRanking = summaries
+          .sort((a, b) => a.score - b.score)
+          .slice(0, 3)
+          .map((s) => ({
+            text: s.text,
+            score: Math.round((best / s.score) * 100),
+          }));
+      }
     }
-    
-    const p = featuredPoll;
-    const featuredIconSrc = p ? normalizeIconUrl(p.icon_url) : DEFAULT_POLL_ICON;
-    const featuredTypeLabel = p ? votingTypeLabel(p.voting_type) : "";
-    const featuredShowResults = p ? canShowResults(p) : false;
-    const featuredBars = p ? computeTopBars(p) : null;
+  
+    return { show, isRanking, participants, topSingle, topRanking };
+  }
+  
+  const p = featuredPoll;
+  const featuredIconSrc = p ? normalizeIconUrl(p.icon_url) : DEFAULT_POLL_ICON;
+  const featuredTypeLabel = p ? votingTypeLabel(p.voting_type) : "";
+  
+  const featuredShowResults =
+    !!p &&
+    (p.status === "closed" ||
+      ((p.status === "open" || p.status === "paused") && p.show_partial_results));
+  
+  const featuredBars = p ? computeTopBars(p) : null;
 
 /* =======================
    RENDER
