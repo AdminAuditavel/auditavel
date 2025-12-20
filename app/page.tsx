@@ -372,11 +372,7 @@ export default async function Home({
       
               {/* META + TÍTULO */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
-                    {featuredTypeLabel}
-                  </span>
-      
+                <div className="flex items-start justify-end">
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                       p.status
@@ -385,7 +381,7 @@ export default async function Home({
                     {statusLabel(p.status)}
                   </span>
                 </div>
-      
+
                 <h2
                   className={`mt-3 text-xl md:text-2xl font-bold ${titleColor(
                     p.status
