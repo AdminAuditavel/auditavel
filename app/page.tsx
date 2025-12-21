@@ -1,5 +1,3 @@
-// app/page.tsx
-
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
@@ -355,11 +353,11 @@ export default async function Home({
      RENDER
   ======================= */
   return (
-    <main id="top" className="p-8 max-w-6xl mx-auto space-y-12">
+    <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
       {/* HERO */}
       <section className="text-center space-y-3">
-        <h1 className="text-5xl font-bold text-emerald-700">Auditável</h1>
-        <p className="text-lg font-medium text-gray-800">
+        <h1 className="text-4xl md:text-5xl font-bold text-emerald-700">Auditável</h1>
+        <p className="text-base md:text-lg font-medium text-gray-800">
           Onde decisões públicas podem ser verificadas.
         </p>
       </section>
@@ -369,18 +367,18 @@ export default async function Home({
       {/* DESTAQUE */}
       {p ? (
         <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-          {/* overlay link */}
+          {/* overlay link - só em telas md+ para não bloquear controles mobile */}
           <Link
             href={`/poll/${p.id}`}
             aria-label={`Abrir pesquisa: ${p.title}`}
-            className="absolute inset-0 z-20"
+            className="absolute inset-0 z-20 hidden md:block"
           />
   
           {/* CONTEÚDO */}
-          <div className="p-6 md:p-7 pb-20 relative z-10 pointer-events-none">
-            <div className="flex gap-5">
-              {/* IMAGEM */}
-              <div className="w-40 h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+          <div className="p-4 md:p-6 pb-20 relative z-10">
+            <div className="flex flex-col sm:flex-row gap-5">
+              {/* IMAGEM (full width em mobile, tamanho fixo em sm+/md+) */}
+              <div className="w-full sm:w-40 h-44 sm:h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
                 <PollImage
                   src={featuredIconSrc}
                   fallbackSrc={DEFAULT_POLL_ICON}
@@ -392,8 +390,8 @@ export default async function Home({
   
               {/* META + TÍTULO */}
               <div className="flex-1 min-w-0">
-                {/* DATA + STATUS (MESMA LINHA) */}
-                <div className="flex items-center justify-between gap-3">
+                {/* DATA + STATUS (MESMA LINHA, irá quebrar naturalmente em telas pequenas) */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <span className="text-sm text-red-700">
                     Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
                   </span>
@@ -408,7 +406,7 @@ export default async function Home({
                 </div>
   
                 {/* PERGUNTA (preto) */}
-                <h2 className="mt-3 text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words">
+                <h2 className="mt-3 text-lg md:text-2xl font-bold text-gray-900 leading-snug break-words">
                   {p.title}
                 </h2>
   
@@ -501,15 +499,33 @@ export default async function Home({
                 </div>
               )}
             </div>
+
+            {/* BOTÕES para mobile (visíveis apenas em telas < md) */}
+            <div className="mt-4 md:hidden flex items-center gap-2">
+              <Link
+                href={`/poll/${p.id}`}
+                className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition w-full justify-center"
+              >
+                {primaryCtaLabel(p)}
+              </Link>
+
+              {featuredShowResults && (
+                <Link
+                  href={`/results/${p.id}`}
+                  className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                >
+                  Ver resultados
+                </Link>
+              )}
+            </div>
           </div>
   
-          {/* BOTÕES (menores) — juntos lado a lado */}
-          <div className="absolute bottom-5 left-5 z-30 pointer-events-auto">
+          {/* BOTÕES (menores) — layout absoluto apenas para md+ */}
+          <div className="absolute bottom-5 left-5 z-30 pointer-events-auto hidden md:flex">
             <div className="flex items-center gap-2">
               <Link
                 href={`/poll/${p.id}`}
-                className="inline-flex items-center px-3 py-2 rounded-xl
-                           text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
               >
                 {primaryCtaLabel(p)}
               </Link>
@@ -517,8 +533,7 @@ export default async function Home({
               {featuredShowResults && (
                 <Link
                   href={`/results/${p.id}`}
-                  className="inline-flex items-center px-3 py-2 rounded-xl
-                             text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                  className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
                 >
                   Ver resultados
                 </Link>
