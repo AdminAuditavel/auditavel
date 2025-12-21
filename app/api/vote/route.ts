@@ -171,9 +171,9 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (lastVote?.created_at) {
-        const createdMs = new Date(lastVote.created_at).getTime();
-        const updatedMs = lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0;
-        const lastMs = Math.max(createdMs, updatedMs, createdMs);
+         const createdMs = toMs(lastVote.created_at);
+         const updatedMs = toMs(lastVote.updated_at);
+         const lastMs = Math.max(createdMs, updatedMs);
 
         const cooldownEnd = lastMs + cooldownSeconds * 1000;
         if (Date.now() < cooldownEnd) {
