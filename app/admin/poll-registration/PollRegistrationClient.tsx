@@ -27,6 +27,8 @@ type PollPayload = {
   show_partial_results?: boolean | null;
   icon_name?: string | null;
   icon_url?: string | null;
+
+  category?: string | null;
 };
 
 type PollOption = {
@@ -118,6 +120,9 @@ export default function PollRegistrationClient() {
     show_partial_results: true,
     icon_name: "",
     icon_url: "",
+
+    // novo campo
+    category: "",
   });
 
   // Mantém o último valor válido para reverter quando o usuário sai do campo com valor inválido
@@ -157,6 +162,7 @@ export default function PollRegistrationClient() {
       max_votes_per_user: 1,
       voting_type: "single",
       max_options_per_vote: 2,
+      category: "",
     }));
 
     setLastValidDates((prev) => ({
@@ -237,6 +243,8 @@ export default function PollRegistrationClient() {
 
           icon_name: poll.icon_name ?? "",
           icon_url: poll.icon_url ?? "",
+
+          category: poll.category ?? "",
         };
 
         // Regra: se allow_multiple for false, forçar max_votes_per_user=1
@@ -534,6 +542,8 @@ export default function PollRegistrationClient() {
         show_partial_results: true,
         icon_name: "",
         icon_url: "",
+
+        category: "",
       });
 
       setLastValidDates({
@@ -611,6 +621,8 @@ export default function PollRegistrationClient() {
       show_partial_results: true,
       icon_name: "",
       icon_url: "",
+
+      category: "",
     });
 
     setLastValidDates({
@@ -1071,6 +1083,19 @@ export default function PollRegistrationClient() {
               disabled={!isEditing || isBusy}
             />
           </label>
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Categoria:</label>
+          <input
+            type="text"
+            name="category"
+            value={formData.category}
+            onChange={handleInputChange}
+            style={styles.input}
+            placeholder="Ex.: cultura, clima, esportes..."
+            disabled={!isEditing || isBusy}
+          />
         </div>
 
         <div style={styles.fieldGroup}>
