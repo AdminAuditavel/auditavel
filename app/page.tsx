@@ -218,8 +218,8 @@ export default async function Home({
             <Image
               src="/Logo_Auditavel.png"
               alt="Auditável"
-              width={156}
-              height={156}
+              width={36}
+              height={36}
               className="rounded-full object-cover"
             />
           </div>
@@ -244,9 +244,9 @@ export default async function Home({
           </form>
         </header>
 
-        {/* CATEGORIES MENU */}
+        {/* CATEGORIES MENU (compacto) */}
         <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
-          <ul className="mt-2 flex gap-2 overflow-x-auto pb-2">
+          <ul className="mt-0 flex gap-2 overflow-x-auto pb-1">
             {[
               { key: "tendencias", label: "Tendências" },
               { key: "todas", label: "Todas" },
@@ -276,9 +276,8 @@ export default async function Home({
             })}
           </ul>
         </nav>
-        
-        {/* MAIN: menos padding-top e sem a linha <hr /> para aproximar o card do menu */}
-        <main id="top" className="pt-3 pb-8 md:pt-4 md:pb-8 max-w-6xl mx-auto">
+
+        <main id="top" className="pt-0 pb-8 max-w-6xl mx-auto">
           <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>
         </main>
       </>
@@ -499,8 +498,8 @@ export default async function Home({
           <Image
             src="/Logo_Auditavel.png"
             alt="Auditável"
-            width={156}
-            height={156}
+            width={36}
+            height={36}
             className="rounded-full object-cover"
           />
         </div>
@@ -525,9 +524,9 @@ export default async function Home({
         </form>
       </header>
 
-      {/* CATEGORIES MENU */}
+      {/* CATEGORIES MENU (compacto) */}
       <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
-        <ul className="mt-3 flex gap-2 overflow-x-auto pb-2">
+        <ul className="mt-0 flex gap-2 overflow-x-auto pb-1">
           {[
             { key: "tendencias", label: "Tendências" },
             { key: "todas", label: "Todas" },
@@ -558,12 +557,10 @@ export default async function Home({
         </ul>
       </nav>
 
-      <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
-        <hr className="border-gray-200" />
-
+      <main id="top" className="pt-0 pb-8 max-w-6xl mx-auto">
         {/* DESTAQUE */}
         {p ? (
-          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
+          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden mt-0">
             {/* overlay link - só em telas md+ para não bloquear controles mobile */}
             <Link
               href={`/poll/${p.id}`}
@@ -741,7 +738,7 @@ export default async function Home({
         ) : null}
 
         {/* LISTA COMPACTA */}
-        <section className="space-y-4">
+        <section className="space-y-4 mt-4">
           {otherPolls.length > 0 && (
             <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
           )}
