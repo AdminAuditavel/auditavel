@@ -386,6 +386,22 @@ export default function PollRegistrationClient() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handler para validar icon_url (aceita caminho relativo começando por "/" ou URL absoluta)
+  const handleIconUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const v = (e.target.value ?? "").trim();
+    if (!v) {
+      setError("");
+      return;
+    }
+    // aceita caminho relativo iniciando com "/" ou URL começando com http(s)://
+    const ok = v.startsWith("/") || /^https?:\/\//i.test(v);
+    if (!ok) {
+      setError('URL inválida. Use um caminho relativo começando com "/" ou uma URL absoluta (http(s)://...).');
+    } else {
+      setError("");
+    }
+  };
+
   // ===== Datas: valida no onBlur e reverte para último válido se necessário.
   const validateAndCommitDatesOrRevert = (field: "start_date" | "end_date" | "closes_at") => {
     const value = (formData as any)[field] as string;
@@ -987,7 +1003,7 @@ export default function PollRegistrationClient() {
             <input
               type="number"
               name="max_votes_per_user"
-              value={formData.max_votes_per_user}
+              value={String(formData.max_votes_per_user ?? "")}
               onChange={handleMaxVotesChange}
               style={{
                 ...styles.input,
@@ -1044,7 +1060,7 @@ export default function PollRegistrationClient() {
               disabled={!isEditing || isBusy}
             />
           </div>
-        
+
           <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 70 }}>
             <label style={styles.label}>Opções tipo:</label>
             <select
@@ -1070,7 +1086,7 @@ export default function PollRegistrationClient() {
               <option value="multiple">Múltipla</option>
             </select>
           </div>
-        
+
           <div style={{ ...styles.fieldGroup, width: 150, minWidth: 70 }}>
             <label style={styles.label}>Máx. opções marcar:</label>
             <input
@@ -1175,25 +1191,24 @@ export default function PollRegistrationClient() {
         </div>
 
         <div style={styles.fieldGroup}>
-        <label style={styles.label}>URL do Ícone:</label>
-        <input
-          type="text"                         // <-- era "url", agora "text" para permitir caminhos relativos
-          name="icon_url"
-          value={formData.icon_url}
-          onChange={handleInputChange}
-          onBlur={handleIconUrlBlur}
-          style={{
-            ...styles.input,
-            // mantém o visual de erro se houver mensagem
-            borderColor: error ? "#f43f5e" : undefined,
-          }}
-          placeholder="/polls/Eleicoes2026.png ou https://... "
-          disabled={!isEditing || isBusy}
-        />
-        <small style={{ color: "#6b7280", marginTop: 6 }}>
-          Pode usar caminho relativo (ex.: <code>/polls/Eleicoes2026.png</code>) ou URL absoluta.
-        </small>
-      </div>
+          <label style={styles.label}>URL do Ícone:</label>
+          <input
+            type="text"
+            name="icon_url"
+            value={formData.icon_url}
+            onChange={handleInputChange}
+            onBlur={handleIconUrlBlur}
+            style={{
+              ...styles.input,
+              borderColor: error ? "#f43f5e" : undefined,
+            }}
+            placeholder="/polls/Eleicoes2026.png ou https://... "
+            disabled={!isEditing || isBusy}
+          />
+          <small style={{ color: "#6b7280", marginTop: 6 }}>
+            Pode usar caminho relativo (ex.: <code>/polls/Eleicoes2026.png</code>) ou URL absoluta.
+          </small>
+        </div>
 
         {/* Linha de ações: Limpar/Cadastrar/Salvar/Cancelar à esquerda e Admin à direita */}
         <div style={styles.actionsRow}>
