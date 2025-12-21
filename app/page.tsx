@@ -686,8 +686,8 @@ export default async function Home({
                         })}
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-600">
-                        Ainda não há dados suficientes para exibição.
+                      <div className="text-sm text-gray-400">
+                        Sem dados computados para exibição.
                       </div>
                     )}
                   </div>
