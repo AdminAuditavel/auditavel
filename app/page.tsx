@@ -161,27 +161,27 @@ export default async function Home({
   if (!visiblePolls.length) {
     return <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>;
   }
-  
+
   const rawFeatured = resolvedSearchParams?.featured;
-  
+
   const featuredId =
     typeof rawFeatured === "string"
       ? rawFeatured.trim()
       : Array.isArray(rawFeatured) && typeof rawFeatured[0] === "string"
-        ? rawFeatured[0].trim()
-        : undefined;
-  
+      ? rawFeatured[0].trim()
+      : undefined;
+
   // 1) featured via URL (clique temporário do usuário)
   const featuredFromUrl =
     featuredId ? visiblePolls.find((x) => x.id === featuredId) : undefined;
-  
+
   // 2) featured automático (setado pelo job via is_featured)
   const featuredFromAuto =
     visiblePolls.find((x) => x.is_featured === true) || undefined;
-  
+
   // 3) fallback seguro
   const featuredPoll = featuredFromUrl || featuredFromAuto || visiblePolls[0];
-  
+
   const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id);
 
   const pollIds = visiblePolls.map((p) => p.id);
@@ -272,31 +272,31 @@ export default async function Home({
   /* =======================
    HELPERS
   ======================= */
-  
+
   function computeTopBars(p: Poll) {
     const opts = optionsByPoll.get(p.id) || [];
-  
+
     const show =
       p.status === "closed" ||
       ((p.status === "open" || p.status === "paused") && p.show_partial_results);
-  
+
     const isRanking = p.voting_type === "ranking";
-  
+
     let participants = 0;
     let topSingle: { text: string; percent: number }[] = [];
     let topRanking: { text: string; score: number }[] = [];
-  
+
     if (!show) return { show, isRanking, participants, topSingle, topRanking };
-  
+
     const pollVotes = votesByPoll.get(p.id) || [];
     const users = new Set(pollVotes.map((v) => v.user_hash));
     participants = users.size;
-  
+
     if (!isRanking) {
       if (participants > 0) {
         const vt = p.voting_type; // "single" | "multiple"
         const count = new Map<string, number>();
-  
+
         if (vt === "multiple") {
           // múltiplas opções: conta usuários únicos por opção (evita inflar)
           for (const o of opts) {
@@ -310,17 +310,17 @@ export default async function Home({
             count.set(v.option_id, (count.get(v.option_id) || 0) + 1);
           }
         }
-  
+
         const maxVotes =
           typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-  
+
         const percentBase =
           vt === "single"
             ? maxVotes === 1
               ? participants
               : pollVotes.length
             : participants;
-  
+
         topSingle = opts
           .map((o) => ({ text: o.option_text, n: count.get(o.id) || 0 }))
           .filter((o) => o.n > 0)
@@ -341,7 +341,7 @@ export default async function Home({
           return { text: o.option_text, score: avg };
         })
         .filter(Boolean) as { text: string; score: number }[];
-  
+
       if (summaries.length) {
         const best = Math.min(...summaries.map((s) => s.score));
         topRanking = summaries
@@ -353,19 +353,19 @@ export default async function Home({
           }));
       }
     }
-  
+
     return { show, isRanking, participants, topSingle, topRanking };
   }
-  
+
   const p = featuredPoll;
   const featuredIconSrc = p ? normalizeIconUrl(p.icon_url) : DEFAULT_POLL_ICON;
   const featuredTypeLabel = p ? votingTypeLabel(p.voting_type) : "";
-  
+
   const featuredShowResults =
     !!p &&
     (p.status === "closed" ||
       ((p.status === "open" || p.status === "paused") && p.show_partial_results));
-  
+
   const featuredBars = p ? computeTopBars(p) : null;
 
   /* =======================
@@ -373,14 +373,14 @@ export default async function Home({
   ======================= */
   return (
     <>
-      {/* TOP BAR: logo + search */}
+      {/* TOP BAR: only logo + search (logo already contains the name) */}
       <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center">
           <Image
             src="/Logo_Auditavel.png"
             alt="Auditável"
-            width={172}
-            height={172}
+            width={36}
+            height={36}
             className="rounded-full object-cover"
           />
         </div>
@@ -407,16 +407,8 @@ export default async function Home({
       </header>
 
       <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
-        {/* HERO */}
-        <section className="text-center space-y-3">
-          <h1 className="text-4xl md:text-5xl font-bold text-emerald-700">Auditável</h1>
-          <p className="text-base md:text-lg font-medium text-gray-800">
-            Onde decisões públicas podem ser verificadas.
-          </p>
-        </section>
-    
         <hr className="border-gray-200" />
-    
+
         {/* DESTAQUE */}
         {p ? (
           <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
@@ -426,7 +418,7 @@ export default async function Home({
               aria-label={`Abrir pesquisa: ${p.title}`}
               className="absolute inset-0 z-20 hidden md:block"
             />
-    
+
             {/* CONTEÚDO */}
             <div className="p-4 md:p-6 pb-4 md:pb-16 relative z-10">
               <div className="flex flex-col sm:flex-row gap-5">
@@ -440,7 +432,7 @@ export default async function Home({
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
-    
+
                 {/* META + TÍTULO */}
                 <div className="flex-1 min-w-0">
                   {/* DATA + STATUS — agora sempre na mesma linha; o texto de data trunca se necessário */}
@@ -448,7 +440,7 @@ export default async function Home({
                     <span className="text-sm text-red-700 min-w-0 truncate">
                       Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
                     </span>
-    
+
                     <span
                       className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                         p.status
@@ -457,36 +449,36 @@ export default async function Home({
                       {statusLabel(p.status)}
                     </span>
                   </div>
-    
+
                   {/* PERGUNTA (preto) */}
                   <h2 className="mt-3 text-lg md:text-2xl font-bold text-gray-900 leading-snug break-words">
                     {p.title}
                   </h2>
-    
+
                   {/* LINHA: Pesquisa tipo + badges */}
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
                     <span className="text-gray-500">Pesquisa tipo:</span>
-    
+
                     {/* BADGE do tipo */}
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
                       {featuredTypeLabel}
                     </span>
-    
+
                     {/* BADGE participação */}
                     {(() => {
                       const maxVotes =
                         typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-    
+
                       const isSingleParticipation = maxVotes === 1;
-    
+
                       const badgeClass = isSingleParticipation
                         ? "bg-red-100 text-red-800 border border-red-200"
                         : "bg-sky-100 text-sky-800 border border-sky-200";
-    
+
                       const badgeText = isSingleParticipation
                         ? "Participação Única"
                         : "Múltiplas Participações";
-    
+
                       return (
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
@@ -498,7 +490,7 @@ export default async function Home({
                   </div>
                 </div>
               </div>
-    
+
               {/* ABAIXO: 60/40 */}
               <div className="mt-5 flex flex-col md:flex-row gap-6">
                 {/* TEXTO — 60% */}
@@ -509,7 +501,7 @@ export default async function Home({
                       : "Participe desta decisão e ajude a construir informação pública confiável."}
                   </p>
                 </div>
-    
+
                 {/* POSIÇÕES — 40% */}
                 {featuredShowResults && featuredBars && (
                   <div className="md:w-2/5">
@@ -525,7 +517,7 @@ export default async function Home({
                               : i === 1
                               ? "bg-gray-300 text-gray-800"
                               : "bg-amber-700 text-amber-100";
-    
+
                           return (
                             <div
                               key={i}
@@ -536,7 +528,7 @@ export default async function Home({
                               >
                                 {i + 1}º
                               </span>
-    
+
                               <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
                                 {o.text}
                               </span>
@@ -552,7 +544,7 @@ export default async function Home({
                   </div>
                 )}
               </div>
-    
+
               {/* BOTÕES para mobile — agora os dois na mesma linha: Participar à esquerda e Ver resultados à direita */}
               <div className="mt-4 md:hidden flex items-center justify-between gap-2">
                 <Link
@@ -561,7 +553,7 @@ export default async function Home({
                 >
                   {primaryCtaLabel(p)}
                 </Link>
-    
+
                 {featuredShowResults && (
                   <Link
                     href={`/results/${p.id}`}
@@ -572,7 +564,7 @@ export default async function Home({
                 )}
               </div>
             </div>
-    
+
             {/* BOTÕES (menores) — layout absoluto apenas para md+ */}
             <div className="absolute left-5 z-30 pointer-events-auto hidden md:flex md:bottom-6 bottom-5">
               <div className="flex items-center gap-2">
@@ -582,7 +574,7 @@ export default async function Home({
                 >
                   {primaryCtaLabel(p)}
                 </Link>
-    
+
                 {featuredShowResults && (
                   <Link
                     href={`/results/${p.id}`}
@@ -595,17 +587,17 @@ export default async function Home({
             </div>
           </div>
         ) : null}
-    
+
         {/* LISTA COMPACTA */}
         <section className="space-y-4">
           {otherPolls.length > 0 && (
             <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
           )}
-    
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {otherPolls.map((p) => {
               const iconSrc = normalizeIconUrl(p.icon_url);
-    
+
               return (
                 <div
                   key={p.id}
@@ -617,7 +609,7 @@ export default async function Home({
                     aria-label={`Destacar pesquisa: ${p.title}`}
                     className="absolute inset-0 z-20"
                   />
-    
+
                   {/* Conteúdo */}
                   <div className="relative z-10 pointer-events-none flex gap-4 p-4">
                     {/* IMAGEM */}
@@ -629,7 +621,7 @@ export default async function Home({
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     </div>
-    
+
                     {/* TÍTULO + STATUS */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3">
@@ -640,7 +632,7 @@ export default async function Home({
                         >
                           {p.title}
                         </h4>
-    
+
                         <span
                           className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColor(
                             p.status
@@ -651,18 +643,18 @@ export default async function Home({
                       </div>
                     </div>
                   </div>
-    
+
                   {/* 🥇 PRIMEIRO COLOCADO (canto inferior direito) */}
                   {(() => {
                     const bars = computeTopBars(p);
                     if (!bars.show) return null;
-    
+
                     const winner = !bars.isRanking
                       ? bars.topSingle[0]?.text
                       : bars.topRanking[0]?.text;
-    
+
                     if (!winner) return null;
-    
+
                    return (
                     <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 text-xs font-normal text-gray-900">
                       <span className="text-yellow-500 leading-none">🥇</span>
@@ -675,7 +667,7 @@ export default async function Home({
             })}
           </div>
         </section>
-    
+
         <footer className="pt-8 border-t text-center text-sm text-gray-600">
           Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
         </footer>
