@@ -147,30 +147,51 @@ export async function POST(req: NextRequest) {
     /* =========================
        Cooldown (criar e alterar)
        Usa GREATEST(created_at, updated_at)
-       -- ajustado para usar a mesma lógica do arquivo anterior
+       -> busca um conjunto pequeno de votes e calcula o máximo em JS,
+          logando diagnósticos e clamping se o timestamp estiver no futuro.
     ========================= */
-    if (poll.vote_cooldown_seconds && poll.vote_cooldown_seconds > 0) {
-      const { data: lastVote } = await supabase
+    if (cooldownSeconds > 0) {
+      const { data: votes, error: votesErr } = await supabase
         .from("votes")
         .select("created_at, updated_at")
         .eq("poll_id", poll_id)
         .eq("participant_id", participant_id)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
 
-      if (lastVote) {
-        const lastTs = Math.max(
-          new Date(lastVote.created_at).getTime(),
-          lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0
-        );
+      if (votesErr) {
+        console.error("cooldown: error fetching votes:", votesErr);
+      } else if (votes && votes.length > 0) {
+        let lastMs = 0;
+        const parsedRows: any[] = [];
 
-        const cooldownEnd = lastTs + poll.vote_cooldown_seconds * 1000;
-        if (Date.now() < cooldownEnd) {
+        for (const v of votes as any[]) {
+          const createdMs = v.created_at ? new Date(v.created_at).getTime() : 0;
+          const updatedMs = v.updated_at ? new Date(v.updated_at).getTime() : 0;
+          parsedRows.push({ raw: { created_at: v.created_at, updated_at: v.updated_at }, createdMs, updatedMs });
+          lastMs = Math.max(lastMs, createdMs, updatedMs);
+        }
+
+        // diagnóstico: se lastMs > now, logue e clamp
+        const nowMs = Date.now();
+        if (lastMs > nowMs) {
+          console.warn("vote cooldown: last activity appears in the future; clamping. details:", {
+            poll_id,
+            participant_id,
+            nowMs,
+            parsedRows,
+            lastMs,
+            cooldownSeconds,
+          });
+          lastMs = nowMs;
+        }
+
+        const cooldownEnd = lastMs + cooldownSeconds * 1000;
+        if (nowMs < cooldownEnd) {
           return NextResponse.json(
             {
               error: "cooldown_active",
-              remaining_seconds: Math.ceil((cooldownEnd - Date.now()) / 1000),
+              remaining_seconds: Math.ceil((cooldownEnd - nowMs) / 1000),
             },
             { status: 429 }
           );
