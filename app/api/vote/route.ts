@@ -62,6 +62,17 @@ function normalizeFinitePositiveInt(val: any, fallback: number) {
   return Math.max(0, Math.floor(n));
 }
 
+function toMs(ts?: string | null) {
+  if (!ts) return 0;
+  const s = String(ts);
+
+  // Se já tem timezone explícito (Z ou +HH:MM / -HH:MM), mantém.
+  const hasTz = /Z$|[+-]\d{2}:\d{2}$/.test(s);
+
+  // Se NÃO tiver timezone, assume UTC (apende Z)
+  return new Date(hasTz ? s : `${s}Z`).getTime();
+}
+
 async function assertOptionsBelongToPoll(poll_id: string, ids: string[]): Promise<OptCheck> {
   if (!Array.isArray(ids) || ids.length === 0) {
     return { ok: false, error: "invalid_payload" };
