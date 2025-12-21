@@ -375,7 +375,7 @@ export default async function Home({
     <>
       {/* TOP BAR: logo + search */}
       <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center">
           <Image
             src="/Logo_Auditavel.png"
             alt="Auditável"
@@ -383,7 +383,6 @@ export default async function Home({
             height={36}
             className="rounded-full object-cover"
           />
-          <span className="text-lg font-bold text-emerald-700">Auditável</span>
         </div>
 
         <form method="get" action="/" className="flex-1 max-w-xl">
