@@ -20,7 +20,7 @@ type Poll = {
   icon_url?: string | null;
   max_votes_per_user?: number | null;
   is_featured?: boolean | null;
-  category?: string | null; // optional category field
+  category?: string | null;
 };
 
 type PollOption = {
@@ -146,14 +146,33 @@ export default async function Home({
       : "todas";
 
   /* =======================
-     POLLS
+     POLLS (com fallback se coluna category não existir)
   ======================= */
-  const { data: pollsData } = await supabase
+  const selectWithCategory =
+    "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user, is_featured, category";
+
+  const selectWithoutCategory =
+    "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user, is_featured";
+
+  let pollsData: Poll[] | null = null;
+
+  // primeira tentativa: buscar incluindo category
+  const attempt = await supabase
     .from("polls")
-    .select(
-      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user, is_featured, category"
-    )
+    .select(selectWithCategory)
     .order("created_at", { ascending: false });
+
+  if (attempt.error) {
+    // se falhar (ex.: coluna não existe), refaz sem category
+    const retry = await supabase
+      .from("polls")
+      .select(selectWithoutCategory)
+      .order("created_at", { ascending: false });
+
+    pollsData = retry.data || null;
+  } else {
+    pollsData = attempt.data || null;
+  }
 
   const polls: Poll[] = pollsData || [];
   let visiblePolls = polls.filter((p) => p.status !== "draft");
@@ -168,23 +187,28 @@ export default async function Home({
     });
   }
 
-  // Filter by category (if not 'todas')
-  // - 'tendencias' => polls marked is_featured === true (if any)
-  // - other keys => match poll.category (case-insensitive)
+  // Filter by category (se aplicável)
   if (activeCategory && activeCategory !== "todas") {
     if (activeCategory === "tendencias") {
       const featured = visiblePolls.filter((p) => p.is_featured === true);
       if (featured.length > 0) {
         visiblePolls = featured;
-      } // otherwise keep current list (fallback)
+      }
+      // se não houver featured, mantemos a lista atual (fallback)
     } else {
-      const catKey = activeCategory.toLowerCase();
-      visiblePolls = visiblePolls.filter(
-        (p) => (p.category || "").toLowerCase() === catKey
-      );
+      // somente filtra por category se a propriedade estiver presente nos dados
+      const hasCategoryField = polls.some((p) => typeof p.category !== "undefined");
+      if (hasCategoryField) {
+        const catKey = activeCategory.toLowerCase();
+        visiblePolls = visiblePolls.filter(
+          (p) => (p.category || "").toLowerCase() === catKey
+        );
+      }
+      // se não houver campo category, não filtramos (mantemos todas)
     }
   }
 
+  // Se lista vazia, renderiza header + menu + mensagem
   if (!visiblePolls.length) {
     return (
       <>
@@ -260,6 +284,7 @@ export default async function Home({
     );
   }
 
+  // --- restante (featured / agrupamentos / render) ---
   // select featured poll from filtered visiblePolls
   const featuredFromUrl =
     (() => {
