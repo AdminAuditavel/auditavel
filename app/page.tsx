@@ -817,7 +817,7 @@ export default async function Home({
           </div>
         </section>
 
-        <footer className="pt-8 border-t text-center text-sm text-gray-600">
+        <footer className="mt-8 pt-8 border-t border-gray-200 text-center text-sm text-gray-400">
           Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
         </footer>
       </main>
