@@ -246,7 +246,7 @@ export default async function Home({
 
         {/* CATEGORIES MENU */}
         <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
-          <ul className="mt-3 flex gap-2 overflow-x-auto pb-2">
+          <ul className="mt-2 flex gap-2 overflow-x-auto pb-2">
             {[
               { key: "tendencias", label: "Tendências" },
               { key: "todas", label: "Todas" },
@@ -276,8 +276,9 @@ export default async function Home({
             })}
           </ul>
         </nav>
-
-        <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
+        
+        {/* MAIN: menos padding-top e sem a linha <hr /> para aproximar o card do menu */}
+        <main id="top" className="pt-3 pb-8 md:pt-4 md:pb-8 max-w-6xl mx-auto">
           <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>
         </main>
       </>
