@@ -1,3 +1,4 @@
+//app/page.tsx
 export const dynamic = "force-dynamic";
 
 import Image from "next/image";
@@ -34,6 +35,7 @@ type Vote = {
   poll_id: string;
   option_id: string | null;
   user_hash: string;
+  created_at?: string | null;
 };
 
 type VoteRanking = {
@@ -187,15 +189,48 @@ export default async function Home({
     });
   }
 
-  // Filter by category (se aplicável)
-  if (activeCategory && activeCategory !== "todas") {
-    if (activeCategory === "tendencias") {
-      const featured = visiblePolls.filter((p) => p.is_featured === true);
-      if (featured.length > 0) {
-        visiblePolls = featured;
+  // If the user selected "tendencias", treat it as a dynamic "trending" mode:
+  // order polls by number of votes in the last 30 days (descending).
+  if (activeCategory === "tendencias") {
+    try {
+      const WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+      const cutoffISO = new Date(Date.now() - WINDOW_MS).toISOString();
+
+      // fetch votes in the last 30 days (only poll_id needed)
+      const { data: votesWindowData, error: votesError } = await supabase
+        .from("votes")
+        .select("poll_id")
+        .gte("created_at", cutoffISO);
+
+      const counts = new Map<string, number>();
+      if (!votesError && Array.isArray(votesWindowData)) {
+        for (const v of votesWindowData as Vote[]) {
+          if (!v || !v.poll_id) continue;
+          counts.set(v.poll_id, (counts.get(v.poll_id) || 0) + 1);
+        }
       }
-      // se não houver featured, mantemos a lista atual (fallback)
-    } else {
+
+      // attach temporary _votes30 to each poll, then sort by it
+      visiblePolls = visiblePolls
+        .map((p) => ({ ...p, _votes30: counts.get(p.id) || 0 }))
+        .sort((a: any, b: any) => (b._votes30 || 0) - (a._votes30 || 0));
+
+      // If there are zero votes in the window for all polls, fallback to showing featured polls first
+      const anyVotes = visiblePolls.some((p: any) => (p._votes30 || 0) > 0);
+      if (!anyVotes) {
+        const featured = visiblePolls.filter((p) => p.is_featured === true);
+        if (featured.length > 0) {
+          visiblePolls = featured;
+        }
+        // otherwise keep the current ordering (recent first)
+      }
+    } catch (e) {
+      // On any error, fallback to default behavior (no trending)
+      console.error("Erro ao calcular tendências:", e);
+    }
+  } else {
+    // Filter by category (se aplicável)
+    if (activeCategory && activeCategory !== "todas") {
       // somente filtra por category se a propriedade estiver presente nos dados
       const hasCategoryField = polls.some((p) => typeof p.category !== "undefined");
       if (hasCategoryField) {
@@ -215,8 +250,7 @@ export default async function Home({
           tendencias: "tendencias",
         };
 
-        const mapped = (categoryKeyMap[activeCategory.toLowerCase()] ??
-          activeCategory).toLowerCase();
+        const mapped = (categoryKeyMap[activeCategory.toLowerCase()] ?? activeCategory).toLowerCase();
 
         visiblePolls = visiblePolls.filter(
           (p) => (p.category || "").toLowerCase() === mapped
