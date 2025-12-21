@@ -375,7 +375,7 @@ export default async function Home({
           />
   
           {/* CONTEÚDO */}
-          <div className="p-4 md:p-6 pb-20 relative z-10">
+          <div className="p-4 md:p-6 pb-4 md:pb-20 relative z-10">
             <div className="flex flex-col sm:flex-row gap-5">
               {/* IMAGEM (full width em mobile, tamanho fixo em sm+/md+) */}
               <div className="w-full sm:w-40 h-44 sm:h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
@@ -504,7 +504,7 @@ export default async function Home({
             <div className="mt-4 md:hidden flex items-center justify-between gap-2">
               <Link
                 href={`/poll/${p.id}`}
-                className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition flex-1 max-w-[48%] justify-start"
+                className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition w-[48%] justify-center"
               >
                 {primaryCtaLabel(p)}
               </Link>
@@ -512,7 +512,7 @@ export default async function Home({
               {featuredShowResults && (
                 <Link
                   href={`/results/${p.id}`}
-                  className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition flex-1 max-w-[48%] justify-end"
+                  className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition w-[48%] justify-center"
                 >
                   Ver resultados
                 </Link>
