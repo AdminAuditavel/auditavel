@@ -1,5 +1,3 @@
-// app/api/admin/polls/[id]/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
@@ -11,7 +9,7 @@ function assertAdmin(req: NextRequest) {
 /**
  * Campos alinhados com a sua tabela atual:
  * id,title,description,status,allow_multiple,max_votes_per_user,created_at,closes_at,
- * vote_cooldown_seconds,voting_type,start_date,end_date,show_partial_results,icon_name,icon_url,max_options_per_vote
+ * vote_cooldown_seconds,voting_type,start_date,end_date,show_partial_results,icon_name,icon_url,max_options_per_vote,category
  */
 const POLL_SELECT_FIELDS = [
   "id",
@@ -30,6 +28,7 @@ const POLL_SELECT_FIELDS = [
   "show_partial_results",
   "icon_name",
   "icon_url",
+  "category",
 ].join(", ");
 
 /** "" / null / undefined -> null ; string -> trim */
@@ -148,6 +147,7 @@ export async function PUT(
       "show_partial_results",
       "icon_name",
       "icon_url",
+      "category",
     ] as const;
 
     const update: Record<string, any> = {};
@@ -239,6 +239,11 @@ export async function PUT(
         }
         update.max_options_per_vote = n;
       }
+    }
+
+    // Normaliza category (string vazia -> null)
+    if ("category" in update) {
+      update.category = emptyToNull(update.category);
     }
 
     // Snapshot atual (para validar datas + coerência com voting_type)
