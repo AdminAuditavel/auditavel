@@ -488,10 +488,6 @@ export default async function Home({
                               <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
                                 {o.text}
                               </span>
-      
-                              <span className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
-                                {o.percent}%
-                              </span>
                             </div>
                           );
                         })}
@@ -526,10 +522,6 @@ export default async function Home({
       
                             <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
                               {o.text}
-                            </span>
-      
-                            <span className="shrink-0 text-sm font-bold text-gray-900 tabular-nums">
-                              {o.score}
                             </span>
                           </div>
                         );
