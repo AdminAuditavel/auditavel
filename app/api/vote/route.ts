@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     ========================= */
     if (cooldownSeconds > 0) {
       // Pedimos ao Postgres o maior timestamp (created/updated) em epoch (segundos)
-      const { data: lastRow, error: votesErr } = await supabase
+      const res: any = await supabase
         .from('votes')
         .select(
           "extract(epoch from greatest(created_at, coalesce(updated_at, created_at))) as last_epoch"
@@ -160,6 +160,9 @@ export async function POST(req: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      const lastRow = res?.data;
+      const votesErr = res?.error;
 
       if (votesErr) {
         console.error('cooldown: error fetching last_epoch from votes:', votesErr);
