@@ -1175,17 +1175,25 @@ export default function PollRegistrationClient() {
         </div>
 
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>URL do Ícone:</label>
-          <input
-            type="url"
-            name="icon_url"
-            value={formData.icon_url}
-            onChange={handleInputChange}
-            style={styles.input}
-            placeholder="Digite a URL do ícone"
-            disabled={!isEditing || isBusy}
-          />
-        </div>
+        <label style={styles.label}>URL do Ícone:</label>
+        <input
+          type="text"                         // <-- era "url", agora "text" para permitir caminhos relativos
+          name="icon_url"
+          value={formData.icon_url}
+          onChange={handleInputChange}
+          onBlur={handleIconUrlBlur}
+          style={{
+            ...styles.input,
+            // mantém o visual de erro se houver mensagem
+            borderColor: error ? "#f43f5e" : undefined,
+          }}
+          placeholder="/polls/Eleicoes2026.png ou https://... "
+          disabled={!isEditing || isBusy}
+        />
+        <small style={{ color: "#6b7280", marginTop: 6 }}>
+          Pode usar caminho relativo (ex.: <code>/polls/Eleicoes2026.png</code>) ou URL absoluta.
+        </small>
+      </div>
 
         {/* Linha de ações: Limpar/Cadastrar/Salvar/Cancelar à esquerda e Admin à direita */}
         <div style={styles.actionsRow}>
