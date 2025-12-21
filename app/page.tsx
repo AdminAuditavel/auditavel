@@ -250,7 +250,7 @@ export default async function Home({
             {[
               { key: "tendencias", label: "Tendências" },
               { key: "todas", label: "Todas" },
-              { key: "politicas", label: "Políticas" },
+              { key: "politicas", label: "Política" },
               { key: "esportes", label: "Esportes" },
               { key: "cultura", label: "Cultura" },
               { key: "clima", label: "Clima" },
