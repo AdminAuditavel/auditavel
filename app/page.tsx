@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import PollImage from "@/app/components/PollImage";
@@ -375,9 +376,13 @@ export default async function Home({
       {/* TOP BAR: logo + search */}
       <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-600 text-white font-bold">
-            A
-          </span>
+          <Image
+            src="/Logo_Auditavel.png"
+            alt="Auditável"
+            width={36}
+            height={36}
+            className="rounded-full object-cover"
+          />
           <span className="text-lg font-bold text-emerald-700">Auditável</span>
         </div>
 
