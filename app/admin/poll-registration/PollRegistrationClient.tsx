@@ -950,8 +950,7 @@ export default function PollRegistrationClient() {
               onChange={handleMaxVotesChange}
               style={styles.input}
               min={formData.allow_multiple ? 2 : 1}
-              disabled={!isEditing || isBusy}
-              readOnly={!formData.allow_multiple}
+              disabled={!isEditing || isBusy || !formData.allow_multiple}
             />
           </div>
         </div>
@@ -1035,7 +1034,6 @@ export default function PollRegistrationClient() {
               style={styles.input}
               min={1}
               disabled={!isEditing || isBusy || formData.voting_type !== "multiple"}
-              readOnly={formData.voting_type !== "multiple"}
             />
           </div>
         </div>
