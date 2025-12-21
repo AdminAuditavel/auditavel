@@ -521,7 +521,7 @@ export default async function Home({
           </div>
   
           {/* BOTÕES (menores) — layout absoluto apenas para md+ */}
-          <div className="absolute bottom-5 left-5 z-30 pointer-events-auto hidden md:flex">
+          <div className="absolute left-5 z-30 pointer-events-auto hidden md:flex md:bottom-8 bottom-5">
             <div className="flex items-center gap-2">
               <Link
                 href={`/poll/${p.id}`}
