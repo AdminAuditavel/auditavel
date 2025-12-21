@@ -644,7 +644,7 @@ export default async function Home({
               <div className="mt-5 flex flex-col md:flex-row gap-6">
                 {/* TEXTO — 60% */}
                 <div className="md:w-3/5">
-                  <p className="text-gray-700 leading-relaxed text-base text-left text-justify">
+                  <p className="text-gray-700 leading-relaxed text-base text-justify">
                     {p.description
                       ? p.description
                       : "Participe desta decisão e ajude a construir informação pública confiável."}
