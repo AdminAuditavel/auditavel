@@ -1,5 +1,4 @@
 // app/poll/[id]/page.tsx
-
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -75,25 +74,24 @@ export default function PollPage() {
 
   // Helpers derivados do poll
   const isOpen = poll?.status === 'open';
-
   const allowMultiple: boolean = Boolean(poll?.allow_multiple);
 
   const effectiveMaxVotesPerUser: number = useMemo(() => {
-    // Definição canônica conforme seu critério:
-    // allow_multiple=false => max_votes_per_user=1
+    // Regra canônica:
+    // allow_multiple=false => 1 (último voto vale, editável)
+    // allow_multiple=true  => max_votes_per_user (fallback 1)
     if (!poll) return 1;
     if (!allowMultiple) return 1;
-
     const raw = poll.max_votes_per_user;
     const n = typeof raw === 'number' && Number.isFinite(raw) ? raw : 1;
-    return Math.max(1, n);
+    return Math.max(1, Math.floor(n));
   }, [poll, allowMultiple]);
 
   const voteCooldownSeconds: number = useMemo(() => {
     if (!poll) return 0;
     const raw = poll.vote_cooldown_seconds;
     const n = typeof raw === 'number' && Number.isFinite(raw) ? raw : 0;
-    return Math.max(0, n);
+    return Math.max(0, Math.floor(n));
   }, [poll]);
 
   const maxOptionsPerVote: number = useMemo(() => {
@@ -106,7 +104,7 @@ export default function PollPage() {
   const cooldownActive = cooldownRemaining > 0;
 
   const voteLimitReached = useMemo(() => {
-    // Apenas para allow_multiple=true, pois allow_multiple=false é "editar voto" (último vale)
+    // Limite só importa quando allow_multiple=true (pois cria votos novos)
     if (!allowMultiple) return false;
     return votesUsed >= effectiveMaxVotesPerUser;
   }, [allowMultiple, votesUsed, effectiveMaxVotesPerUser]);
@@ -118,13 +116,7 @@ export default function PollPage() {
     if (cooldownActive)
       return `Aguarde ${cooldownRemaining}s para votar novamente.`;
     return null;
-  }, [
-    isOpen,
-    voteLimitReached,
-    effectiveMaxVotesPerUser,
-    cooldownActive,
-    cooldownRemaining,
-  ]);
+  }, [isOpen, voteLimitReached, effectiveMaxVotesPerUser, cooldownActive, cooldownRemaining]);
 
   const participationNotice = useMemo(() => {
     if (!hasParticipation) return null;
@@ -138,6 +130,16 @@ export default function PollPage() {
   // Carregamento principal
   useEffect(() => {
     let mounted = true;
+
+    // reset UI states ao trocar poll
+    setRankingMessage(null);
+    setMultipleMessage(null);
+    setSingleMessage(null);
+    setSelectedOptions([]);
+    setSelectedSingleOption(null);
+    setHasParticipation(false);
+    setVotesUsed(0);
+    setCooldownRemaining(0);
 
     // Inicializar identidades locais
     const pid = getOrCreateParticipantId();
@@ -168,28 +170,16 @@ export default function PollPage() {
         .eq('poll_id', safeId);
 
       if (mounted) {
-        const opts = optionsData ?? [];
-        setOptions(opts);
+        setOptions(optionsData ?? []);
         setLoading(false);
-
-        // Inicializar seleção do single (opcional)
-        if (pollData.voting_type === 'single' && opts.length > 0) {
-          setSelectedSingleOption(opts[0].id);
-        }
       }
     };
 
     const refreshParticipation = async () => {
-      // Regras por (poll_id, participant_id)
+      // Por (poll_id, participant_id)
       const pidLocal = pid;
 
-      // 1) Quantos votos já existem (para allow_multiple=true)
-      // 2) Buscar "última atividade" para cooldown
-      //    - para allow_multiple=false: provavelmente existe 1 voto que será atualizado => usar max(created_at, updated_at)
-      //    - para allow_multiple=true: pega o voto mais recente por created_at (ou updated_at se preferir)
-      //
-      // Para simplificar e ficar consistente: pegar o voto mais recente e também o count.
-
+      // voto mais recente (para cooldown)
       const { data: lastVote } = await supabase
         .from('votes')
         .select('id, created_at, updated_at')
@@ -199,7 +189,8 @@ export default function PollPage() {
         .limit(1)
         .maybeSingle();
 
-      const { count: voteCount } = await supabase
+      // total de votos (para limite quando allow_multiple=true)
+      const { count } = await supabase
         .from('votes')
         .select('id', { count: 'exact', head: true })
         .eq('poll_id', safeId)
@@ -207,29 +198,28 @@ export default function PollPage() {
 
       if (!mounted) return;
 
-      const used = typeof voteCount === 'number' ? voteCount : 0;
+      const used = typeof count === 'number' ? count : 0;
       setVotesUsed(used);
       setHasParticipation(used > 0);
 
-      // Cooldown
+      // cooldown
       if (!lastVote || voteCooldownSeconds <= 0) {
         setCooldownRemaining(0);
         return;
       }
 
-      const createdAt = lastVote.created_at ? new Date(lastVote.created_at).getTime() : 0;
-      const updatedAt = lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0;
+      const createdAtMs = lastVote.created_at ? new Date(lastVote.created_at).getTime() : 0;
+      const updatedAtMs = lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0;
 
-      // Para voto único editável, updated_at precisa refletir alterações; se não existir, fallback em created_at.
-      const lastActivityMs = Math.max(createdAt, updatedAt, createdAt);
+      // importante: em voto único, updated_at precisa andar quando altera
+      const lastActivityMs = Math.max(createdAtMs, updatedAtMs, createdAtMs);
 
       if (!lastActivityMs) {
         setCooldownRemaining(0);
         return;
       }
 
-      const nowMs = Date.now();
-      const elapsedSeconds = Math.floor((nowMs - lastActivityMs) / 1000);
+      const elapsedSeconds = Math.floor((Date.now() - lastActivityMs) / 1000);
       const remaining = Math.max(0, voteCooldownSeconds - elapsedSeconds);
       setCooldownRemaining(remaining);
     };
@@ -244,7 +234,7 @@ export default function PollPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeId, router, voteCooldownSeconds]);
 
-  // Timer de countdown do cooldown (UX)
+  // countdown local do cooldown
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
 
@@ -267,7 +257,11 @@ export default function PollPage() {
     );
   }
 
-  async function sendVote(payload: any, setMsg: (s: string | null) => void, defaultErr: string) {
+  async function sendVote(
+    payload: Record<string, any>,
+    setMsg: (s: string | null) => void,
+    defaultErr: string
+  ) {
     setMsg(null);
 
     const pid = participantId ?? getOrCreateParticipantId();
@@ -292,10 +286,19 @@ export default function PollPage() {
         // ignore
       }
 
-      // Se sua API retornar remaining_seconds, já exibimos amigável
       if (data?.error === 'cooldown_active' && typeof data?.remaining_seconds === 'number') {
         setCooldownRemaining(Math.max(0, Math.floor(data.remaining_seconds)));
         setMsg(`Aguarde ${Math.floor(data.remaining_seconds)}s para votar novamente.`);
+        return;
+      }
+
+      if (data?.error === 'vote_limit_reached') {
+        setMsg('Limite de votos atingido para esta enquete.');
+        return;
+      }
+
+      if (data?.error === 'max_options_exceeded') {
+        setMsg('Você selecionou mais opções do que o permitido.');
         return;
       }
 
@@ -316,7 +319,7 @@ export default function PollPage() {
 
       <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
 
-      {/* Avisos globais (participação / cooldown / limite / status) */}
+      {/* Avisos globais */}
       {participationNotice && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {participationNotice}
@@ -368,7 +371,6 @@ export default function PollPage() {
           <button
             disabled={Boolean(disableReason) || options.length === 0}
             onClick={async () => {
-              // ranking: envia lista ordenada completa
               await sendVote(
                 { option_ids: options.map((o) => o.id) },
                 setRankingMessage,
@@ -394,8 +396,7 @@ export default function PollPage() {
           <div className="space-y-2">
             {options.map((o) => {
               const selected = selectedOptions.includes(o.id);
-              const limitReached =
-                !selected && selectedOptions.length >= maxOptionsPerVote;
+              const limitReached = !selected && selectedOptions.length >= maxOptionsPerVote;
 
               return (
                 <button
@@ -439,9 +440,7 @@ export default function PollPage() {
           )}
 
           <button
-            disabled={
-              Boolean(disableReason) || selectedOptions.length === 0
-            }
+            disabled={Boolean(disableReason) || selectedOptions.length === 0}
             onClick={async () => {
               if (selectedOptions.length === 0) {
                 setMultipleMessage('Selecione ao menos uma opção.');
@@ -464,9 +463,7 @@ export default function PollPage() {
       {/* ================= SINGLE ================= */}
       {votingType === 'single' && (
         <>
-          <p className="text-sm text-gray-600">
-            Selecione uma opção.
-          </p>
+          <p className="text-sm text-gray-600">Selecione uma opção.</p>
 
           <div className="space-y-2">
             {options.map((o) => {
