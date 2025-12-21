@@ -377,7 +377,7 @@ export default async function Home({
           />
       
           {/* CONTEÚDO */}
-          <div className="p-6 md:p-7 pb-12 relative z-10 pointer-events-none">
+          <div className="p-6 md:p-7 relative z-10 pointer-events-none">
             <div className="flex flex-col md:flex-row gap-5">
       
               {/* IMAGEM */}
