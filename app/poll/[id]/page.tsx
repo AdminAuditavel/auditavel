@@ -1,6 +1,5 @@
 // app/poll/[id]/page.tsx
 
-// app/poll/[id]/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
