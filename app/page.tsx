@@ -120,6 +120,20 @@ export default async function Home({
 }: {
   searchParams?: any;
 }) {
+  // Resolve searchParams early so header form can reflect `q` and we can filter results.
+  const resolvedSearchParams =
+    searchParams && typeof searchParams.then === "function"
+      ? await searchParams
+      : searchParams;
+
+  const rawQ = resolvedSearchParams?.q;
+  const q =
+    typeof rawQ === "string"
+      ? rawQ.trim()
+      : Array.isArray(rawQ) && typeof rawQ[0] === "string"
+      ? rawQ[0].trim()
+      : undefined;
+
   /* =======================
      POLLS
   ======================= */
@@ -131,17 +145,21 @@ export default async function Home({
     .order("created_at", { ascending: false });
 
   const polls: Poll[] = pollsData || [];
-  const visiblePolls = polls.filter((p) => p.status !== "draft");
+  let visiblePolls = polls.filter((p) => p.status !== "draft");
+
+  // Filter by search query `q` if provided (procura em título e descrição)
+  if (q && q.length > 0) {
+    const ql = q.toLowerCase();
+    visiblePolls = visiblePolls.filter((p) => {
+      const t = p.title?.toLowerCase() || "";
+      const d = p.description?.toLowerCase() || "";
+      return t.includes(ql) || d.includes(ql);
+    });
+  }
 
   if (!visiblePolls.length) {
     return <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>;
   }
-
-  // Compatível com searchParams como objeto, Promise, string ou string[]
-  const resolvedSearchParams =
-    searchParams && typeof searchParams.then === "function"
-      ? await searchParams
-      : searchParams;
   
   const rawFeatured = resolvedSearchParams?.featured;
   
@@ -353,280 +371,311 @@ export default async function Home({
      RENDER
   ======================= */
   return (
-    <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
-      {/* HERO */}
-      <section className="text-center space-y-3">
-        <h1 className="text-4xl md:text-5xl font-bold text-emerald-700">Auditável</h1>
-        <p className="text-base md:text-lg font-medium text-gray-800">
-          Onde decisões públicas podem ser verificadas.
-        </p>
-      </section>
-  
-      <hr className="border-gray-200" />
-  
-      {/* DESTAQUE */}
-      {p ? (
-        <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-          {/* overlay link - só em telas md+ para não bloquear controles mobile */}
-          <Link
-            href={`/poll/${p.id}`}
-            aria-label={`Abrir pesquisa: ${p.title}`}
-            className="absolute inset-0 z-20 hidden md:block"
-          />
-  
-          {/* CONTEÚDO */}
-          {/* Ajuste: md:pb-16 para reservar espaço suficiente aos botões em desktop */}
-          <div className="p-4 md:p-6 pb-4 md:pb-16 relative z-10">
-            <div className="flex flex-col sm:flex-row gap-5">
-              {/* IMAGEM (full width em mobile, tamanho fixo em sm+/md+) */}
-              <div className="w-full sm:w-40 h-44 sm:h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
-                <PollImage
-                  src={featuredIconSrc}
-                  fallbackSrc={DEFAULT_POLL_ICON}
-                  alt={p.title}
-                  priority
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              </div>
-  
-              {/* META + TÍTULO */}
-              <div className="flex-1 min-w-0">
-                {/* DATA + STATUS — agora sempre na mesma linha; o texto de data trunca se necessário */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-red-700 min-w-0 truncate">
-                    Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
-                  </span>
-  
-                  <span
-                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                      p.status
-                    )}`}
-                  >
-                    {statusLabel(p.status)}
-                  </span>
+    <>
+      {/* TOP BAR: logo + search */}
+      <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-600 text-white font-bold">
+            A
+          </span>
+          <span className="text-lg font-bold text-emerald-700">Auditável</span>
+        </div>
+
+        <form method="get" action="/" className="flex-1 max-w-xl">
+          <label htmlFor="q" className="sr-only">Buscar pesquisas</label>
+          <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-2 shadow-sm">
+            {/* Search icon */}
+            <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+
+            <input
+              id="q"
+              name="q"
+              defaultValue={q || ""}
+              className="ml-3 w-full text-sm outline-none"
+              placeholder="Buscar pesquisa, tema ou cidade..."
+              aria-label="Buscar pesquisas"
+            />
+          </div>
+        </form>
+      </header>
+
+      <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
+        {/* HERO */}
+        <section className="text-center space-y-3">
+          <h1 className="text-4xl md:text-5xl font-bold text-emerald-700">Auditável</h1>
+          <p className="text-base md:text-lg font-medium text-gray-800">
+            Onde decisões públicas podem ser verificadas.
+          </p>
+        </section>
+    
+        <hr className="border-gray-200" />
+    
+        {/* DESTAQUE */}
+        {p ? (
+          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
+            {/* overlay link - só em telas md+ para não bloquear controles mobile */}
+            <Link
+              href={`/poll/${p.id}`}
+              aria-label={`Abrir pesquisa: ${p.title}`}
+              className="absolute inset-0 z-20 hidden md:block"
+            />
+    
+            {/* CONTEÚDO */}
+            <div className="p-4 md:p-6 pb-4 md:pb-16 relative z-10">
+              <div className="flex flex-col sm:flex-row gap-5">
+                {/* IMAGEM (full width em mobile, tamanho fixo em sm+/md+) */}
+                <div className="w-full sm:w-40 h-44 sm:h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                  <PollImage
+                    src={featuredIconSrc}
+                    fallbackSrc={DEFAULT_POLL_ICON}
+                    alt={p.title}
+                    priority
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 </div>
-  
-                {/* PERGUNTA (preto) */}
-                <h2 className="mt-3 text-lg md:text-2xl font-bold text-gray-900 leading-snug break-words">
-                  {p.title}
-                </h2>
-  
-                {/* LINHA: Pesquisa tipo + badges */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                  <span className="text-gray-500">Pesquisa tipo:</span>
-  
-                  {/* BADGE do tipo */}
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
-                    {featuredTypeLabel}
-                  </span>
-  
-                  {/* BADGE participação */}
+    
+                {/* META + TÍTULO */}
+                <div className="flex-1 min-w-0">
+                  {/* DATA + STATUS — agora sempre na mesma linha; o texto de data trunca se necessário */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-red-700 min-w-0 truncate">
+                      Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
+                    </span>
+    
+                    <span
+                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
+                        p.status
+                      )}`}
+                    >
+                      {statusLabel(p.status)}
+                    </span>
+                  </div>
+    
+                  {/* PERGUNTA (preto) */}
+                  <h2 className="mt-3 text-lg md:text-2xl font-bold text-gray-900 leading-snug break-words">
+                    {p.title}
+                  </h2>
+    
+                  {/* LINHA: Pesquisa tipo + badges */}
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                    <span className="text-gray-500">Pesquisa tipo:</span>
+    
+                    {/* BADGE do tipo */}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                      {featuredTypeLabel}
+                    </span>
+    
+                    {/* BADGE participação */}
+                    {(() => {
+                      const maxVotes =
+                        typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
+    
+                      const isSingleParticipation = maxVotes === 1;
+    
+                      const badgeClass = isSingleParticipation
+                        ? "bg-red-100 text-red-800 border border-red-200"
+                        : "bg-sky-100 text-sky-800 border border-sky-200";
+    
+                      const badgeText = isSingleParticipation
+                        ? "Participação Única"
+                        : "Múltiplas Participações";
+    
+                      return (
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
+                        >
+                          {badgeText}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+    
+              {/* ABAIXO: 60/40 */}
+              <div className="mt-5 flex flex-col md:flex-row gap-6">
+                {/* TEXTO — 60% */}
+                <div className="md:w-3/5">
+                  <p className="text-gray-700 leading-relaxed text-base text-left">
+                    {p.description
+                      ? p.description
+                      : "Participe desta decisão e ajude a construir informação pública confiável."}
+                  </p>
+                </div>
+    
+                {/* POSIÇÕES — 40% */}
+                {featuredShowResults && featuredBars && (
+                  <div className="md:w-2/5">
+                    {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
+                      <div className="space-y-2">
+                        {(featuredBars.isRanking
+                          ? featuredBars.topRanking
+                          : featuredBars.topSingle
+                        ).map((o, i) => {
+                          const medal =
+                            i === 0
+                              ? "bg-yellow-400 text-yellow-900"
+                              : i === 1
+                              ? "bg-gray-300 text-gray-800"
+                              : "bg-amber-700 text-amber-100";
+    
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
+                            >
+                              <span
+                                className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
+                              >
+                                {i + 1}º
+                              </span>
+    
+                              <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                                {o.text}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-600">
+                        Ainda não há dados suficientes para exibição.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+    
+              {/* BOTÕES para mobile — agora os dois na mesma linha: Participar à esquerda e Ver resultados à direita */}
+              <div className="mt-4 md:hidden flex items-center justify-between gap-2">
+                <Link
+                  href={`/poll/${p.id}`}
+                  className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition w-[48%] justify-center"
+                >
+                  {primaryCtaLabel(p)}
+                </Link>
+    
+                {featuredShowResults && (
+                  <Link
+                    href={`/results/${p.id}`}
+                    className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition w-[48%] justify-center"
+                  >
+                    Ver resultados
+                  </Link>
+                )}
+              </div>
+            </div>
+    
+            {/* BOTÕES (menores) — layout absoluto apenas para md+ */}
+            <div className="absolute left-5 z-30 pointer-events-auto hidden md:flex md:bottom-6 bottom-5">
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/poll/${p.id}`}
+                  className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                >
+                  {primaryCtaLabel(p)}
+                </Link>
+    
+                {featuredShowResults && (
+                  <Link
+                    href={`/results/${p.id}`}
+                    className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                  >
+                    Ver resultados
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+    
+        {/* LISTA COMPACTA */}
+        <section className="space-y-4">
+          {otherPolls.length > 0 && (
+            <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
+          )}
+    
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {otherPolls.map((p) => {
+              const iconSrc = normalizeIconUrl(p.icon_url);
+    
+              return (
+                <div
+                  key={p.id}
+                  className="relative group border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition overflow-hidden"
+                >
+                  {/* Clique promove para o card principal */}
+                  <Link
+                    href={`/?featured=${encodeURIComponent(p.id)}#top`}
+                    aria-label={`Destacar pesquisa: ${p.title}`}
+                    className="absolute inset-0 z-20"
+                  />
+    
+                  {/* Conteúdo */}
+                  <div className="relative z-10 pointer-events-none flex gap-4 p-4">
+                    {/* IMAGEM */}
+                    <div className="w-20 h-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                      <PollImage
+                        src={iconSrc}
+                        fallbackSrc={DEFAULT_POLL_ICON}
+                        alt={p.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+    
+                    {/* TÍTULO + STATUS */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <h4
+                          className={`text-sm md:text-base font-semibold leading-snug ${titleColor(
+                            p.status
+                          )}`}
+                        >
+                          {p.title}
+                        </h4>
+    
+                        <span
+                          className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColor(
+                            p.status
+                          )}`}
+                        >
+                          {statusLabel(p.status)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+    
+                  {/* 🥇 PRIMEIRO COLOCADO (canto inferior direito) */}
                   {(() => {
-                    const maxVotes =
-                      typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-  
-                    const isSingleParticipation = maxVotes === 1;
-  
-                    const badgeClass = isSingleParticipation
-                      ? "bg-red-100 text-red-800 border border-red-200"
-                      : "bg-sky-100 text-sky-800 border border-sky-200";
-  
-                    const badgeText = isSingleParticipation
-                      ? "Participação Única"
-                      : "Múltiplas Participações";
-  
-                    return (
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
-                      >
-                        {badgeText}
-                      </span>
-                    );
+                    const bars = computeTopBars(p);
+                    if (!bars.show) return null;
+    
+                    const winner = !bars.isRanking
+                      ? bars.topSingle[0]?.text
+                      : bars.topRanking[0]?.text;
+    
+                    if (!winner) return null;
+    
+                   return (
+                    <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 text-xs font-normal text-gray-900">
+                      <span className="text-yellow-500 leading-none">🥇</span>
+                      <span className="max-w-[120px] truncate">{winner}</span>
+                    </div>
+                  );
                   })()}
                 </div>
-              </div>
-            </div>
-  
-            {/* ABAIXO: 60/40 */}
-            <div className="mt-5 flex flex-col md:flex-row gap-6">
-              {/* TEXTO — 60% */}
-              <div className="md:w-3/5">
-                <p className="text-gray-700 leading-relaxed text-base text-left">
-                  {p.description
-                    ? p.description
-                    : "Participe desta decisão e ajude a construir informação pública confiável."}
-                </p>
-              </div>
-  
-              {/* POSIÇÕES — 40% */}
-              {featuredShowResults && featuredBars && (
-                <div className="md:w-2/5">
-                  {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
-                    <div className="space-y-2">
-                      {(featuredBars.isRanking
-                        ? featuredBars.topRanking
-                        : featuredBars.topSingle
-                      ).map((o, i) => {
-                        const medal =
-                          i === 0
-                            ? "bg-yellow-400 text-yellow-900"
-                            : i === 1
-                            ? "bg-gray-300 text-gray-800"
-                            : "bg-amber-700 text-amber-100";
-  
-                        return (
-                          <div
-                            key={i}
-                            className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
-                          >
-                            <span
-                              className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
-                            >
-                              {i + 1}º
-                            </span>
-  
-                            <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
-                              {o.text}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-600">
-                      Ainda não há dados suficientes para exibição.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* BOTÕES para mobile — agora os dois na mesma linha: Participar à esquerda e Ver resultados à direita */}
-            <div className="mt-4 md:hidden flex items-center justify-between gap-2">
-              <Link
-                href={`/poll/${p.id}`}
-                className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition w-[48%] justify-center"
-              >
-                {primaryCtaLabel(p)}
-              </Link>
-
-              {featuredShowResults && (
-                <Link
-                  href={`/results/${p.id}`}
-                  className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition w-[48%] justify-center"
-                >
-                  Ver resultados
-                </Link>
-              )}
-            </div>
+              );
+            })}
           </div>
-  
-          {/* BOTÕES (menores) — layout absoluto apenas para md+ */}
-          <div className="absolute left-5 z-30 pointer-events-auto hidden md:flex md:bottom-6 bottom-5">
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/poll/${p.id}`}
-                className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
-              >
-                {primaryCtaLabel(p)}
-              </Link>
-  
-              {featuredShowResults && (
-                <Link
-                  href={`/results/${p.id}`}
-                  className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                >
-                  Ver resultados
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
-  
-      {/* LISTA COMPACTA */}
-      <section className="space-y-4">
-        {otherPolls.length > 0 && (
-          <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
-        )}
-  
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {otherPolls.map((p) => {
-            const iconSrc = normalizeIconUrl(p.icon_url);
-  
-            return (
-              <div
-                key={p.id}
-                className="relative group border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition overflow-hidden"
-              >
-                {/* Clique promove para o card principal */}
-                <Link
-                  href={`/?featured=${encodeURIComponent(p.id)}#top`}
-                  aria-label={`Destacar pesquisa: ${p.title}`}
-                  className="absolute inset-0 z-20"
-                />
-  
-                {/* Conteúdo */}
-                <div className="relative z-10 pointer-events-none flex gap-4 p-4">
-                  {/* IMAGEM */}
-                  <div className="w-20 h-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                    <PollImage
-                      src={iconSrc}
-                      fallbackSrc={DEFAULT_POLL_ICON}
-                      alt={p.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  </div>
-  
-                  {/* TÍTULO + STATUS */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <h4
-                        className={`text-sm md:text-base font-semibold leading-snug ${titleColor(
-                          p.status
-                        )}`}
-                      >
-                        {p.title}
-                      </h4>
-  
-                      <span
-                        className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColor(
-                          p.status
-                        )}`}
-                      >
-                        {statusLabel(p.status)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-  
-                {/* 🥇 PRIMEIRO COLOCADO (canto inferior direito) */}
-                {(() => {
-                  const bars = computeTopBars(p);
-                  if (!bars.show) return null;
-  
-                  const winner = !bars.isRanking
-                    ? bars.topSingle[0]?.text
-                    : bars.topRanking[0]?.text;
-  
-                  if (!winner) return null;
-  
-                 return (
-                  <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 text-xs font-normal text-gray-900">
-                    <span className="text-yellow-500 leading-none">🥇</span>
-                    <span className="max-w-[120px] truncate">{winner}</span>
-                  </div>
-                );
-                })()}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-  
-      <footer className="pt-8 border-t text-center text-sm text-gray-600">
-        Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
-      </footer>
-    </main>
+        </section>
+    
+        <footer className="pt-8 border-t text-center text-sm text-gray-600">
+          Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
+        </footer>
+      </main>
+    </>
   );
 }
