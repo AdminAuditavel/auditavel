@@ -351,12 +351,11 @@ export default async function Home({
   
   const featuredBars = p ? computeTopBars(p) : null;
 
-/* =======================
-   RENDER
-======================= */
+  /* =======================
+     RENDER
+  ======================= */
   return (
     <main id="top" className="p-8 max-w-6xl mx-auto space-y-12">
-
       {/* HERO */}
       <section className="text-center space-y-3">
         <h1 className="text-5xl font-bold text-emerald-700">Auditável</h1>
@@ -364,9 +363,9 @@ export default async function Home({
           Onde decisões públicas podem ser verificadas.
         </p>
       </section>
-
+  
       <hr className="border-gray-200" />
-
+  
       {/* DESTAQUE */}
       {p ? (
         <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
@@ -376,7 +375,7 @@ export default async function Home({
             aria-label={`Abrir pesquisa: ${p.title}`}
             className="absolute inset-0 z-20"
           />
-      
+  
           {/* CONTEÚDO */}
           <div className="p-6 md:p-7 pb-20 relative z-10 pointer-events-none">
             <div className="flex gap-5">
@@ -390,7 +389,7 @@ export default async function Home({
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </div>
-      
+  
               {/* META + TÍTULO */}
               <div className="flex-1 min-w-0">
                 {/* DATA + STATUS (MESMA LINHA) */}
@@ -398,7 +397,7 @@ export default async function Home({
                   <span className="text-sm text-red-700">
                     Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
                   </span>
-      
+  
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                       p.status
@@ -407,36 +406,36 @@ export default async function Home({
                     {statusLabel(p.status)}
                   </span>
                 </div>
-      
+  
                 {/* PERGUNTA (preto) */}
                 <h2 className="mt-3 text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words">
                   {p.title}
                 </h2>
-      
+  
                 {/* LINHA: Pesquisa tipo + badges */}
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   <span className="text-gray-500">Pesquisa tipo:</span>
-      
+  
                   {/* BADGE do tipo */}
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
                     {featuredTypeLabel}
                   </span>
-      
+  
                   {/* BADGE participação */}
                   {(() => {
                     const maxVotes =
                       typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-      
+  
                     const isSingleParticipation = maxVotes === 1;
-      
+  
                     const badgeClass = isSingleParticipation
                       ? "bg-red-100 text-red-800 border border-red-200"
                       : "bg-sky-100 text-sky-800 border border-sky-200";
-      
+  
                     const badgeText = isSingleParticipation
                       ? "Participação Única"
                       : "Múltiplas Participações";
-      
+  
                     return (
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
@@ -448,7 +447,7 @@ export default async function Home({
                 </div>
               </div>
             </div>
-      
+  
             {/* ABAIXO: 60/40 */}
             <div className="mt-5 flex flex-col md:flex-row gap-6">
               {/* TEXTO — 60% */}
@@ -459,56 +458,23 @@ export default async function Home({
                     : "Participe desta decisão e ajude a construir informação pública confiável."}
                 </p>
               </div>
-      
+  
               {/* POSIÇÕES — 40% */}
               {featuredShowResults && featuredBars && (
                 <div className="md:w-2/5">
-                  {!featuredBars.isRanking ? (
-                    featuredBars.topSingle.length > 0 ? (
-                      <div className="space-y-2">
-                        {featuredBars.topSingle.map((o, i) => {
-                          const medal =
-                            i === 0
-                              ? "bg-yellow-400 text-yellow-900"
-                              : i === 1
-                              ? "bg-gray-300 text-gray-800"
-                              : "bg-amber-700 text-amber-100";
-      
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
-                            >
-                              <span
-                                className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
-                              >
-                                {i + 1}º
-                              </span>
-      
-                              <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
-                                {o.text}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-600">
-                        {featuredBars.participants > 0
-                          ? "Ainda não há votos válidos para exibição."
-                          : "Seja o primeiro a participar — seu voto inicia o resultado público."}
-                      </div>
-                    )
-                  ) : featuredBars.topRanking.length > 0 ? (
+                  {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
                     <div className="space-y-2">
-                      {featuredBars.topRanking.map((o, i) => {
+                      {(featuredBars.isRanking
+                        ? featuredBars.topRanking
+                        : featuredBars.topSingle
+                      ).map((o, i) => {
                         const medal =
                           i === 0
                             ? "bg-yellow-400 text-yellow-900"
                             : i === 1
                             ? "bg-gray-300 text-gray-800"
                             : "bg-amber-700 text-amber-100";
-      
+  
                         return (
                           <div
                             key={i}
@@ -519,7 +485,7 @@ export default async function Home({
                             >
                               {i + 1}º
                             </span>
-      
+  
                             <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
                               {o.text}
                             </span>
@@ -529,14 +495,14 @@ export default async function Home({
                     </div>
                   ) : (
                     <div className="text-sm text-gray-600">
-                      Ainda não há rankings suficientes — participe para iniciar o resultado.
+                      Ainda não há dados suficientes para exibição.
                     </div>
                   )}
                 </div>
               )}
             </div>
           </div>
-      
+  
           {/* BOTÕES (menores) — juntos lado a lado */}
           <div className="absolute bottom-5 left-5 z-30 pointer-events-auto">
             <div className="flex items-center gap-2">
@@ -547,7 +513,7 @@ export default async function Home({
               >
                 {primaryCtaLabel(p)}
               </Link>
-      
+  
               {featuredShowResults && (
                 <Link
                   href={`/results/${p.id}`}
@@ -561,19 +527,17 @@ export default async function Home({
           </div>
         </div>
       ) : null}
-
+  
       {/* LISTA COMPACTA */}
       <section className="space-y-4">
         {otherPolls.length > 0 && (
-          <h3 className="text-sm font-semibold text-gray-700">
-            Outras pesquisas
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
         )}
-      
+  
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {otherPolls.map((p) => {
             const iconSrc = normalizeIconUrl(p.icon_url);
-      
+  
             return (
               <div
                 key={p.id}
@@ -585,8 +549,8 @@ export default async function Home({
                   aria-label={`Destacar pesquisa: ${p.title}`}
                   className="absolute inset-0 z-20"
                 />
-      
-                {/* Conteúdo (não captura clique) */}
+  
+                {/* Conteúdo */}
                 <div className="relative z-10 pointer-events-none flex gap-4 p-4">
                   {/* IMAGEM */}
                   <div className="w-20 h-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
@@ -597,11 +561,10 @@ export default async function Home({
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
-      
+  
                   {/* TÍTULO + STATUS */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
-                      {/* Fonte menor e sem truncate para caber mais texto */}
                       <h4
                         className={`text-sm md:text-base font-semibold leading-snug ${titleColor(
                           p.status
@@ -609,7 +572,7 @@ export default async function Home({
                       >
                         {p.title}
                       </h4>
-      
+  
                       <span
                         className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColor(
                           p.status
@@ -620,15 +583,41 @@ export default async function Home({
                     </div>
                   </div>
                 </div>
+  
+                {/* 🥇 PRIMEIRO COLOCADO (canto inferior direito) */}
+                {(() => {
+                  const bars = computeTopBars(p);
+                  if (!bars.show) return null;
+  
+                  const winner = !bars.isRanking
+                    ? bars.topSingle[0]?.text
+                    : bars.topRanking[0]?.text;
+  
+                  if (!winner) return null;
+  
+                  return (
+                    <div
+                      className="absolute bottom-3 right-3 z-30
+                                 flex items-center gap-1.5
+                                 rounded-full bg-white/90
+                                 border border-gray-200
+                                 px-2.5 py-1
+                                 text-xs font-semibold text-gray-900
+                                 shadow-sm"
+                    >
+                      <span className="text-yellow-500 leading-none">🥇</span>
+                      <span className="max-w-[120px] truncate">{winner}</span>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
         </div>
       </section>
-
+  
       <footer className="pt-8 border-t text-center text-sm text-gray-600">
         Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
       </footer>
     </main>
   );
-}
