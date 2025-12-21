@@ -244,9 +244,9 @@ export default async function Home({
           </form>
         </header>
 
-        {/* CATEGORIES MENU (compacto) */}
+        {/* CATEGORIES MENU (mais evidente spacing) */}
         <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
-          <ul className="mt-0 flex gap-2 overflow-x-auto pb-1">
+          <ul className="mt-4 flex gap-2 overflow-x-auto pb-2">
             {[
               { key: "tendencias", label: "Tendências" },
               { key: "todas", label: "Todas" },
@@ -277,7 +277,7 @@ export default async function Home({
           </ul>
         </nav>
 
-        <main id="top" className="pt-0 pb-8 max-w-6xl mx-auto">
+        <main id="top" className="pt-6 pb-8 max-w-6xl mx-auto">
           <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>
         </main>
       </>
@@ -524,9 +524,9 @@ export default async function Home({
         </form>
       </header>
 
-      {/* CATEGORIES MENU (compacto) */}
+      {/* CATEGORIES MENU (mais evidente spacing) */}
       <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
-        <ul className="mt-0 flex gap-2 overflow-x-auto pb-1">
+        <ul className="mt-4 flex gap-2 overflow-x-auto pb-2">
           {[
             { key: "tendencias", label: "Tendências" },
             { key: "todas", label: "Todas" },
@@ -557,10 +557,10 @@ export default async function Home({
         </ul>
       </nav>
 
-      <main id="top" className="pt-0 pb-8 max-w-6xl mx-auto">
+      <main id="top" className="pt-6 pb-8 max-w-6xl mx-auto">
         {/* DESTAQUE */}
         {p ? (
-          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden mt-0">
+          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden mt-4 md:mt-6">
             {/* overlay link - só em telas md+ para não bloquear controles mobile */}
             <Link
               href={`/poll/${p.id}`}
