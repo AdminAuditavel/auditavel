@@ -20,6 +20,7 @@ type Poll = {
   icon_url?: string | null;
   max_votes_per_user?: number | null;
   is_featured?: boolean | null;
+  category?: string | null; // optional category field
 };
 
 type PollOption = {
@@ -135,13 +136,22 @@ export default async function Home({
       ? rawQ[0].trim()
       : undefined;
 
+  // category param (used by menu)
+  const rawCategory = resolvedSearchParams?.category;
+  const activeCategory =
+    typeof rawCategory === "string"
+      ? rawCategory
+      : Array.isArray(rawCategory) && typeof rawCategory[0] === "string"
+      ? rawCategory[0]
+      : "todas";
+
   /* =======================
      POLLS
   ======================= */
   const { data: pollsData } = await supabase
     .from("polls")
     .select(
-      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user, is_featured"
+      "id, title, description, start_date, end_date, voting_type, allow_multiple, status, show_partial_results, icon_url, max_votes_per_user, is_featured, category"
     )
     .order("created_at", { ascending: false });
 
@@ -158,30 +168,115 @@ export default async function Home({
     });
   }
 
-  if (!visiblePolls.length) {
-    return <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>;
+  // Filter by category (if not 'todas')
+  // - 'tendencias' => polls marked is_featured === true (if any)
+  // - other keys => match poll.category (case-insensitive)
+  if (activeCategory && activeCategory !== "todas") {
+    if (activeCategory === "tendencias") {
+      const featured = visiblePolls.filter((p) => p.is_featured === true);
+      if (featured.length > 0) {
+        visiblePolls = featured;
+      } // otherwise keep current list (fallback)
+    } else {
+      const catKey = activeCategory.toLowerCase();
+      visiblePolls = visiblePolls.filter(
+        (p) => (p.category || "").toLowerCase() === catKey
+      );
+    }
   }
 
-  const rawFeatured = resolvedSearchParams?.featured;
+  if (!visiblePolls.length) {
+    return (
+      <>
+        {/* TOP BAR */}
+        <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center">
+            <Image
+              src="/Logo_Auditavel.png"
+              alt="Auditável"
+              width={156}
+              height={156}
+              className="rounded-full object-cover"
+            />
+          </div>
 
-  const featuredId =
-    typeof rawFeatured === "string"
-      ? rawFeatured.trim()
-      : Array.isArray(rawFeatured) && typeof rawFeatured[0] === "string"
-      ? rawFeatured[0].trim()
-      : undefined;
+          <form method="get" action="/" className="flex-1 max-w-xl">
+            <label htmlFor="q" className="sr-only">Buscar pesquisas</label>
+            <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-2 shadow-sm">
+              <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
 
-  // 1) featured via URL (clique temporário do usuário)
+              <input
+                id="q"
+                name="q"
+                defaultValue={q || ""}
+                className="ml-3 w-full text-sm outline-none"
+                placeholder="Buscar pesquisa, tema ou cidade..."
+                aria-label="Buscar pesquisas"
+              />
+            </div>
+          </form>
+        </header>
+
+        {/* CATEGORIES MENU */}
+        <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
+          <ul className="mt-3 flex gap-2 overflow-x-auto pb-2">
+            {[
+              { key: "tendencias", label: "Tendências" },
+              { key: "todas", label: "Todas" },
+              { key: "politicas", label: "Políticas" },
+              { key: "esportes", label: "Esportes" },
+              { key: "cultura", label: "Cultura" },
+              { key: "clima", label: "Clima" },
+              { key: "economia", label: "Economia" },
+            ].map((c) => {
+              const isActive = activeCategory === c.key;
+              const href = `/?category=${encodeURIComponent(c.key)}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+              return (
+                <li key={c.key} className="flex-shrink-0">
+                  <Link
+                    href={href}
+                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                      isActive
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                    }`}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    {c.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
+          <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>
+        </main>
+      </>
+    );
+  }
+
+  // select featured poll from filtered visiblePolls
   const featuredFromUrl =
-    featuredId ? visiblePolls.find((x) => x.id === featuredId) : undefined;
+    (() => {
+      const rawFeatured = resolvedSearchParams?.featured;
+      const featuredId =
+        typeof rawFeatured === "string"
+          ? rawFeatured.trim()
+          : Array.isArray(rawFeatured) && typeof rawFeatured[0] === "string"
+          ? rawFeatured[0].trim()
+          : undefined;
+      return featuredId ? visiblePolls.find((x) => x.id === featuredId) : undefined;
+    })() || undefined;
 
-  // 2) featured automático (setado pelo job via is_featured)
   const featuredFromAuto =
     visiblePolls.find((x) => x.is_featured === true) || undefined;
 
-  // 3) fallback seguro
   const featuredPoll = featuredFromUrl || featuredFromAuto || visiblePolls[0];
-
   const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id);
 
   const pollIds = visiblePolls.map((p) => p.id);
@@ -272,7 +367,6 @@ export default async function Home({
   /* =======================
    HELPERS
   ======================= */
-
   function computeTopBars(p: Poll) {
     const opts = optionsByPoll.get(p.id) || [];
 
@@ -373,7 +467,7 @@ export default async function Home({
   ======================= */
   return (
     <>
-      {/* TOP BAR: only logo + search (logo already contains the name) */}
+      {/* TOP BAR */}
       <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center">
           <Image
@@ -388,7 +482,6 @@ export default async function Home({
         <form method="get" action="/" className="flex-1 max-w-xl">
           <label htmlFor="q" className="sr-only">Buscar pesquisas</label>
           <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-2 shadow-sm">
-            {/* Search icon */}
             <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -406,7 +499,48 @@ export default async function Home({
         </form>
       </header>
 
+      {/* CATEGORIES MENU */}
+      <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
+        <ul className="mt-3 flex gap-2 overflow-x-auto pb-2">
+          {[
+            { key: "tendencias", label: "Tendências" },
+            { key: "todas", label: "Todas" },
+            { key: "politicas", label: "Políticas" },
+            { key: "esportes", label: "Esportes" },
+            { key: "cultura", label: "Cultura" },
+            { key: "clima", label: "Clima" },
+            { key: "economia", label: "Economia" },
+          ].map((c) => {
+            const isActive = activeCategory === c.key;
+            const href = `/?category=${encodeURIComponent(c.key)}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+            return (
+              <li key={c.key} className="flex-shrink-0">
+                <Link
+                  href={href}
+                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                    isActive
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                  }`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {c.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
       <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
+        {/* HERO */}
+        <section className="text-center space-y-3">
+          <h1 className="text-4xl md:text-5xl font-bold text-emerald-700">Auditável</h1>
+          <p className="text-base md:text-lg font-medium text-gray-800">
+            Onde decisões públicas podem ser verificadas.
+          </p>
+        </section>
+
         <hr className="border-gray-200" />
 
         {/* DESTAQUE */}
