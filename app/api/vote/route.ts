@@ -1,4 +1,6 @@
 // app/api/vote/route.ts
+
+// app/api/vote/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
@@ -43,6 +45,33 @@ function snapshotRanking(option_ids: string[]) {
   return { voting_type: "ranking", option_ids };
 }
 
+function normalizeFinitePositiveInt(val: any, fallback: number) {
+  const n = typeof val === "number" && Number.isFinite(val) ? val : fallback;
+  return Math.max(0, Math.floor(n));
+}
+
+async function assertOptionsBelongToPoll(poll_id: string, ids: string[]) {
+  if (!ids || ids.length === 0) return { ok: false, error: "invalid_payload" as const };
+
+  const dedup = Array.from(new Set(ids));
+  const { data, error } = await supabase
+    .from("poll_options")
+    .select("id")
+    .eq("poll_id", poll_id)
+    .in("id", dedup);
+
+  if (error) {
+    console.error("assertOptionsBelongToPoll error:", error);
+    return { ok: false, error: "internal_error" as const };
+  }
+
+  const found = new Set((data ?? []).map((r: any) => r.id));
+  const allOk = dedup.every((id) => found.has(id));
+
+  if (!allOk) return { ok: false, error: "invalid_option_for_poll" as const };
+  return { ok: true, dedup };
+}
+
 /* ======================================================
    Handler
 ====================================================== */
@@ -50,15 +79,9 @@ function snapshotRanking(option_ids: string[]) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const {
-      poll_id,
-      option_id,
-      option_ids,
-      participant_id,
-      user_hash,
-    } = body as any;
+    const { poll_id, option_id, option_ids, participant_id, user_hash } = body as any;
 
-    if (!poll_id || !participant_id) {
+    if (!poll_id || !participant_id || !user_hash) {
       return NextResponse.json({ error: "missing_data" }, { status: 400 });
     }
 
@@ -74,7 +97,8 @@ export async function POST(req: NextRequest) {
         voting_type,
         vote_cooldown_seconds,
         max_votes_per_user,
-        allow_multiple
+        allow_multiple,
+        max_options_per_vote
       `
       )
       .eq("id", poll_id)
@@ -88,14 +112,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "poll_not_open" }, { status: 403 });
     }
 
-    const effectiveMaxVotes =
-      poll.max_votes_per_user ??
-      (poll.allow_multiple ? Infinity : 1);
+    if (!["single", "multiple", "ranking"].includes(poll.voting_type)) {
+      return NextResponse.json({ error: "invalid_poll_type" }, { status: 400 });
+    }
+
+    // Regras canônicas conforme você definiu:
+    // allow_multiple=false => max_votes_per_user=1 (voto editável; último vale)
+    // allow_multiple=true => max_votes_per_user determina quantas vezes pode votar
+    const allowMultiple = Boolean(poll.allow_multiple);
+    const effectiveMaxVotes = allowMultiple
+      ? Math.max(1, normalizeFinitePositiveInt(poll.max_votes_per_user, 1))
+      : 1;
+
+    const cooldownSeconds = normalizeFinitePositiveInt(poll.vote_cooldown_seconds, 0);
+
+    const maxOptionsPerVote =
+      poll.max_options_per_vote === null || poll.max_options_per_vote === undefined
+        ? null
+        : Math.max(1, normalizeFinitePositiveInt(poll.max_options_per_vote, 1));
 
     /* =========================
-       Cooldown
+       Cooldown (vale para criar e alterar)
+       Fonte do cooldown:
+       - pega o voto mais recente por created_at (no max=1 é sempre o mesmo voto)
+       - usa GREATEST(created_at, updated_at) como último envio efetivo
     ========================= */
-    if (poll.vote_cooldown_seconds && poll.vote_cooldown_seconds > 0) {
+    if (cooldownSeconds > 0) {
       const { data: lastVote } = await supabase
         .from("votes")
         .select("created_at, updated_at")
@@ -105,24 +147,17 @@ export async function POST(req: NextRequest) {
         .limit(1)
         .maybeSingle();
 
-      if (lastVote) {
-        const lastTs = Math.max(
-          new Date(lastVote.created_at).getTime(),
-          lastVote.updated_at
-            ? new Date(lastVote.updated_at).getTime()
-            : 0
-        );
+      if (lastVote?.created_at) {
+        const createdMs = new Date(lastVote.created_at).getTime();
+        const updatedMs = lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0;
+        const lastMs = Math.max(createdMs, updatedMs, createdMs);
 
-        const cooldownEnd =
-          lastTs + poll.vote_cooldown_seconds * 1000;
-
+        const cooldownEnd = lastMs + cooldownSeconds * 1000;
         if (Date.now() < cooldownEnd) {
           return NextResponse.json(
             {
               error: "cooldown_active",
-              remaining_seconds: Math.ceil(
-                (cooldownEnd - Date.now()) / 1000
-              ),
+              remaining_seconds: Math.ceil((cooldownEnd - Date.now()) / 1000),
             },
             { status: 429 }
           );
@@ -136,231 +171,86 @@ export async function POST(req: NextRequest) {
     await syncParticipant(participant_id);
 
     /* ======================================================
-       MODE: VOTO ÚNICO (max_votes_per_user = 1)
+       MODE: BIG BROTHER (max_votes_per_user > 1)
+       - cada voto é uma nova linha
+       - aplica limite antes de inserir
     ======================================================= */
-    if (effectiveMaxVotes === 1) {
-      const { data: existingVote } = await supabase
+    if (effectiveMaxVotes > 1) {
+      // Limite
+      const { count } = await supabase
         .from("votes")
-        .select("id, option_id")
+        .select("id", { count: "exact", head: true })
         .eq("poll_id", poll_id)
-        .eq("participant_id", participant_id)
-        .maybeSingle();
+        .eq("participant_id", participant_id);
 
-      let voteId = existingVote?.id ?? randomUUID();
-      let beforeState: any = null;
-      let afterState: any = null;
-      let isUpdate = Boolean(existingVote);
+      const used = typeof count === "number" ? count : 0;
+      if (used >= effectiveMaxVotes) {
+        return NextResponse.json({ error: "vote_limit_reached" }, { status: 403 });
+      }
 
-      /* ---------- SINGLE ---------- */
+      const voteId = randomUUID();
+
       if (poll.voting_type === "single") {
         if (!option_id) {
-          return NextResponse.json(
-            { error: "missing_option" },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: "missing_option" }, { status: 400 });
         }
 
-        if (existingVote) {
-          beforeState = snapshotSingle(existingVote.option_id);
-          if (existingVote.option_id === option_id) {
-            return NextResponse.json({ success: true, updated: false });
-          }
+        const optCheck = await assertOptionsBelongToPoll(poll_id, [option_id]);
+        if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
 
-          await supabase
-            .from("votes")
-            .update({
-              option_id,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", voteId);
-        } else {
-          await supabase.from("votes").insert({
-            id: voteId,
-            poll_id,
-            option_id,
-            participant_id,
-            user_hash,
-          });
-        }
+        await supabase.from("votes").insert({
+          id: voteId,
+          poll_id,
+          option_id,
+          participant_id,
+          user_hash,
+        });
 
-        afterState = snapshotSingle(option_id);
+        return NextResponse.json({ success: true });
       }
 
-      /* ---------- MULTIPLE ---------- */
       if (poll.voting_type === "multiple") {
         if (!Array.isArray(option_ids) || option_ids.length === 0) {
-          return NextResponse.json(
-            { error: "invalid_payload" },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
         }
 
-        const dedup = Array.from(new Set(option_ids));
-        if (dedup.length === 0) {
-          return NextResponse.json(
-            { error: "invalid_payload" },
-            { status: 400 }
-          );
+        const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
+        if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+
+        const dedup = optCheck.dedup;
+
+        if (maxOptionsPerVote !== null && dedup.length > maxOptionsPerVote) {
+          return NextResponse.json({ error: "max_options_exceeded" }, { status: 400 });
         }
 
-        if (existingVote) {
-          const { data: prev } = await supabase
-            .from("vote_options")
-            .select("option_id")
-            .eq("vote_id", voteId);
-
-          const prevIds = prev?.map(r => r.option_id) ?? [];
-          beforeState = snapshotMultiple(prevIds);
-
-          if (arraysEqual(prevIds.sort(), dedup.sort())) {
-            return NextResponse.json({ success: true, updated: false });
-          }
-
-          await supabase.from("vote_options").delete().eq("vote_id", voteId);
-        } else {
-          await supabase.from("votes").insert({
-            id: voteId,
-            poll_id,
-            participant_id,
-            user_hash,
-          });
-        }
+        await supabase.from("votes").insert({
+          id: voteId,
+          poll_id,
+          participant_id,
+          user_hash,
+        });
 
         await supabase.from("vote_options").insert(
-          dedup.map(opt => ({
+          dedup.map((opt) => ({
             vote_id: voteId,
             option_id: opt,
           }))
         );
 
-        afterState = snapshotMultiple(dedup);
+        return NextResponse.json({ success: true });
       }
 
-      /* ---------- RANKING ---------- */
-      if (poll.voting_type === "ranking") {
-        if (!Array.isArray(option_ids) || option_ids.length === 0) {
-          return NextResponse.json(
-            { error: "invalid_payload" },
-            { status: 400 }
-          );
-        }
-
-        if (new Set(option_ids).size !== option_ids.length) {
-          return NextResponse.json(
-            { error: "invalid_ranking_duplicate_option" },
-            { status: 400 }
-          );
-        }
-
-        if (existingVote) {
-          const { data: prev } = await supabase
-            .from("vote_rankings")
-            .select("option_id")
-            .eq("vote_id", voteId)
-            .order("ranking");
-
-          const prevIds = prev?.map(r => r.option_id) ?? [];
-          beforeState = snapshotRanking(prevIds);
-
-          if (arraysEqual(prevIds, option_ids)) {
-            return NextResponse.json({ success: true, updated: false });
-          }
-
-          await supabase.from("vote_rankings").delete().eq("vote_id", voteId);
-        } else {
-          await supabase.from("votes").insert({
-            id: voteId,
-            poll_id,
-            participant_id,
-            user_hash,
-          });
-        }
-
-        await supabase.from("vote_rankings").insert(
-          option_ids.map((opt, idx) => ({
-            id: randomUUID(),
-            vote_id: voteId,
-            option_id: opt,
-            ranking: idx + 1,
-          }))
-        );
-
-        afterState = snapshotRanking(option_ids);
-      }
-
-      await supabase.from("vote_events").insert({
-        poll_id,
-        vote_id: voteId,
-        participant_id,
-        event_type: isUpdate ? "updated" : "created",
-        before_state: beforeState,
-        after_state: afterState,
-      });
-
-      return NextResponse.json({ success: true, updated: isUpdate });
-    }
-
-    /* ======================================================
-       MODE: BIG BROTHER (max_votes_per_user > 1)
-    ======================================================= */
-    const voteId = randomUUID();
-
-    if (poll.voting_type === "single") {
-      if (!option_id) {
-        return NextResponse.json(
-          { error: "missing_option" },
-          { status: 400 }
-        );
-      }
-
-      await supabase.from("votes").insert({
-        id: voteId,
-        poll_id,
-        option_id,
-        participant_id,
-        user_hash,
-      });
-    }
-
-    if (poll.voting_type === "multiple") {
+      // ranking
       if (!Array.isArray(option_ids) || option_ids.length === 0) {
-        return NextResponse.json(
-          { error: "invalid_payload" },
-          { status: 400 }
-        );
-      }
-
-      const dedup = Array.from(new Set(option_ids));
-
-      await supabase.from("votes").insert({
-        id: voteId,
-        poll_id,
-        participant_id,
-        user_hash,
-      });
-
-      await supabase.from("vote_options").insert(
-        dedup.map(opt => ({
-          vote_id: voteId,
-          option_id: opt,
-        }))
-      );
-    }
-
-    if (poll.voting_type === "ranking") {
-      if (!Array.isArray(option_ids) || option_ids.length === 0) {
-        return NextResponse.json(
-          { error: "invalid_payload" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
       }
 
       if (new Set(option_ids).size !== option_ids.length) {
-        return NextResponse.json(
-          { error: "invalid_ranking_duplicate_option" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "invalid_ranking_duplicate_option" }, { status: 400 });
       }
+
+      const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
+      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
 
       await supabase.from("votes").insert({
         id: voteId,
@@ -370,22 +260,205 @@ export async function POST(req: NextRequest) {
       });
 
       await supabase.from("vote_rankings").insert(
-        option_ids.map((opt, idx) => ({
+        option_ids.map((opt: string, idx: number) => ({
           id: randomUUID(),
           vote_id: voteId,
           option_id: opt,
           ranking: idx + 1,
         }))
       );
+
+      return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ success: true });
+    /* ======================================================
+       MODE: VOTO ÚNICO (max_votes_per_user = 1)
+       - um voto vigente por (poll_id, participant_id)
+       - alterações atualizam o mesmo vote_id + vote_events
+    ======================================================= */
+
+    const { data: existingVote } = await supabase
+      .from("votes")
+      .select("id, option_id, created_at, updated_at")
+      .eq("poll_id", poll_id)
+      .eq("participant_id", participant_id)
+      .maybeSingle();
+
+    const voteId = existingVote?.id ?? randomUUID();
+    const isUpdate = Boolean(existingVote);
+
+    let beforeState: any = null;
+    let afterState: any = null;
+
+    /* ---------- SINGLE ---------- */
+    if (poll.voting_type === "single") {
+      if (!option_id) {
+        return NextResponse.json({ error: "missing_option" }, { status: 400 });
+      }
+
+      const optCheck = await assertOptionsBelongToPoll(poll_id, [option_id]);
+      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+
+      if (existingVote) {
+        beforeState = snapshotSingle(existingVote.option_id);
+
+        if (existingVote.option_id === option_id) {
+          // sem mudança efetiva
+          return NextResponse.json({ success: true, updated: false });
+        }
+
+        await supabase
+          .from("votes")
+          .update({
+            option_id,
+            user_hash,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", voteId);
+      } else {
+        await supabase.from("votes").insert({
+          id: voteId,
+          poll_id,
+          option_id,
+          participant_id,
+          user_hash,
+        });
+      }
+
+      afterState = snapshotSingle(option_id);
+    }
+
+    /* ---------- MULTIPLE ---------- */
+    if (poll.voting_type === "multiple") {
+      if (!Array.isArray(option_ids) || option_ids.length === 0) {
+        return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+      }
+
+      const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
+      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+
+      let dedup = optCheck.dedup;
+      if (dedup.length === 0) {
+        return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+      }
+
+      if (maxOptionsPerVote !== null && dedup.length > maxOptionsPerVote) {
+        return NextResponse.json({ error: "max_options_exceeded" }, { status: 400 });
+      }
+
+      // order irrelevante: padroniza snapshot ordenando
+      dedup = dedup.slice().sort();
+
+      if (existingVote) {
+        const { data: prev } = await supabase
+          .from("vote_options")
+          .select("option_id")
+          .eq("vote_id", voteId);
+
+        const prevIds = (prev?.map((r: any) => r.option_id) ?? []).slice().sort();
+        beforeState = snapshotMultiple(prevIds);
+
+        if (arraysEqual(prevIds, dedup)) {
+          return NextResponse.json({ success: true, updated: false });
+        }
+
+        await supabase.from("vote_options").delete().eq("vote_id", voteId);
+
+        await supabase
+          .from("votes")
+          .update({ user_hash, updated_at: new Date().toISOString() })
+          .eq("id", voteId);
+      } else {
+        await supabase.from("votes").insert({
+          id: voteId,
+          poll_id,
+          participant_id,
+          user_hash,
+        });
+      }
+
+      await supabase.from("vote_options").insert(
+        dedup.map((opt: string) => ({
+          vote_id: voteId,
+          option_id: opt,
+        }))
+      );
+
+      afterState = snapshotMultiple(dedup);
+    }
+
+    /* ---------- RANKING ---------- */
+    if (poll.voting_type === "ranking") {
+      if (!Array.isArray(option_ids) || option_ids.length === 0) {
+        return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+      }
+
+      if (new Set(option_ids).size !== option_ids.length) {
+        return NextResponse.json({ error: "invalid_ranking_duplicate_option" }, { status: 400 });
+      }
+
+      const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
+      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+
+      if (existingVote) {
+        const { data: prev } = await supabase
+          .from("vote_rankings")
+          .select("option_id")
+          .eq("vote_id", voteId)
+          .order("ranking");
+
+        const prevIds = prev?.map((r: any) => r.option_id) ?? [];
+        beforeState = snapshotRanking(prevIds);
+
+        if (arraysEqual(prevIds, option_ids)) {
+          return NextResponse.json({ success: true, updated: false });
+        }
+
+        await supabase.from("vote_rankings").delete().eq("vote_id", voteId);
+
+        await supabase
+          .from("votes")
+          .update({ user_hash, updated_at: new Date().toISOString() })
+          .eq("id", voteId);
+      } else {
+        await supabase.from("votes").insert({
+          id: voteId,
+          poll_id,
+          participant_id,
+          user_hash,
+        });
+      }
+
+      await supabase.from("vote_rankings").insert(
+        option_ids.map((opt: string, idx: number) => ({
+          id: randomUUID(),
+          vote_id: voteId,
+          option_id: opt,
+          ranking: idx + 1,
+        }))
+      );
+
+      afterState = snapshotRanking(option_ids);
+    }
+
+    if (!afterState) {
+      // proteção contra inconsistências
+      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    }
+
+    await supabase.from("vote_events").insert({
+      poll_id,
+      vote_id: voteId,
+      participant_id,
+      event_type: isUpdate ? "updated" : "created",
+      before_state: beforeState,
+      after_state: afterState,
+    });
+
+    return NextResponse.json({ success: true, updated: isUpdate });
 
   } catch (e) {
     console.error("internal_error", e);
-    return NextResponse.json(
-      { error: "internal_error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
