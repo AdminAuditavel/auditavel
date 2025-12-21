@@ -375,7 +375,8 @@ export default async function Home({
           />
   
           {/* CONTEÚDO */}
-          <div className="p-4 md:p-6 pb-4 md:pb-20 relative z-10">
+          {/* ALTERAÇÃO: reduzir padding-bottom em md+ para evitar espaço em branco (antes md:pb-20) */}
+          <div className="p-4 md:p-6 pb-4 md:pb-6 relative z-10">
             <div className="flex flex-col sm:flex-row gap-5">
               {/* IMAGEM (full width em mobile, tamanho fixo em sm+/md+) */}
               <div className="w-full sm:w-40 h-44 sm:h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
@@ -521,7 +522,8 @@ export default async function Home({
           </div>
   
           {/* BOTÕES (menores) — layout absoluto apenas para md+ */}
-          <div className="absolute left-5 z-30 pointer-events-auto hidden md:flex md:bottom-8 bottom-5">
+          {/* ALTERAÇÃO: posicionamento md:bottom-6 para casar com o novo padding-bottom */}
+          <div className="absolute left-5 z-30 pointer-events-auto hidden md:flex md:bottom-6 bottom-5">
             <div className="flex items-center gap-2">
               <Link
                 href={`/poll/${p.id}`}
