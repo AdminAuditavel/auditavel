@@ -199,9 +199,27 @@ export default async function Home({
       // somente filtra por category se a propriedade estiver presente nos dados
       const hasCategoryField = polls.some((p) => typeof p.category !== "undefined");
       if (hasCategoryField) {
-        const catKey = activeCategory.toLowerCase();
+        // Map possible menu keys to the actual category values stored in DB.
+        // This allows menu to use friendly keys like "politicas" while DB uses "politica".
+        const categoryKeyMap: Record<string, string> = {
+          politicas: "politica",
+          politica: "politica",
+          esportes: "esportes",
+          cultura: "cultura",
+          clima: "clima",
+          economia: "economia",
+          ciencia: "ciencia",
+          saude: "saude",
+          crypto: "crypto",
+          todas: "todas",
+          tendencias: "tendencias",
+        };
+
+        const mapped = (categoryKeyMap[activeCategory.toLowerCase()] ??
+          activeCategory).toLowerCase();
+
         visiblePolls = visiblePolls.filter(
-          (p) => (p.category || "").toLowerCase() === catKey
+          (p) => (p.category || "").toLowerCase() === mapped
         );
       }
       // se não houver campo category, não filtramos (mantemos todas)
@@ -250,7 +268,7 @@ export default async function Home({
             {[
               { key: "tendencias", label: "Tendências" },
               { key: "todas", label: "Todas" },
-              { key: "politicas", label: "Política" },
+              { key: "politica", label: "Política" },
               { key: "esportes", label: "Esportes" },
               { key: "cultura", label: "Cultura" },
               { key: "clima", label: "Clima" },
@@ -530,7 +548,7 @@ export default async function Home({
           {[
             { key: "tendencias", label: "Tendências" },
             { key: "todas", label: "Todas" },
-            { key: "politicas", label: "Políticas" },
+            { key: "politica", label: "Políticas" },
             { key: "esportes", label: "Esportes" },
             { key: "cultura", label: "Cultura" },
             { key: "clima", label: "Clima" },
