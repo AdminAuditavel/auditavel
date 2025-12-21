@@ -505,7 +505,7 @@ export default async function Home({
             <div className="hidden md:flex items-center gap-2 px-7 pb-7 pointer-events-auto relative z-30">
               <Link
                 href={`/poll/${p.id}`}
-                className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-green-300 text-white hover:bg-emerald-700 transition"
               >
                 {primaryCtaLabel(p)}
               </Link>
