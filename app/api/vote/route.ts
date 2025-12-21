@@ -1,5 +1,3 @@
-// app/api/vote/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
@@ -61,30 +59,6 @@ function snapshotRanking(option_ids: string[]) {
 function normalizeFinitePositiveInt(val: any, fallback: number) {
   const n = typeof val === "number" && Number.isFinite(val) ? val : fallback;
   return Math.max(0, Math.floor(n));
-}
-
-function toMs(ts?: string | null) {
-  if (!ts) return 0;
-  const sRaw = String(ts).trim();
-
-  // Try direct parse first (covers most ISO forms)
-  const direct = Date.parse(sRaw);
-  if (!Number.isNaN(direct)) return direct;
-
-  // Normalize: replace space between date and time with T (if present)
-  let s = sRaw.replace(" ", "T");
-
-  // Normalize timezone offsets like +0000 -> +00:00
-  // e.g. "+0000" or "-0300" -> "+00:00" / "-03:00"
-  s = s.replace(/([+\-]\d{2})(\d{2})$/, "$1:$2");
-
-  // If still no timezone marker, assume UTC (append Z)
-  if (!/[zZ]$|[+\-]\d{2}:\d{2}$/.test(s)) {
-    s = `${s}Z`;
-  }
-
-  const parsed = Date.parse(s);
-  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 async function assertOptionsBelongToPoll(poll_id: string, ids: string[]): Promise<OptCheck> {
@@ -173,8 +147,9 @@ export async function POST(req: NextRequest) {
     /* =========================
        Cooldown (criar e alterar)
        Usa GREATEST(created_at, updated_at)
+       -- ajustado para usar a mesma lógica do arquivo anterior
     ========================= */
-    if (cooldownSeconds > 0) {
+    if (poll.vote_cooldown_seconds && poll.vote_cooldown_seconds > 0) {
       const { data: lastVote } = await supabase
         .from("votes")
         .select("created_at, updated_at")
@@ -184,12 +159,13 @@ export async function POST(req: NextRequest) {
         .limit(1)
         .maybeSingle();
 
-      if (lastVote?.created_at) {
-         const createdMs = toMs(lastVote.created_at);
-         const updatedMs = toMs(lastVote.updated_at);
-         const lastMs = Math.max(createdMs, updatedMs);
+      if (lastVote) {
+        const lastTs = Math.max(
+          new Date(lastVote.created_at).getTime(),
+          lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0
+        );
 
-        const cooldownEnd = lastMs + cooldownSeconds * 1000;
+        const cooldownEnd = lastTs + poll.vote_cooldown_seconds * 1000;
         if (Date.now() < cooldownEnd) {
           return NextResponse.json(
             {
