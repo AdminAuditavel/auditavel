@@ -595,19 +595,12 @@ export default async function Home({
   
                   if (!winner) return null;
   
-                  return (
-                    <div
-                      className="absolute bottom-3 right-3 z-30
-                                 flex items-center gap-1.5
-                                 rounded-full bg-white/90
-                                 border border-gray-200
-                                 px-2.5 py-1
-                                 text-xs font-normal text-gray-900"
-                    >
-                      <span className="text-yellow-500 leading-none">🥇</span>
-                      <span className="max-w-[120px] truncate">{winner}</span>
-                    </div>
-                  );
+                 return (
+                  <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 text-xs font-normal text-gray-900">
+                    <span className="text-yellow-500 leading-none">🥇</span>
+                    <span className="max-w-[120px] truncate">{winner}</span>
+                  </div>
+                );
                 })()}
               </div>
             );
