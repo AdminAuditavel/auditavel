@@ -1,4 +1,5 @@
 // app/api/vote/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
@@ -64,13 +65,26 @@ function normalizeFinitePositiveInt(val: any, fallback: number) {
 
 function toMs(ts?: string | null) {
   if (!ts) return 0;
-  const s = String(ts);
+  const sRaw = String(ts).trim();
 
-  // Se já tem timezone explícito (Z ou +HH:MM / -HH:MM), mantém.
-  const hasTz = /Z$|[+-]\d{2}:\d{2}$/.test(s);
+  // Try direct parse first (covers most ISO forms)
+  const direct = Date.parse(sRaw);
+  if (!Number.isNaN(direct)) return direct;
 
-  // Se NÃO tiver timezone, assume UTC (apende Z)
-  return new Date(hasTz ? s : `${s}Z`).getTime();
+  // Normalize: replace space between date and time with T (if present)
+  let s = sRaw.replace(" ", "T");
+
+  // Normalize timezone offsets like +0000 -> +00:00
+  // e.g. "+0000" or "-0300" -> "+00:00" / "-03:00"
+  s = s.replace(/([+\-]\d{2})(\d{2})$/, "$1:$2");
+
+  // If still no timezone marker, assume UTC (append Z)
+  if (!/[zZ]$|[+\-]\d{2}:\d{2}$/.test(s)) {
+    s = `${s}Z`;
+  }
+
+  const parsed = Date.parse(s);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 async function assertOptionsBelongToPoll(poll_id: string, ids: string[]): Promise<OptCheck> {
