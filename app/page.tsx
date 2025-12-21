@@ -379,8 +379,8 @@ export default async function Home({
           <Image
             src="/Logo_Auditavel.png"
             alt="Auditável"
-            width={112}
-            height={112}
+            width={172}
+            height={172}
             className="rounded-full object-cover"
           />
         </div>
