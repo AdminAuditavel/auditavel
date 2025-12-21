@@ -375,29 +375,28 @@ export default async function Home({
             aria-label={`Abrir pesquisa: ${p.title}`}
             className="absolute inset-0 z-20"
           />
-  
+      
           {/* CONTEÚDO */}
-          <div className="p-6 md:p-7 pb-20 relative z-10 pointer-events-none">
-            <div className="flex gap-5">
+          <div className="relative z-10 pointer-events-none">
+            {/* MOBILE: imagem em cima / DESKTOP: imagem esquerda */}
+            <div className="flex flex-col md:flex-row md:gap-6">
               {/* IMAGEM */}
-              <div className="w-40 h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
-                <PollImage
-                  src={featuredIconSrc}
-                  fallbackSrc={DEFAULT_POLL_ICON}
-                  alt={p.title}
-                  priority
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+              <div className="w-full md:w-56 md:shrink-0">
+                <div className="h-44 sm:h-56 md:h-44 md:w-56 overflow-hidden border-b md:border-b-0 md:border border-gray-200 bg-gray-50 md:rounded-2xl rounded-none">
+                  <PollImage
+                    src={featuredIconSrc}
+                    fallbackSrc={DEFAULT_POLL_ICON}
+                    alt={p.title}
+                    priority
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
               </div>
-  
-              {/* META + TÍTULO */}
-              <div className="flex-1 min-w-0">
-                {/* DATA + STATUS (MESMA LINHA) */}
+      
+              {/* TEXTO */}
+              <div className="p-5 md:p-7 flex-1 min-w-0">
+                {/* STATUS primeiro (mobile) */}
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-red-700">
-                    Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
-                  </span>
-  
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
                       p.status
@@ -405,37 +404,38 @@ export default async function Home({
                   >
                     {statusLabel(p.status)}
                   </span>
+      
+                  <span className="text-xs sm:text-sm text-red-700">
+                    {formatDate(p.start_date)} · {formatDate(p.end_date)}
+                  </span>
                 </div>
-  
-                {/* PERGUNTA (preto) */}
-                <h2 className="mt-3 text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words">
+      
+                {/* TÍTULO */}
+                <h2 className="mt-3 text-lg sm:text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words text-left">
                   {p.title}
                 </h2>
-  
-                {/* LINHA: Pesquisa tipo + badges */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                  <span className="text-gray-500">Pesquisa tipo:</span>
-  
-                  {/* BADGE do tipo */}
+      
+                {/* BADGES */}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700">
+                  <span className="text-gray-500">Tipo:</span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
                     {featuredTypeLabel}
                   </span>
-  
-                  {/* BADGE participação */}
+      
                   {(() => {
                     const maxVotes =
                       typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-  
+      
                     const isSingleParticipation = maxVotes === 1;
-  
+      
                     const badgeClass = isSingleParticipation
                       ? "bg-red-100 text-red-800 border border-red-200"
                       : "bg-sky-100 text-sky-800 border border-sky-200";
-  
+      
                     const badgeText = isSingleParticipation
                       ? "Participação Única"
                       : "Múltiplas Participações";
-  
+      
                     return (
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
@@ -445,80 +445,78 @@ export default async function Home({
                     );
                   })()}
                 </div>
-              </div>
-            </div>
-  
-            {/* ABAIXO: 60/40 */}
-            <div className="mt-5 flex flex-col md:flex-row gap-6">
-              {/* TEXTO — 60% */}
-              <div className="md:w-3/5">
-                <p className="text-gray-700 leading-relaxed text-base text-left">
+      
+                {/* DESCRIÇÃO */}
+                <p className="mt-4 text-gray-700 leading-relaxed text-sm sm:text-base text-left">
                   {p.description
                     ? p.description
                     : "Participe desta decisão e ajude a construir informação pública confiável."}
                 </p>
-              </div>
-  
-              {/* POSIÇÕES — 40% */}
-              {featuredShowResults && featuredBars && (
-                <div className="md:w-2/5">
-                  {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
-                    <div className="space-y-2">
-                      {(featuredBars.isRanking
-                        ? featuredBars.topRanking
-                        : featuredBars.topSingle
-                      ).map((o, i) => {
-                        const medal =
-                          i === 0
-                            ? "bg-yellow-400 text-yellow-900"
-                            : i === 1
-                            ? "bg-gray-300 text-gray-800"
-                            : "bg-amber-700 text-amber-100";
-  
-                        return (
-                          <div
-                            key={i}
-                            className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
-                          >
-                            <span
-                              className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
+      
+                {/* PÓDIO (abaixo no mobile) */}
+                {featuredShowResults && featuredBars && (
+                  <div className="mt-5">
+                    {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
+                      <div className="space-y-2">
+                        {(featuredBars.isRanking
+                          ? featuredBars.topRanking
+                          : featuredBars.topSingle
+                        ).map((o, i) => {
+                          const medal =
+                            i === 0
+                              ? "bg-yellow-400 text-yellow-900"
+                              : i === 1
+                              ? "bg-gray-300 text-gray-800"
+                              : "bg-amber-700 text-amber-100";
+      
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
                             >
-                              {i + 1}º
-                            </span>
-  
-                            <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
-                              {o.text}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-600">
-                      Ainda não há dados suficientes para exibição.
-                    </div>
-                  )}
-                </div>
-              )}
+                              <span
+                                className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
+                              >
+                                {i + 1}º
+                              </span>
+      
+                              <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                                {o.text}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-600">
+                        Ainda não há dados suficientes para exibição.
+                      </div>
+                    )}
+                  </div>
+                )}
+      
+                {/* espaço para os botões absolutos */}
+                <div className="h-16 md:h-0" />
+              </div>
             </div>
           </div>
-  
-          {/* BOTÕES (menores) — juntos lado a lado */}
-          <div className="absolute bottom-5 left-5 z-30 pointer-events-auto">
+      
+          {/* BOTÕES (fixos embaixo; bons no mobile) */}
+          <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-auto">
             <div className="flex items-center gap-2">
               <Link
                 href={`/poll/${p.id}`}
-                className="inline-flex items-center px-3 py-2 rounded-xl
-                           text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                className="flex-1 inline-flex justify-center items-center px-3 py-3 rounded-2xl
+                           text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
               >
                 {primaryCtaLabel(p)}
               </Link>
-  
+      
               {featuredShowResults && (
                 <Link
                   href={`/results/${p.id}`}
-                  className="inline-flex items-center px-3 py-2 rounded-xl
-                             text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                  className="inline-flex justify-center items-center px-4 py-3 rounded-2xl
+                             text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
                 >
                   Ver resultados
                 </Link>
