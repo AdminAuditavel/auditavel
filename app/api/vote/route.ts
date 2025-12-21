@@ -1,9 +1,21 @@
 // app/api/vote/route.ts
-
-// app/api/vote/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
+
+/* ======================================================
+   Types
+====================================================== */
+
+type OptCheckOk = { ok: true; dedup: string[] };
+type OptCheckFail = {
+  ok: false;
+  error:
+    | "invalid_payload"
+    | "invalid_option_for_poll"
+    | "internal_error";
+};
+type OptCheck = OptCheckOk | OptCheckFail;
 
 /* ======================================================
    Helpers
@@ -36,13 +48,13 @@ function arraysEqual(a: string[], b: string[]) {
 }
 
 function snapshotSingle(option_id: string) {
-  return { voting_type: "single", option_id };
+  return { voting_type: "single" as const, option_id };
 }
 function snapshotMultiple(option_ids: string[]) {
-  return { voting_type: "multiple", option_ids };
+  return { voting_type: "multiple" as const, option_ids };
 }
 function snapshotRanking(option_ids: string[]) {
-  return { voting_type: "ranking", option_ids };
+  return { voting_type: "ranking" as const, option_ids };
 }
 
 function normalizeFinitePositiveInt(val: any, fallback: number) {
@@ -50,8 +62,10 @@ function normalizeFinitePositiveInt(val: any, fallback: number) {
   return Math.max(0, Math.floor(n));
 }
 
-async function assertOptionsBelongToPoll(poll_id: string, ids: string[]) {
-  if (!ids || ids.length === 0) return { ok: false, error: "invalid_payload" as const };
+async function assertOptionsBelongToPoll(poll_id: string, ids: string[]): Promise<OptCheck> {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { ok: false, error: "invalid_payload" };
+  }
 
   const dedup = Array.from(new Set(ids));
   const { data, error } = await supabase
@@ -62,13 +76,13 @@ async function assertOptionsBelongToPoll(poll_id: string, ids: string[]) {
 
   if (error) {
     console.error("assertOptionsBelongToPoll error:", error);
-    return { ok: false, error: "internal_error" as const };
+    return { ok: false, error: "internal_error" };
   }
 
   const found = new Set((data ?? []).map((r: any) => r.id));
   const allOk = dedup.every((id) => found.has(id));
 
-  if (!allOk) return { ok: false, error: "invalid_option_for_poll" as const };
+  if (!allOk) return { ok: false, error: "invalid_option_for_poll" };
   return { ok: true, dedup };
 }
 
@@ -116,9 +130,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid_poll_type" }, { status: 400 });
     }
 
-    // Regras canônicas conforme você definiu:
+    // Regras canônicas:
     // allow_multiple=false => max_votes_per_user=1 (voto editável; último vale)
-    // allow_multiple=true => max_votes_per_user determina quantas vezes pode votar
+    // allow_multiple=true  => max_votes_per_user define quantidade
     const allowMultiple = Boolean(poll.allow_multiple);
     const effectiveMaxVotes = allowMultiple
       ? Math.max(1, normalizeFinitePositiveInt(poll.max_votes_per_user, 1))
@@ -132,10 +146,8 @@ export async function POST(req: NextRequest) {
         : Math.max(1, normalizeFinitePositiveInt(poll.max_options_per_vote, 1));
 
     /* =========================
-       Cooldown (vale para criar e alterar)
-       Fonte do cooldown:
-       - pega o voto mais recente por created_at (no max=1 é sempre o mesmo voto)
-       - usa GREATEST(created_at, updated_at) como último envio efetivo
+       Cooldown (criar e alterar)
+       Usa GREATEST(created_at, updated_at)
     ========================= */
     if (cooldownSeconds > 0) {
       const { data: lastVote } = await supabase
@@ -172,11 +184,8 @@ export async function POST(req: NextRequest) {
 
     /* ======================================================
        MODE: BIG BROTHER (max_votes_per_user > 1)
-       - cada voto é uma nova linha
-       - aplica limite antes de inserir
     ======================================================= */
     if (effectiveMaxVotes > 1) {
-      // Limite
       const { count } = await supabase
         .from("votes")
         .select("id", { count: "exact", head: true })
@@ -196,7 +205,12 @@ export async function POST(req: NextRequest) {
         }
 
         const optCheck = await assertOptionsBelongToPoll(poll_id, [option_id]);
-        if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+        if (!optCheck.ok) {
+          return NextResponse.json(
+            { error: optCheck.error },
+            { status: optCheck.error === "internal_error" ? 500 : 400 }
+          );
+        }
 
         await supabase.from("votes").insert({
           id: voteId,
@@ -215,8 +229,12 @@ export async function POST(req: NextRequest) {
         }
 
         const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
-        if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
-
+        if (!optCheck.ok) {
+          return NextResponse.json(
+            { error: optCheck.error },
+            { status: optCheck.error === "internal_error" ? 500 : 400 }
+          );
+        }
         const dedup = optCheck.dedup;
 
         if (maxOptionsPerVote !== null && dedup.length > maxOptionsPerVote) {
@@ -250,7 +268,12 @@ export async function POST(req: NextRequest) {
       }
 
       const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
-      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+      if (!optCheck.ok) {
+        return NextResponse.json(
+          { error: optCheck.error },
+          { status: optCheck.error === "internal_error" ? 500 : 400 }
+        );
+      }
 
       await supabase.from("votes").insert({
         id: voteId,
@@ -273,13 +296,11 @@ export async function POST(req: NextRequest) {
 
     /* ======================================================
        MODE: VOTO ÚNICO (max_votes_per_user = 1)
-       - um voto vigente por (poll_id, participant_id)
-       - alterações atualizam o mesmo vote_id + vote_events
     ======================================================= */
 
     const { data: existingVote } = await supabase
       .from("votes")
-      .select("id, option_id, created_at, updated_at")
+      .select("id, option_id")
       .eq("poll_id", poll_id)
       .eq("participant_id", participant_id)
       .maybeSingle();
@@ -297,13 +318,17 @@ export async function POST(req: NextRequest) {
       }
 
       const optCheck = await assertOptionsBelongToPoll(poll_id, [option_id]);
-      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+      if (!optCheck.ok) {
+        return NextResponse.json(
+          { error: optCheck.error },
+          { status: optCheck.error === "internal_error" ? 500 : 400 }
+        );
+      }
 
       if (existingVote) {
         beforeState = snapshotSingle(existingVote.option_id);
 
         if (existingVote.option_id === option_id) {
-          // sem mudança efetiva
           return NextResponse.json({ success: true, updated: false });
         }
 
@@ -335,7 +360,12 @@ export async function POST(req: NextRequest) {
       }
 
       const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
-      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+      if (!optCheck.ok) {
+        return NextResponse.json(
+          { error: optCheck.error },
+          { status: optCheck.error === "internal_error" ? 500 : 400 }
+        );
+      }
 
       let dedup = optCheck.dedup;
       if (dedup.length === 0) {
@@ -346,7 +376,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "max_options_exceeded" }, { status: 400 });
       }
 
-      // order irrelevante: padroniza snapshot ordenando
+      // order irrelevante: snapshot ordenado para comparação consistente
       dedup = dedup.slice().sort();
 
       if (existingVote) {
@@ -398,7 +428,12 @@ export async function POST(req: NextRequest) {
       }
 
       const optCheck = await assertOptionsBelongToPoll(poll_id, option_ids);
-      if (!optCheck.ok) return NextResponse.json({ error: optCheck.error }, { status: optCheck.error === "internal_error" ? 500 : 400 });
+      if (!optCheck.ok) {
+        return NextResponse.json(
+          { error: optCheck.error },
+          { status: optCheck.error === "internal_error" ? 500 : 400 }
+        );
+      }
 
       if (existingVote) {
         const { data: prev } = await supabase
@@ -442,7 +477,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (!afterState) {
-      // proteção contra inconsistências
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
     }
 
@@ -456,7 +490,6 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, updated: isUpdate });
-
   } catch (e) {
     console.error("internal_error", e);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
