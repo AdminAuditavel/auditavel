@@ -93,7 +93,7 @@ export default function PollRegistrationClient() {
 
   const adminTokenQuery = `token=${encodeURIComponent(tokenFromUrl)}`;
 
-  const [formData, setFormData] = useState({
+  const initialForm = {
     title: "",
     description: "",
     status: "open" as "draft" | "open" | "paused" | "closed",
@@ -123,7 +123,12 @@ export default function PollRegistrationClient() {
 
     // novo campo
     category: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(initialForm);
+
+  // Guarda uma cópia do formulário exatamente como veio do backend, para o Cancel
+  const [originalForm, setOriginalForm] = useState<typeof initialForm | null>(null);
 
   // Mantém o último valor válido para reverter quando o usuário sai do campo com valor inválido
   const [lastValidDates, setLastValidDates] = useState({
@@ -165,6 +170,7 @@ export default function PollRegistrationClient() {
       category: "",
     }));
 
+    setOriginalForm(null);
     setLastValidDates((prev) => ({
       ...prev,
       start_date: currentDate,
@@ -255,6 +261,9 @@ export default function PollRegistrationClient() {
         }
 
         setFormData((prev) => ({ ...prev, ...nextForm }));
+
+        // guarda a cópia original para o Cancel
+        setOriginalForm({ ...initialForm, ...nextForm });
 
         // atualiza lastValidDates com o que veio do backend
         setLastValidDates({
@@ -546,6 +555,8 @@ export default function PollRegistrationClient() {
         category: "",
       });
 
+      setOriginalForm(null);
+
       setLastValidDates({
         start_date: resetNow,
         end_date: "",
@@ -625,6 +636,8 @@ export default function PollRegistrationClient() {
       category: "",
     });
 
+    setOriginalForm(null);
+
     setLastValidDates({
       start_date: resetNow,
       end_date: "",
@@ -634,6 +647,27 @@ export default function PollRegistrationClient() {
     setError("");
     setSuccess(false);
     setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (!originalForm) {
+      // nada a reverter
+      setIsEditing(false);
+      setError("");
+      setSuccess(false);
+      return;
+    }
+
+    // Reverte para o estado original vindo do backend e sai do modo edição
+    setFormData(originalForm);
+    setLastValidDates({
+      start_date: originalForm.start_date,
+      end_date: originalForm.end_date,
+      closes_at: originalForm.closes_at,
+    });
+    setIsEditing(false);
+    setError("");
+    setSuccess(false);
   };
 
   const handleSave = async () => {
@@ -696,6 +730,9 @@ export default function PollRegistrationClient() {
 
       setSuccess(true);
       setIsEditing(false);
+
+      // atualiza originalForm para o novo estado salvo (usa formData como fonte)
+      setOriginalForm({ ...formData });
 
       // após salvar com sucesso, atualiza lastValidDates para os valores atuais
       setLastValidDates({
@@ -1039,7 +1076,8 @@ export default function PollRegistrationClient() {
             <input
               type="number"
               name="max_options_per_vote"
-              value={formData.max_options_per_vote}
+              // show empty when disabled, otherwise show the number
+              value={disabledMaxOptions ? "" : String(formData.max_options_per_vote ?? "")}
               onChange={handleMaxOptionsPerVoteChange}
               style={{
                 ...styles.input,
@@ -1149,7 +1187,7 @@ export default function PollRegistrationClient() {
           />
         </div>
 
-        {/* Linha de ações: Limpar/Cadastrar/Salvar à esquerda e Admin à direita */}
+        {/* Linha de ações: Limpar/Cadastrar/Salvar/Cancelar à esquerda e Admin à direita */}
         <div style={styles.actionsRow}>
           <div style={styles.buttonGroup}>
             {isEditMode && (
@@ -1160,6 +1198,18 @@ export default function PollRegistrationClient() {
                 disabled={!isEditing || isBusy}
               >
                 {loading ? "Salvando..." : "Salvar"}
+              </button>
+            )}
+
+            {/* Cancel button: aparece em edição ativa */}
+            {isEditMode && isEditing && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                style={styles.secondaryButton}
+                disabled={isBusy}
+              >
+                Cancelar
               </button>
             )}
 
@@ -1428,6 +1478,17 @@ const styles = {
     fontSize: "14px",
     color: "#fff",
     backgroundColor: "#f43f5e",
+    border: "none",
+    borderRadius: "5px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  // botão secundário (Cancelar)
+  secondaryButton: {
+    padding: "10px",
+    fontSize: "14px",
+    color: "#111827",
+    backgroundColor: "#e5e7eb",
     border: "none",
     borderRadius: "5px",
     fontWeight: "bold",
