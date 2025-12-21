@@ -146,55 +146,58 @@ export async function POST(req: NextRequest) {
 
     /* =========================
        Cooldown (criar e alterar)
-       Usa GREATEST(created_at, updated_at)
-       -> busca um conjunto pequeno de votes e calcula o máximo em JS,
-          logando diagnósticos e clamping se o timestamp estiver no futuro.
+       Usa GREATEST(created_at, updated_at) calculado no DB via EXTRACT(EPOCH ...)
     ========================= */
     if (cooldownSeconds > 0) {
-      const { data: votes, error: votesErr } = await supabase
-        .from("votes")
-        .select("created_at, updated_at")
-        .eq("poll_id", poll_id)
-        .eq("participant_id", participant_id)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      // Pedimos ao Postgres o maior timestamp (created/updated) em epoch (segundos)
+      const { data: lastRow, error: votesErr } = await supabase
+        .from('votes')
+        .select(
+          "extract(epoch from greatest(created_at, coalesce(updated_at, created_at))) as last_epoch"
+        )
+        .eq('poll_id', poll_id)
+        .eq('participant_id', participant_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (votesErr) {
-        console.error("cooldown: error fetching votes:", votesErr);
-      } else if (votes && votes.length > 0) {
-        let lastMs = 0;
-        const parsedRows: any[] = [];
+        console.error('cooldown: error fetching last_epoch from votes:', votesErr);
+      } else if (lastRow && lastRow.last_epoch != null) {
+        // last_epoch vem em segundos (pode ser string ou number)
+        const lastEpochSec =
+          typeof lastRow.last_epoch === 'number'
+            ? lastRow.last_epoch
+            : Number(lastRow.last_epoch);
 
-        for (const v of votes as any[]) {
-          const createdMs = v.created_at ? new Date(v.created_at).getTime() : 0;
-          const updatedMs = v.updated_at ? new Date(v.updated_at).getTime() : 0;
-          parsedRows.push({ raw: { created_at: v.created_at, updated_at: v.updated_at }, createdMs, updatedMs });
-          lastMs = Math.max(lastMs, createdMs, updatedMs);
-        }
+        if (!Number.isFinite(lastEpochSec)) {
+          console.warn('cooldown: invalid last_epoch from db:', lastRow.last_epoch);
+        } else {
+          const lastMs = Math.floor(lastEpochSec * 1000);
+          const nowMs = Date.now();
 
-        // diagnóstico: se lastMs > now, logue e clamp
-        const nowMs = Date.now();
-        if (lastMs > nowMs) {
-          console.warn("vote cooldown: last activity appears in the future; clamping. details:", {
-            poll_id,
-            participant_id,
-            nowMs,
-            parsedRows,
-            lastMs,
-            cooldownSeconds,
-          });
-          lastMs = nowMs;
-        }
+          // proteja contra clock skew do DB (timestamp no futuro)
+          let effectiveLastMs = lastMs;
+          if (lastMs > nowMs) {
+            console.warn('vote cooldown: last activity from DB is in the future; clamping', {
+              poll_id,
+              participant_id,
+              lastMs,
+              nowMs,
+            });
+            effectiveLastMs = nowMs;
+          }
 
-        const cooldownEnd = lastMs + cooldownSeconds * 1000;
-        if (nowMs < cooldownEnd) {
-          return NextResponse.json(
-            {
-              error: "cooldown_active",
-              remaining_seconds: Math.ceil((cooldownEnd - nowMs) / 1000),
-            },
-            { status: 429 }
-          );
+          const cooldownEnd = effectiveLastMs + cooldownSeconds * 1000;
+          if (nowMs < cooldownEnd) {
+            return NextResponse.json(
+              {
+                error: 'cooldown_active',
+                remaining_seconds: Math.ceil((cooldownEnd - nowMs) / 1000),
+              },
+              { status: 429 }
+            );
+          }
         }
       }
     }
