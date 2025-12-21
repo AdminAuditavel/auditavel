@@ -218,8 +218,8 @@ export default async function Home({
             <Image
               src="/Logo_Auditavel.png"
               alt="Auditável"
-              width={36}
-              height={36}
+              width={156}
+              height={156}
               className="rounded-full object-cover"
             />
           </div>
@@ -244,9 +244,9 @@ export default async function Home({
           </form>
         </header>
 
-        {/* CATEGORIES MENU (mais evidente spacing) */}
+        {/* CATEGORIES MENU (mais suave) */}
         <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
-          <ul className="mt-4 flex gap-2 overflow-x-auto pb-2">
+          <ul className="mt-1 flex gap-2 overflow-x-auto pb-1">
             {[
               { key: "tendencias", label: "Tendências" },
               { key: "todas", label: "Todas" },
@@ -277,7 +277,7 @@ export default async function Home({
           </ul>
         </nav>
 
-        <main id="top" className="pt-6 pb-8 max-w-6xl mx-auto">
+        <main id="top" className="pt-3 pb-8 max-w-6xl mx-auto">
           <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>
         </main>
       </>
@@ -498,8 +498,8 @@ export default async function Home({
           <Image
             src="/Logo_Auditavel.png"
             alt="Auditável"
-            width={36}
-            height={36}
+            width={156}
+            height={156}
             className="rounded-full object-cover"
           />
         </div>
@@ -524,9 +524,9 @@ export default async function Home({
         </form>
       </header>
 
-      {/* CATEGORIES MENU (mais evidente spacing) */}
+      {/* CATEGORIES MENU (mais suave) */}
       <nav aria-label="Categorias" className="max-w-6xl mx-auto px-4 md:px-6">
-        <ul className="mt-4 flex gap-2 overflow-x-auto pb-2">
+        <ul className="mt-1 flex gap-2 overflow-x-auto pb-1">
           {[
             { key: "tendencias", label: "Tendências" },
             { key: "todas", label: "Todas" },
@@ -557,10 +557,10 @@ export default async function Home({
         </ul>
       </nav>
 
-      <main id="top" className="pt-6 pb-8 max-w-6xl mx-auto">
+      <main id="top" className="pt-3 pb-8 max-w-6xl mx-auto">
         {/* DESTAQUE */}
         {p ? (
-          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden mt-4 md:mt-6">
+          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden mt-1 md:mt-2">
             {/* overlay link - só em telas md+ para não bloquear controles mobile */}
             <Link
               href={`/poll/${p.id}`}
