@@ -534,11 +534,11 @@ export default async function Home({
             </div>
           </div>
       
-          {/* BOTÕES */}
-          <div className="absolute bottom-5 left-5 z-30 pointer-events-auto flex items-center gap-2">
+          {/* BOTÕES — MOBILE */}
+          <div className="absolute bottom-5 left-5 z-30 pointer-events-auto flex flex-col items-center gap-2">
             <Link
               href={`/poll/${p.id}`}
-              className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+              className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
             >
               {primaryCtaLabel(p)}
             </Link>
@@ -546,7 +546,7 @@ export default async function Home({
             {featuredShowResults && (
               <Link
                 href={`/results/${p.id}`}
-                className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
               >
                 Ver resultados
               </Link>
