@@ -390,9 +390,9 @@ export default async function Home({
   
               {/* META + TÍTULO */}
               <div className="flex-1 min-w-0">
-                {/* DATA + STATUS (MESMA LINHA, irá quebrar naturalmente em telas pequenas) */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <span className="text-sm text-red-700">
+                {/* DATA + STATUS — agora sempre na mesma linha; o texto de data trunca se necessário */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-red-700 min-w-0 truncate">
                     Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
                   </span>
   
@@ -500,11 +500,11 @@ export default async function Home({
               )}
             </div>
 
-            {/* BOTÕES para mobile (visíveis apenas em telas < md) */}
-            <div className="mt-4 md:hidden flex items-center gap-2">
+            {/* BOTÕES para mobile — agora os dois na mesma linha: Participar à esquerda e Ver resultados à direita */}
+            <div className="mt-4 md:hidden flex items-center justify-between gap-2">
               <Link
                 href={`/poll/${p.id}`}
-                className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition w-full justify-center"
+                className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition flex-1 max-w-[48%] justify-start"
               >
                 {primaryCtaLabel(p)}
               </Link>
@@ -512,7 +512,7 @@ export default async function Home({
               {featuredShowResults && (
                 <Link
                   href={`/results/${p.id}`}
-                  className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                  className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition flex-1 max-w-[48%] justify-end"
                 >
                   Ver resultados
                 </Link>
