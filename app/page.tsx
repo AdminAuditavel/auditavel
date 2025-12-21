@@ -218,8 +218,8 @@ export default async function Home({
             <Image
               src="/Logo_Auditavel.png"
               alt="Auditável"
-              width={156}
-              height={156}
+              width={164}
+              height={164}
               className="rounded-full object-cover"
             />
           </div>
@@ -558,14 +558,6 @@ export default async function Home({
       </nav>
 
       <main id="top" className="p-4 md:p-8 max-w-6xl mx-auto space-y-12">
-        {/* HERO */}
-        <section className="text-center space-y-3">
-          <h1 className="text-4xl md:text-5xl font-bold text-emerald-700">Auditável</h1>
-          <p className="text-base md:text-lg font-medium text-gray-800">
-            Onde decisões públicas podem ser verificadas.
-          </p>
-        </section>
-
         <hr className="border-gray-200" />
 
         {/* DESTAQUE */}
