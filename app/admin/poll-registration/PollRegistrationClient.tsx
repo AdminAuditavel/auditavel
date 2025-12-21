@@ -869,6 +869,10 @@ export default function PollRegistrationClient() {
 
   const minStartDatetimeLocal = !isEditMode ? nowDatetimeLocal() : undefined;
 
+  // computed disabled states for the two controls we want to gray-out / block clicks
+  const disabledMaxVotes = !isEditing || isBusy || !formData.allow_multiple;
+  const disabledMaxOptions = !isEditing || isBusy || formData.voting_type !== "multiple";
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>{isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}</h1>
@@ -948,9 +952,15 @@ export default function PollRegistrationClient() {
               name="max_votes_per_user"
               value={formData.max_votes_per_user}
               onChange={handleMaxVotesChange}
-              style={styles.input}
+              style={{
+                ...styles.input,
+                backgroundColor: disabledMaxVotes ? "#f3f4f6" : "#fff",
+                cursor: disabledMaxVotes ? "not-allowed" : "text",
+                pointerEvents: disabledMaxVotes ? "none" : "auto",
+                color: disabledMaxVotes ? "#6b7280" : undefined,
+              }}
               min={formData.allow_multiple ? 2 : 1}
-              disabled={!isEditing || isBusy || !formData.allow_multiple}
+              disabled={disabledMaxVotes}
             />
           </div>
         </div>
@@ -1031,9 +1041,15 @@ export default function PollRegistrationClient() {
               name="max_options_per_vote"
               value={formData.max_options_per_vote}
               onChange={handleMaxOptionsPerVoteChange}
-              style={styles.input}
+              style={{
+                ...styles.input,
+                backgroundColor: disabledMaxOptions ? "#f3f4f6" : "#fff",
+                cursor: disabledMaxOptions ? "not-allowed" : "text",
+                pointerEvents: disabledMaxOptions ? "none" : "auto",
+                color: disabledMaxOptions ? "#6b7280" : undefined,
+              }}
               min={1}
-              disabled={!isEditing || isBusy || formData.voting_type !== "multiple"}
+              disabled={disabledMaxOptions}
             />
           </div>
         </div>
