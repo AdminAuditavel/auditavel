@@ -1071,31 +1071,42 @@ export default function PollRegistrationClient() {
           </div>
         </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>
-            Mostrar Resultados Parciais:
-            <input
-              type="checkbox"
-              name="show_partial_results"
-              checked={formData.show_partial_results}
-              onChange={handleInputChange}
-              style={styles.checkbox}
-              disabled={!isEditing || isBusy}
-            />
-          </label>
-        </div>
+        {/* Mostrar resultados parciais + Categoria (mesma linha) */}
+        <div style={styles.inlineFieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+            <label style={styles.label}>
+              Mostrar Resultados Parciais:
+              <input
+                type="checkbox"
+                name="show_partial_results"
+                checked={formData.show_partial_results}
+                onChange={handleInputChange}
+                style={styles.checkbox}
+                disabled={!isEditing || isBusy}
+              />
+            </label>
+          </div>
 
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Categoria:</label>
-          <input
-            type="text"
-            name="category"
-            value={formData.category}
-            onChange={handleInputChange}
-            style={styles.input}
-            placeholder="Ex.: cultura, clima, esportes..."
-            disabled={!isEditing || isBusy}
-          />
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+            <label style={styles.label}>Categoria:</label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              style={styles.select}
+              disabled={!isEditing || isBusy}
+            >
+              <option value="">— Selecione —</option>
+              <option value="politica">Política</option>
+              <option value="esportes">Esportes</option>
+              <option value="cultura">Cultura</option>
+              <option value="saude">Saúde</option>
+              <option value="economia">Economia</option>
+              <option value="clima">Clima</option>
+              <option value="crypto">Crypto</option>
+              <option value="ciencia">Ciência</option>
+            </select>
+          </div>
         </div>
 
         <div style={styles.fieldGroup}>
