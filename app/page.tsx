@@ -377,48 +377,50 @@ export default async function Home({
           />
       
           {/* CONTEÚDO */}
-          <div className="relative z-10 pointer-events-none">
-            {/* Topo: MOBILE coluna / DESKTOP linha com imagem à esquerda */}
-            <div className="flex flex-col md:flex-row md:gap-6">
+          <div className="p-6 md:p-7 pb-12 relative z-10 pointer-events-none">
+            <div className="flex flex-col md:flex-row gap-5">
+      
               {/* IMAGEM */}
-              <div className="w-full md:w-56 md:shrink-0">
-                <div className="h-44 sm:h-56 md:h-44 md:w-56 overflow-hidden border-b md:border-b-0 md:border border-gray-200 bg-gray-50 md:rounded-2xl rounded-none">
-                  <PollImage
-                    src={featuredIconSrc}
-                    fallbackSrc={DEFAULT_POLL_ICON}
-                    alt={p.title}
-                    priority
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
+              <div className="w-full md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                <PollImage
+                  src={featuredIconSrc}
+                  fallbackSrc={DEFAULT_POLL_ICON}
+                  alt={p.title}
+                  priority
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
       
-              {/* BLOCO DIREITO */}
-              <div className="p-5 md:p-7 flex-1 min-w-0 pb-20 md:pb-7">
-                {/* DATA + STATUS */}
+              {/* META + TÍTULO */}
+              <div className="flex-1 min-w-0 mt-4 md:mt-0">
+                {/* DATA + STATUS (MESMA LINHA) */}
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs sm:text-sm text-red-700">
+                  <span className="text-sm text-red-700">
                     Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
                   </span>
       
-                  <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(p.status)}`}>
+                  <span
+                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(p.status)}`}
+                  >
                     {statusLabel(p.status)}
                   </span>
                 </div>
       
-                {/* TÍTULO */}
-                <h2 className="mt-3 text-lg sm:text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words text-left">
+                {/* PERGUNTA (preto) */}
+                <h2 className="mt-3 text-xl md:text-2xl font-bold text-gray-900 leading-snug break-words">
                   {p.title}
                 </h2>
       
-                {/* BADGES */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700">
+                {/* LINHA: Pesquisa tipo + badges */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   <span className="text-gray-500">Pesquisa tipo:</span>
       
+                  {/* BADGE do tipo */}
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
                     {featuredTypeLabel}
                   </span>
       
+                  {/* BADGE participação */}
                   {(() => {
                     const maxVotes = typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
                     const isSingleParticipation = maxVotes === 1;
@@ -427,83 +429,128 @@ export default async function Home({
                       ? "bg-red-100 text-red-800 border border-red-200"
                       : "bg-sky-100 text-sky-800 border border-sky-200";
       
-                    const badgeText = isSingleParticipation ? "Participação Única" : "Múltiplas Participações";
+                    const badgeText = isSingleParticipation
+                      ? "Participação Única"
+                      : "Múltiplas Participações";
       
                     return (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
+                      >
                         {badgeText}
                       </span>
                     );
                   })()}
                 </div>
+              </div>
+            </div>
       
-                {/* 60/40 (MOBILE = coluna / DESKTOP = 60/40) */}
-                <div className="mt-5 flex flex-col md:flex-row md:gap-6">
-                  {/* 60% TEXTO */}
-                  <div className="md:w-3/5">
-                    <p className="text-gray-700 leading-relaxed text-sm sm:text-base text-justify">
-                      {p.description
-                        ? p.description
-                        : "Participe desta decisão e ajude a construir informação pública confiável."}
-                    </p>
-                  </div>
+            {/* ABAIXO: PÓDIO E DESCRIÇÃO */}
+            <div className="mt-5 flex flex-col md:flex-row gap-6">
       
-                  {/* 40% PÓDIO */}
-                  {featuredShowResults && featuredBars && (
-                    <div className="mt-5 md:mt-0 md:w-2/5">
-                      {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
-                        <div className="space-y-2">
-                          {(featuredBars.isRanking ? featuredBars.topRanking : featuredBars.topSingle).map((o, i) => {
-                            const medal =
-                              i === 0
-                                ? "bg-yellow-400 text-yellow-900"
-                                : i === 1
-                                ? "bg-gray-300 text-gray-800"
-                                : "bg-amber-700 text-amber-100";
+              {/* TEXTO — JUSTIFICADO */}
+              <div className="md:w-3/5 text-justify">
+                <p className="text-gray-700 leading-relaxed text-base">
+                  {p.description
+                    ? p.description
+                    : "Participe desta decisão e ajude a construir informação pública confiável."}
+                </p>
+              </div>
       
-                            return (
-                              <div key={i} className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
-                                <span className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}>
-                                  {i + 1}º
-                                </span>
-                                <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
-                                  {o.text}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-600">
-                          Ainda não há dados suficientes para exibição.
-                        </div>
-                      )}
+              {/* POSIÇÕES — PÓDIO */}
+              {featuredShowResults && featuredBars && (
+                <div className="md:w-2/5">
+                  {!featuredBars.isRanking ? (
+                    featuredBars.topSingle.length > 0 ? (
+                      <div className="space-y-2">
+                        {featuredBars.topSingle.map((o, i) => {
+                          const medal =
+                            i === 0
+                              ? "bg-yellow-400 text-yellow-900"
+                              : i === 1
+                              ? "bg-gray-300 text-gray-800"
+                              : "bg-amber-700 text-amber-100";
+      
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
+                            >
+                              <span
+                                className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
+                              >
+                                {i + 1}º
+                              </span>
+      
+                              <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                                {o.text}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-600">
+                        {featuredBars.participants > 0
+                          ? "Ainda não há votos válidos para exibição."
+                          : "Seja o primeiro a participar — seu voto inicia o resultado público."}
+                      </div>
+                    )
+                  ) : featuredBars.topRanking.length > 0 ? (
+                    <div className="space-y-2">
+                      {featuredBars.topRanking.map((o, i) => {
+                        const medal =
+                          i === 0
+                            ? "bg-yellow-400 text-yellow-900"
+                            : i === 1
+                            ? "bg-gray-300 text-gray-800"
+                            : "bg-amber-700 text-amber-100";
+      
+                        return (
+                          <div
+                            key={i}
+                            className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
+                          >
+                            <span
+                              className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
+                            >
+                              {i + 1}º
+                            </span>
+      
+                            <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                              {o.text}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600">
+                      Ainda não há rankings suficientes — participe para iniciar o resultado.
                     </div>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           </div>
       
-          {/* BOTÕES — canto inferior esquerdo (MOBILE e PC) */}
-          <div className="absolute bottom-4 left-4 z-30 pointer-events-auto">
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/poll/${p.id}`}
-                className="inline-flex items-center px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
-              >
-                {primaryCtaLabel(p)}
-              </Link>
+          {/* BOTÕES */}
+          <div className="absolute bottom-5 left-5 z-30 pointer-events-auto flex items-center gap-2">
+            <Link
+              href={`/poll/${p.id}`}
+              className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+            >
+              {primaryCtaLabel(p)}
+            </Link>
       
-              {featuredShowResults && (
-                <Link
-                  href={`/results/${p.id}`}
-                  className="inline-flex items-center px-4 py-2.5 rounded-2xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
-                >
-                  Ver resultados
-                </Link>
-              )}
-            </div>
+            {featuredShowResults && (
+              <Link
+                href={`/results/${p.id}`}
+                className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+              >
+                Ver resultados
+              </Link>
+            )}
           </div>
         </div>
       ) : null}
