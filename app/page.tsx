@@ -218,8 +218,8 @@ export default async function Home({
             <Image
               src="/Logo_Auditavel.png"
               alt="Auditável"
-              width={164}
-              height={164}
+              width={156}
+              height={156}
               className="rounded-full object-cover"
             />
           </div>
@@ -498,8 +498,8 @@ export default async function Home({
           <Image
             src="/Logo_Auditavel.png"
             alt="Auditável"
-            width={36}
-            height={36}
+            width={156}
+            height={156}
             className="rounded-full object-cover"
           />
         </div>
