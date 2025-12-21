@@ -369,7 +369,7 @@ export default async function Home({
       {/* DESTAQUE */}
       {p ? (
         <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden">
-          {/* overlay link */}
+          {/* overlay link (card todo clicável) */}
           <Link
             href={`/poll/${p.id}`}
             aria-label={`Abrir pesquisa: ${p.title}`}
@@ -377,8 +377,8 @@ export default async function Home({
           />
       
           {/* CONTEÚDO */}
-          <div className="relative z-10 pointer-events-none">
-            {/* MOBILE: imagem em cima / DESKTOP: imagem esquerda */}
+          <div className="relative z-10">
+            {/* MOBILE: coluna / DESKTOP: linha */}
             <div className="flex flex-col md:flex-row md:gap-6">
               {/* IMAGEM */}
               <div className="w-full md:w-56 md:shrink-0">
@@ -394,8 +394,8 @@ export default async function Home({
               </div>
       
               {/* TEXTO */}
-              <div className="p-5 md:p-7 flex-1 min-w-0">
-                {/* STATUS primeiro (mobile) */}
+              <div className="p-5 md:p-7 flex-1 min-w-0 pointer-events-none">
+                {/* STATUS + DATAS */}
                 <div className="flex items-center justify-between gap-3">
                   <span
                     className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
@@ -418,6 +418,7 @@ export default async function Home({
                 {/* BADGES */}
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-700">
                   <span className="text-gray-500">Tipo:</span>
+      
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
                     {featuredTypeLabel}
                   </span>
@@ -446,14 +447,14 @@ export default async function Home({
                   })()}
                 </div>
       
-                {/* DESCRIÇÃO */}
-                <p className="mt-4 text-gray-700 leading-relaxed text-sm sm:text-base text-left">
+                {/* DESCRIÇÃO (JUSTIFICADA) */}
+                <p className="mt-4 text-gray-700 leading-relaxed text-sm sm:text-base text-justify">
                   {p.description
                     ? p.description
                     : "Participe desta decisão e ajude a construir informação pública confiável."}
                 </p>
       
-                {/* PÓDIO (abaixo no mobile) */}
+                {/* PÓDIO */}
                 {featuredShowResults && featuredBars && (
                   <div className="mt-5">
                     {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
@@ -495,19 +496,16 @@ export default async function Home({
                   </div>
                 )}
       
-                {/* espaço para os botões absolutos */}
-                <div className="h-16 md:h-0" />
+                {/* Espaço só no MOBILE para os botões absolutos */}
+                <div className="h-14 md:hidden" />
               </div>
             </div>
-          </div>
       
-          {/* BOTÕES (fixos embaixo; bons no mobile) */}
-          <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-auto">
-            <div className="flex items-center gap-2">
+            {/* BOTÕES — DESKTOP (no fluxo, sem sobreposição) */}
+            <div className="hidden md:flex items-center gap-2 px-7 pb-7 pointer-events-auto relative z-30">
               <Link
                 href={`/poll/${p.id}`}
-                className="flex-1 inline-flex justify-center items-center px-3 py-3 rounded-2xl
-                           text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
               >
                 {primaryCtaLabel(p)}
               </Link>
@@ -515,8 +513,28 @@ export default async function Home({
               {featuredShowResults && (
                 <Link
                   href={`/results/${p.id}`}
-                  className="inline-flex justify-center items-center px-4 py-3 rounded-2xl
-                             text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                  className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                >
+                  Ver resultados
+                </Link>
+              )}
+            </div>
+          </div>
+      
+          {/* BOTÕES — MOBILE (menor “Participar”) */}
+          <div className="absolute bottom-4 left-4 right-4 z-30 pointer-events-auto md:hidden">
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/poll/${p.id}`}
+                className="inline-flex justify-center items-center px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+              >
+                {primaryCtaLabel(p)}
+              </Link>
+      
+              {featuredShowResults && (
+                <Link
+                  href={`/results/${p.id}`}
+                  className="inline-flex justify-center items-center px-4 py-2.5 rounded-2xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
                 >
                   Ver resultados
                 </Link>
