@@ -318,8 +318,24 @@ export default function PollPage() {
 
     router.push(`/results/${safeId}`);
   }
+
+  // 1) useMemo do mapa (usa options)
+  const optionTextById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of options) m.set(o.id, o.option_text);
+    return m;
+  }, [options]);
   
- //padronizar os avisos
+  // 2) Chip (componente de UI)
+  function Chip({ children }: { children: React.ReactNode }) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700">
+        {children}
+      </span>
+    );
+  }
+  
+  // 3) Notice (já existente)
   function Notice({
     variant,
     children,
@@ -524,9 +540,7 @@ export default function PollPage() {
                       setMultipleMessage(null);
         
                       if (selected) {
-                        setSelectedOptions((prev) =>
-                          prev.filter((id) => id !== o.id)
-                        );
+                        setSelectedOptions((prev) => prev.filter((id) => id !== o.id));
                         return;
                       }
         
@@ -563,9 +577,7 @@ export default function PollPage() {
                       }`}
                       aria-hidden="true"
                     >
-                      {selected && (
-                        <span className="h-2 w-2 rounded-full bg-white" />
-                      )}
+                      {selected && <span className="h-2 w-2 rounded-full bg-white" />}
                     </span>
         
                     {/* Texto */}
@@ -578,6 +590,21 @@ export default function PollPage() {
             </div>
         
             {multipleMessage && <Notice variant="error">{multipleMessage}</Notice>}
+        
+            {/* Prévia da participação (chips) */}
+            {selectedOptions.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-600">Selecionadas:</div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedOptions.slice(0, 6).map((id) => (
+                    <Chip key={id}>{optionTextById.get(id) ?? id}</Chip>
+                  ))}
+                  {selectedOptions.length > 6 && (
+                    <Chip>+{selectedOptions.length - 6}</Chip>
+                  )}
+                </div>
+              </div>
+            )}
         
             {/* CTA — DESKTOP */}
             <button
@@ -602,7 +629,7 @@ export default function PollPage() {
               Enviar participação
             </button>
         
-            {/* CTA — MOBILE */}
+            {/* CTA — MOBILE STICKY */}
             <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
               <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-600">
@@ -675,9 +702,7 @@ export default function PollPage() {
                       }`}
                       aria-hidden="true"
                     >
-                      {selected && (
-                        <span className="h-2 w-2 rounded-full bg-white" />
-                      )}
+                      {selected && <span className="h-2 w-2 rounded-full bg-white" />}
                     </span>
         
                     {/* Texto */}
@@ -689,9 +714,15 @@ export default function PollPage() {
               })}
             </div>
         
-            {singleMessage && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-                {singleMessage}
+            {singleMessage && <Notice variant="error">{singleMessage}</Notice>}
+        
+            {/* Prévia da participação (chip) */}
+            {selectedSingleOption && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-600">Selecionada:</div>
+                <div className="flex flex-wrap gap-2">
+                  <Chip>{optionTextById.get(selectedSingleOption) ?? selectedSingleOption}</Chip>
+                </div>
               </div>
             )}
         
@@ -718,7 +749,7 @@ export default function PollPage() {
               Enviar participação
             </button>
         
-            {/* CTA — MOBILE */}
+            {/* CTA — MOBILE STICKY */}
             <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
               <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-600">
