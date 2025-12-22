@@ -369,10 +369,7 @@ export default function PollPage() {
 
         {/* TÍTULO */}
         <div className="space-y-1">
-          <h1
-            className="text-xl font-semibold leading-relaxed text-justify"
-            style={{ color: "#8B8A8A" }}
-          >
+          <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
             {poll.title}
           </h1>
 
