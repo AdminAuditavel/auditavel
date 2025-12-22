@@ -369,7 +369,10 @@ export default function PollPage() {
 
         {/* TÍTULO */}
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-emerald-700 leading-tight">
+          <h1
+            className="text-xl font-semibold leading-relaxed text-justify"
+            style={{ color: "#8B8A8A" }}
+          >
             {poll.title}
           </h1>
 
@@ -612,8 +615,11 @@ export default function PollPage() {
         )}
       </div>
 
-      <div className="text-center text-xs text-gray-400">
-        Auditável — votação transparente
+      <div
+        className="text-center text-xs"
+        style={{ color: "#8B8A8A" }}
+      >
+        Auditável — “O Brasil vota. Você confere.”
       </div>
     </div>
   </main>
