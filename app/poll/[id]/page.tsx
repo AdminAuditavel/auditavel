@@ -1,7 +1,8 @@
 // app/poll/[id]/page.tsx
+
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -16,6 +17,7 @@ import {
   useSensors,
   MouseSensor,
   TouchSensor,
+  KeyboardSensor,
 } from '@dnd-kit/core';
 
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -79,9 +81,13 @@ export default function PollPage() {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [selectedSingleOption, setSelectedSingleOption] = useState<string | null>(null);
 
+  // Submitting lock
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor)
   );
 
   // Helpers derivados do poll
@@ -89,9 +95,6 @@ export default function PollPage() {
   const allowMultiple: boolean = Boolean(poll?.allow_multiple);
 
   const effectiveMaxVotesPerUser: number = useMemo(() => {
-    // Regra canônica:
-    // allow_multiple=false => 1 (último voto vale, editável)
-    // allow_multiple=true  => max_votes_per_user (fallback 1)
     if (!poll) return 1;
     if (!allowMultiple) return 1;
     const raw = poll.max_votes_per_user;
@@ -116,7 +119,6 @@ export default function PollPage() {
   const cooldownActive = cooldownRemaining > 0;
 
   const voteLimitReached = useMemo(() => {
-    // Limite só importa quando allow_multiple=true (pois cria votos novos)
     if (!allowMultiple) return false;
     return votesUsed >= effectiveMaxVotesPerUser;
   }, [allowMultiple, votesUsed, effectiveMaxVotesPerUser]);
@@ -125,8 +127,9 @@ export default function PollPage() {
     if (!isOpen) return 'Esta enquete não está aberta para votação.';
     if (voteLimitReached) return `Limite de votos atingido (${effectiveMaxVotesPerUser}).`;
     if (cooldownActive) return `Aguarde ${cooldownRemaining}s para votar novamente.`;
+    if (isSubmitting) return 'Enviando voto...';
     return null;
-  }, [isOpen, voteLimitReached, effectiveMaxVotesPerUser, cooldownActive, cooldownRemaining]);
+  }, [isOpen, voteLimitReached, effectiveMaxVotesPerUser, cooldownActive, cooldownRemaining, isSubmitting]);
 
   const participationNotice = useMemo(() => {
     if (!hasParticipation) return null;
@@ -266,57 +269,70 @@ export default function PollPage() {
     );
   }
 
-  async function sendVote(
-    payload: Record<string, any>,
-    setMsg: (s: string | null) => void,
-    defaultErr: string
-  ) {
-    setMsg(null);
+  const sendVote = useCallback(
+    async (
+      payload: Record<string, any>,
+      setMsg: (s: string | null) => void,
+      defaultErr: string
+    ) => {
+      if (isSubmitting) return;
+      setMsg(null);
+      setIsSubmitting(true);
 
-    const pid = participantId ?? getOrCreateParticipantId();
-    const uh = userHash ?? ensureUserHash();
-
-    const res = await fetch('/api/vote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        poll_id: safeId,
-        participant_id: pid,
-        user_hash: uh,
-        ...payload,
-      }),
-    });
-
-    if (!res.ok) {
-      let data: any = null;
       try {
-        data = await res.json();
-      } catch {
-        // ignore
+        const pid = participantId ?? getOrCreateParticipantId();
+        const uh = userHash ?? ensureUserHash();
+
+        const res = await fetch('/api/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            poll_id: safeId,
+            participant_id: pid,
+            user_hash: uh,
+            ...payload,
+          }),
+        });
+
+        if (!res.ok) {
+          let data: any = null;
+          try {
+            data = await res.json();
+          } catch {
+            // ignore parse error
+          }
+
+          if (data?.error === 'cooldown_active' && typeof data?.remaining_seconds === 'number') {
+            setCooldownRemaining(Math.max(0, Math.floor(data.remaining_seconds)));
+            setMsg(`Aguarde ${Math.floor(data.remaining_seconds)}s para votar novamente.`);
+            return;
+          }
+
+          if (data?.error === 'vote_limit_reached') {
+            setMsg('Limite de votos atingido para esta enquete.');
+            return;
+          }
+
+          if (data?.error === 'max_options_exceeded') {
+            setMsg('Você selecionou mais opções do que o permitido.');
+            return;
+          }
+
+          setMsg(data?.error ?? defaultErr);
+          return;
+        }
+
+        // sucesso: redireciona para resultados
+        router.push(`/results/${safeId}`);
+      } catch (err) {
+        setMsg((err as Error)?.message ?? 'Erro de rede ao enviar voto.');
+      } finally {
+        setIsSubmitting(false);
       }
-
-      if (data?.error === 'cooldown_active' && typeof data?.remaining_seconds === 'number') {
-        setCooldownRemaining(Math.max(0, Math.floor(data.remaining_seconds)));
-        setMsg(`Aguarde ${Math.floor(data.remaining_seconds)}s para votar novamente.`);
-        return;
-      }
-
-      if (data?.error === 'vote_limit_reached') {
-        setMsg('Limite de votos atingido para esta enquete.');
-        return;
-      }
-
-      if (data?.error === 'max_options_exceeded') {
-        setMsg('Você selecionou mais opções do que o permitido.');
-        return;
-      }
-
-      setMsg(data?.error ?? defaultErr);
-      return;
-    }
-
-    router.push(`/results/${safeId}`);
-  }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [participantId, userHash, safeId, router, isSubmitting]
+  );
 
   return (
     <main className="p-6 max-w-xl mx-auto space-y-5">
@@ -341,6 +357,16 @@ export default function PollPage() {
         </div>
       )}
 
+      {/* região para mensagens dinâmicas para leitores de tela */}
+      <div aria-live="polite" className="sr-only" />
+
+      {/* contador de votos (quando aplicável) */}
+      {allowMultiple && (
+        <div className="text-sm text-gray-600">
+          Votos usados: {votesUsed} / {effectiveMaxVotesPerUser}
+        </div>
+      )}
+
       {/* ================= RANKING ================= */}
       {votingType === 'ranking' && (
         <>
@@ -356,12 +382,13 @@ export default function PollPage() {
               setOptions((items) => {
                 const oldIndex = items.findIndex((i) => i.id === active.id);
                 const newIndex = items.findIndex((i) => i.id === over.id);
+                if (oldIndex === -1 || newIndex === -1) return items;
                 return arrayMove(items, oldIndex, newIndex);
               });
             }}
           >
             <SortableContext items={options.map((o) => o.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
+              <div className="space-y-2" role="list" aria-label="Opções ordenáveis">
                 {options.map((opt, index) => (
                   <RankingOption key={opt.id} id={opt.id} text={opt.option_text} index={index} />
                 ))}
@@ -376,13 +403,23 @@ export default function PollPage() {
           )}
 
           <button
-            disabled={Boolean(disableReason) || options.length === 0}
+            disabled={Boolean(disableReason) || options.length === 0 || isSubmitting}
             onClick={async () => {
               await sendVote({ option_ids: options.map((o) => o.id) }, setRankingMessage, 'Erro ao enviar ranking.');
             }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50 inline-flex items-center gap-2"
+            aria-disabled={Boolean(disableReason) || options.length === 0 || isSubmitting}
           >
-            Enviar classificação
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.6)" strokeWidth="4" />
+                </svg>
+                Enviando...
+              </>
+            ) : (
+              'Enviar classificação'
+            )}
           </button>
         </>
       )}
@@ -396,6 +433,11 @@ export default function PollPage() {
               : `Selecione até ${maxOptionsPerVote} opções.`}
           </p>
 
+          <div className="text-sm text-gray-600">
+            Selecionadas: {selectedOptions.length}
+            {Number.isFinite(maxOptionsPerVote) ? ` / ${maxOptionsPerVote}` : ''}
+          </div>
+
           <div className="space-y-2">
             {options.map((o) => {
               const selected = selectedOptions.includes(o.id);
@@ -405,7 +447,7 @@ export default function PollPage() {
                 <button
                   key={o.id}
                   type="button"
-                  disabled={limitReached || Boolean(disableReason)}
+                  disabled={limitReached || Boolean(disableReason) || isSubmitting}
                   onClick={() => {
                     setMultipleMessage(null);
 
@@ -421,13 +463,14 @@ export default function PollPage() {
 
                     setSelectedOptions((prev) => [...prev, o.id]);
                   }}
+                  aria-pressed={selected}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition
                     ${
                       selected
                         ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
                         : 'border-gray-300 bg-white hover:border-emerald-400'
                     }
-                    ${(limitReached || Boolean(disableReason)) ? 'opacity-50 cursor-not-allowed' : ''}
+                    ${(limitReached || Boolean(disableReason) || isSubmitting) ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
                 >
                   {o.option_text}
@@ -443,7 +486,7 @@ export default function PollPage() {
           )}
 
           <button
-            disabled={Boolean(disableReason) || selectedOptions.length === 0}
+            disabled={Boolean(disableReason) || selectedOptions.length === 0 || isSubmitting}
             onClick={async () => {
               if (selectedOptions.length === 0) {
                 setMultipleMessage('Selecione ao menos uma opção.');
@@ -452,9 +495,19 @@ export default function PollPage() {
 
               await sendVote({ option_ids: selectedOptions }, setMultipleMessage, 'Erro ao registrar voto.');
             }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50 inline-flex items-center gap-2"
+            aria-disabled={Boolean(disableReason) || selectedOptions.length === 0 || isSubmitting}
           >
-            Enviar voto
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.6)" strokeWidth="4" />
+                </svg>
+                Enviando...
+              </>
+            ) : (
+              'Enviar voto'
+            )}
           </button>
         </>
       )}
@@ -472,18 +525,19 @@ export default function PollPage() {
                 <button
                   key={o.id}
                   type="button"
-                  disabled={Boolean(disableReason)}
+                  disabled={Boolean(disableReason) || isSubmitting}
                   onClick={() => {
                     setSingleMessage(null);
                     setSelectedSingleOption(o.id);
                   }}
+                  aria-pressed={selected}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition
                     ${
                       selected
                         ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
                         : 'border-gray-300 bg-white hover:border-emerald-400'
                     }
-                    ${Boolean(disableReason) ? 'opacity-50 cursor-not-allowed' : ''}
+                    ${Boolean(disableReason) || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
                 >
                   {o.option_text}
@@ -499,7 +553,7 @@ export default function PollPage() {
           )}
 
           <button
-            disabled={Boolean(disableReason) || !selectedSingleOption}
+            disabled={Boolean(disableReason) || !selectedSingleOption || isSubmitting}
             onClick={async () => {
               if (!selectedSingleOption) {
                 setSingleMessage('Selecione uma opção.');
@@ -508,9 +562,19 @@ export default function PollPage() {
 
               await sendVote({ option_id: selectedSingleOption }, setSingleMessage, 'Erro ao registrar voto.');
             }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50 inline-flex items-center gap-2"
+            aria-disabled={Boolean(disableReason) || !selectedSingleOption || isSubmitting}
           >
-            Enviar voto
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.6)" strokeWidth="4" />
+                </svg>
+                Enviando...
+              </>
+            ) : (
+              'Enviar voto'
+            )}
           </button>
         </>
       )}
