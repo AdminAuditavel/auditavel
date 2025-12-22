@@ -708,11 +708,9 @@ export default function PollPage() {
             </div>
           </>
         )}
-
-      <div
-        className="text-center text-xs"
-        style={{ color: "#8B8A8A" }}
-      >
+        </div>
+        
+      <div className="text-center text-xs" style={{ color: "#8B8A8A" }}>
         Auditável — “O Brasil vota. Você confere.”
       </div>
     </div>
