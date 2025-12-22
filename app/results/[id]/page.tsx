@@ -75,7 +75,7 @@ export default async function ResultsPage({
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
       <Link href={`/poll/${safeId}`} className="text-emerald-600 hover:underline">
-        ← Voltar para votação
+        ← Voltar para Opções
       </Link>
       <Link
         href="/"
