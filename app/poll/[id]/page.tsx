@@ -374,8 +374,8 @@ export default function PollPage() {
               <Image
                 src="/Logo_A.png"
                 alt="Auditável"
-                width={96}
-                height={28}
+                width={116}
+                height={34}
                 priority
                 className="h-6 md:h-7 w-auto shrink-0"
               />
