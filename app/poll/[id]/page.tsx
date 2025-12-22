@@ -372,10 +372,10 @@ export default function PollPage() {
               aria-label="Voltar para a página inicial"
             >
               <Image
-                src="/Logo_A.png"
+                src="/Logotipo.png"
                 alt="Auditável"
-                width={116}
-                height={34}
+                width={96}
+                height={28}
                 priority
                 className="h-6 md:h-7 w-auto shrink-0"
               />
