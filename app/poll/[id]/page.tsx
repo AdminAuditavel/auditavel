@@ -372,13 +372,16 @@ export default function PollPage() {
               aria-label="Voltar para a página inicial"
             >
               <Image
-                src="/Logotipo.png"
+                src="/Logo_A.png"
                 alt="Auditável"
-                width={96}
-                height={28}
+                width={56}
+                height={56}
                 priority
-                className="h-6 md:h-7 w-auto shrink-0"
+                className="h-6 w-6 shrink-0"
               />
+              <span className="font-semibold text-sm" style={{ color: '#23854F' }}>
+                Auditável
+              </span>
             </Link>
 
             {/* Badges (simples, limpo e informativo) */}
