@@ -377,7 +377,7 @@ export default function PollPage() {
                 width={56}
                 height={34}
                 priority
-                className="h-8 w-4 shrink-0"
+                className="h-8 w-6 shrink-0"
               />
               <span className="font-semibold text-sm" style={{ color: '#23854F' }}>
                 Auditável
