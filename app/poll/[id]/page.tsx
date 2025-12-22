@@ -376,20 +376,13 @@ export default function PollPage() {
               >
                 {isOpen ? "Aberta" : "Indisponível"}
               </span>
-
+            
               {allowMultiple && (
                 <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
                   Participações: {votesUsed}/{effectiveMaxVotesPerUser}
                 </span>
               )}
-
-              {cooldownRemaining > 0 && (
-                <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-                  Cooldown: {cooldownRemaining}s
-                </span>
-              )}
             </div>
-          </div>
 
           {/* TÍTULO */}
           <div className="space-y-1">
