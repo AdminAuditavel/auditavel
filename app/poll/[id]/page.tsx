@@ -510,7 +510,9 @@ export default function PollPage() {
                       setMultipleMessage(null);
         
                       if (selected) {
-                        setSelectedOptions((prev) => prev.filter((id) => id !== o.id));
+                        setSelectedOptions((prev) =>
+                          prev.filter((id) => id !== o.id)
+                        );
                         return;
                       }
         
@@ -523,12 +525,12 @@ export default function PollPage() {
         
                       setSelectedOptions((prev) => [...prev, o.id]);
                     }}
-                    className={`w-full text-left px-4 py-3 rounded-xl border transition
+                    className={`w-full px-4 py-3 rounded-xl border transition text-left
                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                      active:scale-[0.99]
+                      active:scale-[0.99] flex items-start gap-3
                       ${
                         selected
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                          ? "border-emerald-300 bg-emerald-50"
                           : "border-gray-200 bg-white hover:border-emerald-300"
                       }
                       ${
@@ -538,7 +540,24 @@ export default function PollPage() {
                       }`}
                     aria-pressed={selected}
                   >
-                    {o.option_text}
+                    {/* Indicador */}
+                    <span
+                      className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
+                        selected
+                          ? "border-emerald-600 bg-emerald-600"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {selected && (
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      )}
+                    </span>
+        
+                    {/* Texto */}
+                    <span className="flex-1 text-justify leading-relaxed text-gray-900">
+                      {o.option_text}
+                    </span>
                   </button>
                 );
               })}
@@ -573,7 +592,7 @@ export default function PollPage() {
               Enviar participação
             </button>
         
-            {/* CTA — MOBILE STICKY */}
+            {/* CTA — MOBILE */}
             <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
               <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-600">
@@ -609,7 +628,7 @@ export default function PollPage() {
             </div>
           </>
         )}
-        
+
         {/* ================= SINGLE ================= */}
         {votingType === "single" && (
           <>
@@ -626,18 +645,35 @@ export default function PollPage() {
                       setSingleMessage(null);
                       setSelectedSingleOption(o.id);
                     }}
-                    className={`w-full text-left px-4 py-3 rounded-xl border transition
+                    className={`w-full px-4 py-3 rounded-xl border transition text-left
                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                      active:scale-[0.99]
+                      active:scale-[0.99] flex items-start gap-3
                       ${
                         selected
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                          ? "border-emerald-300 bg-emerald-50"
                           : "border-gray-200 bg-white hover:border-emerald-300"
                       }
                       ${Boolean(disableReason) ? "opacity-50 cursor-not-allowed" : ""}`}
                     aria-pressed={selected}
                   >
-                    {o.option_text}
+                    {/* Indicador */}
+                    <span
+                      className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
+                        selected
+                          ? "border-emerald-600 bg-emerald-600"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {selected && (
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      )}
+                    </span>
+        
+                    {/* Texto */}
+                    <span className="flex-1 text-justify leading-relaxed text-gray-900">
+                      {o.option_text}
+                    </span>
                   </button>
                 );
               })}
@@ -672,7 +708,7 @@ export default function PollPage() {
               Enviar participação
             </button>
         
-            {/* CTA — MOBILE STICKY */}
+            {/* CTA — MOBILE */}
             <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
               <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-600">
@@ -708,7 +744,7 @@ export default function PollPage() {
             </div>
           </>
         )}
-        </div>
+      </div>
         
       <div className="text-center text-xs" style={{ color: "#8B8A8A" }}>
         Auditável — “O Brasil vota. Você confere.”
