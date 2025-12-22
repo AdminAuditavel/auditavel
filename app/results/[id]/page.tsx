@@ -104,9 +104,9 @@ export default async function ResultsPage({
         <Image
           src="/Logo_A.png"
           alt="Auditável"
-          width={24}
+          width={36}
           height={24}
-          className="h-6 w-6 shrink-0"
+          className="h-8 w-6 shrink-0"
         />
         <span className="font-semibold text-sm" style={{ color: "#23854F" }}>
           Auditável
