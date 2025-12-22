@@ -1,3 +1,5 @@
+//app/results/[id]/page.tsx
+
 import Link from "next/link";
 import Image from "next/image";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
@@ -154,7 +156,9 @@ export default async function ResultsPage({
             <Navigation />
 
             <div className="flex items-center justify-between gap-3">
-              <h1 className="text-2xl font-bold text-black">{title}</h1>
+              <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+                {title}
+              </h1>
               <StatusBadge />
             </div>
 
