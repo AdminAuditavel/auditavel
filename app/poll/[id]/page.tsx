@@ -23,10 +23,28 @@ import {
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 
 function ensureUserHash(): string {
-  let userHash = localStorage.getItem('auditavel_uid');
+  let userHash = null;
+  try {
+    userHash = localStorage.getItem('auditavel_uid');
+  } catch {
+    // localStorage pode falhar em alguns ambientes; vamos continuar com fallback
+  }
   if (!userHash) {
-    userHash = crypto.randomUUID();
-    localStorage.setItem('auditavel_uid', userHash);
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        userHash = crypto.randomUUID();
+      } else {
+        userHash = 'uid-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+      try {
+        localStorage.setItem('auditavel_uid', userHash);
+      } catch {
+        // ignore
+      }
+    } catch {
+      // fallback simples
+      userHash = 'uid-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
   }
   return userHash;
 }
@@ -35,7 +53,6 @@ function ensureUserHash(): string {
 function parseDbTs(ts?: string | null) {
   if (!ts) return 0;
 
-  // já tem timezone se terminar com Z/z ou com offset tipo +00:00 / -03:00
   const hasTz = /[zZ]$|[+-]\d{2}:\d{2}$/.test(ts);
   const safe = hasTz ? ts : `${ts}Z`;
 
@@ -44,20 +61,15 @@ function parseDbTs(ts?: string | null) {
 }
 
 export default function PollPage() {
+  // hooks do router/params podem ficar aqui
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
+  const safeIdCandidate = typeof id === 'string' ? id.trim() : '';
 
-  if (!id || typeof id !== 'string' || id.trim() === '') {
-    return (
-      <main className="p-6 max-w-xl mx-auto text-center text-red-600">
-        Erro interno: ID da pesquisa inválido.
-      </main>
-    );
-  }
-
-  const safeId = id.trim();
-
+  // ----------------------------
+  // DECLARAÇÃO DE TODOS OS HOOKS
+  // ----------------------------
   const [poll, setPoll] = useState<any | null>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [votingType, setVotingType] = useState<string | null>(null);
@@ -140,6 +152,18 @@ export default function PollPage() {
     return 'Você já votou nesta enquete. Você pode votar novamente (respeitando o limite e o tempo de espera).';
   }, [hasParticipation, allowMultiple]);
 
+  // ----------------------------
+  // AGORA safeId e checagem de ID (APÓS hooks)
+  // ----------------------------
+  if (!safeIdCandidate || typeof id !== 'string' || safeIdCandidate === '') {
+    return (
+      <main className="p-6 max-w-xl mx-auto text-center text-red-600">
+        Erro interno: ID da pesquisa inválido.
+      </main>
+    );
+  }
+  const safeId = safeIdCandidate;
+
   // Carregamento principal
   useEffect(() => {
     let mounted = true;
@@ -154,12 +178,22 @@ export default function PollPage() {
     setVotesUsed(0);
     setCooldownRemaining(0);
 
-    // Inicializar identidades locais
-    const pid = getOrCreateParticipantId();
-    const uh = ensureUserHash();
+    // Inicializar identidades locais (protegido)
+    let pid = null;
+    let uh = null;
+    try {
+      pid = getOrCreateParticipantId();
+    } catch (e) {
+      console.error('getOrCreateParticipantId falhou:', e);
+    }
+    try {
+      uh = ensureUserHash();
+    } catch (e) {
+      console.error('ensureUserHash falhou:', e);
+    }
     if (mounted) {
-      setParticipantId(pid);
-      setUserHash(uh);
+      if (pid) setParticipantId(pid);
+      if (uh) setUserHash(uh);
     }
 
     const fetchPollData = async () => {
@@ -185,7 +219,7 @@ export default function PollPage() {
     };
 
     const refreshParticipation = async () => {
-      const pidLocal = pid;
+      const pidLocal = pid ?? getOrCreateParticipantId();
 
       // voto mais recente (para cooldown)
       const { data: lastVote } = await supabase
@@ -219,7 +253,6 @@ export default function PollPage() {
       const createdAtMs = parseDbTs(lastVote.created_at);
       const updatedAtMs = parseDbTs(lastVote.updated_at);
 
-      // maior atividade (created ou updated)
       let lastActivityMs = Math.max(createdAtMs, updatedAtMs, 0);
 
       if (!lastActivityMs) {
@@ -227,7 +260,6 @@ export default function PollPage() {
         return;
       }
 
-      // Clamp: se o timestamp vier no futuro (ex.: problema de timezone), não deixa estourar
       const nowMs = Date.now();
       if (lastActivityMs > nowMs) lastActivityMs = nowMs;
 
@@ -238,6 +270,9 @@ export default function PollPage() {
 
     fetchPollData().then(() => {
       refreshParticipation();
+    }).catch((err) => {
+      console.error('Erro ao buscar poll:', err);
+      setLoading(false);
     });
 
     return () => {
