@@ -71,27 +71,6 @@ export default async function ResultsPage({
   }
 
   const isPartial = status === "open" || status === "paused";
-  const isOpen = status === "open";
-
-  const StatusBadge = () => {
-    const variant =
-      status === "open" ? "emerald" : status === "paused" ? "amber" : "gray";
-    const text =
-      status === "open" ? "Aberta" : status === "paused" ? "Pausada" : "Encerrada";
-
-    const base =
-      variant === "emerald"
-        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-        : variant === "amber"
-        ? "bg-amber-50 text-amber-900 border-amber-200"
-        : "bg-gray-50 text-gray-600 border-gray-200";
-
-    return (
-      <span className={`px-2 py-1 rounded-full border text-xs ${base}`}>
-        {text}
-      </span>
-    );
-  };
 
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
@@ -106,9 +85,9 @@ export default async function ResultsPage({
         <Image
           src="/Logo_A.png"
           alt="Auditável"
-          width={36}
+          width={24}
           height={24}
-          className="h-8 w-6 shrink-0"
+          className="h-6 w-6 shrink-0"
         />
         <span className="font-semibold text-sm" style={{ color: "#23854F" }}>
           Auditável
@@ -159,7 +138,6 @@ export default async function ResultsPage({
               <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
                 {title}
               </h1>
-              <StatusBadge />
             </div>
 
             {sortedOptions.map((o) => {
@@ -248,8 +226,9 @@ export default async function ResultsPage({
             <Navigation />
 
             <div className="flex items-center justify-between gap-3">
-              <h1 className="text-2xl font-bold text-black">{title}</h1>
-              <StatusBadge />
+              <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+                {title}
+              </h1>
             </div>
 
             <p className="text-sm text-gray-600">
@@ -304,7 +283,7 @@ export default async function ResultsPage({
   }
 
   /* =======================
-     RANKING (inalterado)
+     RANKING (inalterado, título ajustado)
   ======================= */
   const json = await getResults(safeId);
   const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
@@ -316,8 +295,9 @@ export default async function ResultsPage({
           <Navigation />
 
           <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold text-black">{title}</h1>
-            <StatusBadge />
+            <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+              {title}
+            </h1>
           </div>
 
           {json.result.map((row: any, index: number) => {
