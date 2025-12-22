@@ -29,6 +29,18 @@ function ensureUserHash(): string {
   return userHash;
 }
 
+// Parse seguro: se vier sem timezone, force UTC adicionando "Z"
+function parseDbTs(ts?: string | null) {
+  if (!ts) return 0;
+
+  // já tem timezone se terminar com Z/z ou com offset tipo +00:00 / -03:00
+  const hasTz = /[zZ]$|[+-]\d{2}:\d{2}$/.test(ts);
+  const safe = hasTz ? ts : `${ts}Z`;
+
+  const ms = Date.parse(safe);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 export default function PollPage() {
   const params = useParams();
   const router = useRouter();
@@ -111,10 +123,8 @@ export default function PollPage() {
 
   const disableReason = useMemo(() => {
     if (!isOpen) return 'Esta enquete não está aberta para votação.';
-    if (voteLimitReached)
-      return `Limite de votos atingido (${effectiveMaxVotesPerUser}).`;
-    if (cooldownActive)
-      return `Aguarde ${cooldownRemaining}s para votar novamente.`;
+    if (voteLimitReached) return `Limite de votos atingido (${effectiveMaxVotesPerUser}).`;
+    if (cooldownActive) return `Aguarde ${cooldownRemaining}s para votar novamente.`;
     return null;
   }, [isOpen, voteLimitReached, effectiveMaxVotesPerUser, cooldownActive, cooldownRemaining]);
 
@@ -150,11 +160,7 @@ export default function PollPage() {
     }
 
     const fetchPollData = async () => {
-      const { data: pollData } = await supabase
-        .from('polls')
-        .select('*')
-        .eq('id', safeId)
-        .maybeSingle();
+      const { data: pollData } = await supabase.from('polls').select('*').eq('id', safeId).maybeSingle();
 
       if (!mounted || !pollData || pollData.status === 'draft') {
         router.replace('/404');
@@ -176,7 +182,6 @@ export default function PollPage() {
     };
 
     const refreshParticipation = async () => {
-      // Por (poll_id, participant_id)
       const pidLocal = pid;
 
       // voto mais recente (para cooldown)
@@ -202,55 +207,28 @@ export default function PollPage() {
       setVotesUsed(used);
       setHasParticipation(used > 0);
 
-       // cooldown
+      // cooldown
       if (!lastVote || voteCooldownSeconds <= 0) {
         setCooldownRemaining(0);
         return;
       }
-      
-      // Parse seguro: se vier sem timezone, force UTC adicionando "Z"
-      function parseDbTs(ts?: string | null) {
-        if (!ts) return 0;
-      
-        // já tem timezone se terminar com Z/z ou com offset tipo +00:00 / -03:00
-        const hasTz = /[zZ]$|[+-]\d{2}:\d{2}$/.test(ts);
-        const safe = hasTz ? ts : `${ts}Z`;
-      
-        const ms = Date.parse(safe);
-        return Number.isFinite(ms) ? ms : 0;
-      }
-      
+
       const createdAtMs = parseDbTs(lastVote.created_at);
       const updatedAtMs = parseDbTs(lastVote.updated_at);
-      
-      // maior atividade
+
+      // maior atividade (created ou updated)
       let lastActivityMs = Math.max(createdAtMs, updatedAtMs, 0);
-      
+
       if (!lastActivityMs) {
         setCooldownRemaining(0);
         return;
       }
-      
-      // Clamp: se o timestamp vier no futuro (ex.: por timezone), não deixa estourar
+
+      // Clamp: se o timestamp vier no futuro (ex.: problema de timezone), não deixa estourar
       const nowMs = Date.now();
       if (lastActivityMs > nowMs) lastActivityMs = nowMs;
-      
+
       const elapsedSeconds = Math.floor((nowMs - lastActivityMs) / 1000);
-      const remaining = Math.max(0, voteCooldownSeconds - elapsedSeconds);
-      setCooldownRemaining(remaining);
-
-      const createdAtMs = lastVote.created_at ? new Date(lastVote.created_at).getTime() : 0;
-      const updatedAtMs = lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0;
-
-      // importante: em voto único, updated_at precisa andar quando altera
-      const lastActivityMs = Math.max(createdAtMs, updatedAtMs, createdAtMs);
-
-      if (!lastActivityMs) {
-        setCooldownRemaining(0);
-        return;
-      }
-
-      const elapsedSeconds = Math.floor((Date.now() - lastActivityMs) / 1000);
       const remaining = Math.max(0, voteCooldownSeconds - elapsedSeconds);
       setCooldownRemaining(remaining);
     };
@@ -366,9 +344,7 @@ export default function PollPage() {
       {/* ================= RANKING ================= */}
       {votingType === 'ranking' && (
         <>
-          <p className="text-sm text-gray-600">
-            Arraste as opções para definir a ordem desejada.
-          </p>
+          <p className="text-sm text-gray-600">Arraste as opções para definir a ordem desejada.</p>
 
           <DndContext
             sensors={sensors}
@@ -402,11 +378,7 @@ export default function PollPage() {
           <button
             disabled={Boolean(disableReason) || options.length === 0}
             onClick={async () => {
-              await sendVote(
-                { option_ids: options.map((o) => o.id) },
-                setRankingMessage,
-                'Erro ao enviar ranking.'
-              );
+              await sendVote({ option_ids: options.map((o) => o.id) }, setRankingMessage, 'Erro ao enviar ranking.');
             }}
             className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
           >
@@ -478,11 +450,7 @@ export default function PollPage() {
                 return;
               }
 
-              await sendVote(
-                { option_ids: selectedOptions },
-                setMultipleMessage,
-                'Erro ao registrar voto.'
-              );
+              await sendVote({ option_ids: selectedOptions }, setMultipleMessage, 'Erro ao registrar voto.');
             }}
             className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
           >
@@ -538,11 +506,7 @@ export default function PollPage() {
                 return;
               }
 
-              await sendVote(
-                { option_id: selectedSingleOption },
-                setSingleMessage,
-                'Erro ao registrar voto.'
-              );
+              await sendVote({ option_id: selectedSingleOption }, setSingleMessage, 'Erro ao registrar voto.');
             }}
             className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
           >
