@@ -138,6 +138,13 @@ export default function PollPage() {
     return 'Você já votou nesta enquete. Você pode votar novamente (respeitando o limite e o tempo de espera).';
   }, [hasParticipation, allowMultiple]);
 
+  // 1) useMemo do mapa (usa options)
+  const optionTextById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of options) m.set(o.id, o.option_text);
+    return m;
+  }, [options]);
+
   // Carregamento principal
   useEffect(() => {
     let mounted = true;
@@ -319,14 +326,7 @@ export default function PollPage() {
     router.push(`/results/${safeId}`);
   }
 
-  // 1) useMemo do mapa (usa options)
-  const optionTextById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const o of options) m.set(o.id, o.option_text);
-    return m;
-  }, [options]);
-  
-  // 2) Chip (componente de UI)
+  // Chip (componente de UI)
   function Chip({ children }: { children: React.ReactNode }) {
     return (
       <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700">
@@ -335,7 +335,7 @@ export default function PollPage() {
     );
   }
   
-  // 3) Notice (já existente)
+  // Notice (já existente)
   function Notice({
     variant,
     children,
