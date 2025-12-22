@@ -500,7 +500,7 @@ export default function PollPage() {
                 const selected = selectedOptions.includes(o.id);
                 const limitReached =
                   !selected && selectedOptions.length >= maxOptionsPerVote;
-
+        
                 return (
                   <button
                     key={o.id}
@@ -508,21 +508,19 @@ export default function PollPage() {
                     disabled={limitReached || Boolean(disableReason)}
                     onClick={() => {
                       setMultipleMessage(null);
-
+        
                       if (selected) {
-                        setSelectedOptions((prev) =>
-                          prev.filter((id) => id !== o.id)
-                        );
+                        setSelectedOptions((prev) => prev.filter((id) => id !== o.id));
                         return;
                       }
-
+        
                       if (selectedOptions.length >= maxOptionsPerVote) {
                         setMultipleMessage(
                           `Você pode selecionar no máximo ${maxOptionsPerVote} opções.`
                         );
                         return;
                       }
-
+        
                       setSelectedOptions((prev) => [...prev, o.id]);
                     }}
                     className={`w-full text-left px-4 py-3 rounded-xl border transition
@@ -545,43 +543,80 @@ export default function PollPage() {
                 );
               })}
             </div>
-
+        
             {multipleMessage && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                 {multipleMessage}
               </div>
             )}
-
+        
+            {/* CTA — DESKTOP */}
             <button
+              type="button"
               disabled={Boolean(disableReason) || selectedOptions.length === 0}
-              onClick={async () => {
+              onClick={() => {
                 if (selectedOptions.length === 0) {
                   setMultipleMessage("Selecione ao menos uma opção.");
                   return;
                 }
-
-                await sendVote(
+        
+                void sendVote(
                   { option_ids: selectedOptions },
                   setMultipleMessage,
-                  "Erro ao registrar voto."
+                  "Erro ao registrar participação."
                 );
               }}
-              className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+              className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
                          active:scale-[0.99] disabled:opacity-50"
             >
-              Enviar voto
+              Enviar participação
             </button>
+        
+            {/* CTA — MOBILE STICKY */}
+            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-600">
+                  {disableReason
+                    ? disableReason
+                    : maxOptionsPerVote === Infinity
+                      ? `Selecionadas: ${selectedOptions.length}`
+                      : `Selecionadas: ${selectedOptions.length}/${maxOptionsPerVote}`}
+                </div>
+        
+                <button
+                  type="button"
+                  disabled={Boolean(disableReason) || selectedOptions.length === 0}
+                  onClick={() => {
+                    if (selectedOptions.length === 0) {
+                      setMultipleMessage("Selecione ao menos uma opção.");
+                      return;
+                    }
+        
+                    void sendVote(
+                      { option_ids: selectedOptions },
+                      setMultipleMessage,
+                      "Erro ao registrar participação."
+                    );
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                             active:scale-[0.99] disabled:opacity-50"
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
           </>
         )}
-
+        
         {/* ================= SINGLE ================= */}
         {votingType === "single" && (
           <>
             <div className="space-y-2">
               {options.map((o) => {
                 const selected = selectedSingleOption === o.id;
-
+        
                 return (
                   <button
                     key={o.id}
@@ -599,11 +634,7 @@ export default function PollPage() {
                           ? "border-emerald-300 bg-emerald-50 text-emerald-900"
                           : "border-gray-200 bg-white hover:border-emerald-300"
                       }
-                      ${
-                        Boolean(disableReason)
-                          ? "opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
+                      ${Boolean(disableReason) ? "opacity-50 cursor-not-allowed" : ""}`}
                     aria-pressed={selected}
                   >
                     {o.option_text}
@@ -611,36 +642,72 @@ export default function PollPage() {
                 );
               })}
             </div>
-
+        
             {singleMessage && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                 {singleMessage}
               </div>
             )}
-
+        
+            {/* CTA — DESKTOP */}
             <button
+              type="button"
               disabled={Boolean(disableReason) || !selectedSingleOption}
-              onClick={async () => {
+              onClick={() => {
                 if (!selectedSingleOption) {
                   setSingleMessage("Selecione uma opção.");
                   return;
                 }
-
-                await sendVote(
+        
+                void sendVote(
                   { option_id: selectedSingleOption },
                   setSingleMessage,
-                  "Erro ao registrar voto."
+                  "Erro ao registrar participação."
                 );
               }}
-              className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+              className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
                          active:scale-[0.99] disabled:opacity-50"
             >
-              Enviar voto
+              Enviar participação
             </button>
+        
+            {/* CTA — MOBILE STICKY */}
+            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-600">
+                  {disableReason
+                    ? disableReason
+                    : selectedSingleOption
+                      ? "1 opção selecionada"
+                      : "Selecione uma opção"}
+                </div>
+        
+                <button
+                  type="button"
+                  disabled={Boolean(disableReason) || !selectedSingleOption}
+                  onClick={() => {
+                    if (!selectedSingleOption) {
+                      setSingleMessage("Selecione uma opção.");
+                      return;
+                    }
+        
+                    void sendVote(
+                      { option_id: selectedSingleOption },
+                      setSingleMessage,
+                      "Erro ao registrar participação."
+                    );
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                             active:scale-[0.99] disabled:opacity-50"
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
           </>
         )}
-      </div>
 
       <div
         className="text-center text-xs"
