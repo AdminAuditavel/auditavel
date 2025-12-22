@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getOrCreateParticipantId } from '@/lib/participant';
+import Image from "next/image";
 
 import RankingOption from './RankingOption';
 
@@ -319,201 +320,302 @@ export default function PollPage() {
   }
 
   return (
-    <main className="p-6 max-w-xl mx-auto space-y-5">
-      <div className="flex justify-between text-sm">
-        <Link href="/" className="text-emerald-600 hover:underline">
-          Auditável
-        </Link>
+    <main className="min-h-screen bg-gray-50">
+    <div className="p-6 max-w-xl mx-auto space-y-5">
+      {/* Card principal */}
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
+        {/* TOPO */}
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+            aria-label="Voltar para a página inicial"
+          >
+            <Image
+              src="/Logotipo.png"
+              alt="Auditável"
+              width={120}
+              height={32}
+              priority
+              className="h-8 w-auto"
+            />
+          </Link>
+
+          {/* Badges (simples, limpo e informativo) */}
+          <div className="flex items-center gap-2 text-xs">
+            <span
+              className={`px-2 py-1 rounded-full border ${
+                isOpen
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-gray-50 text-gray-600 border-gray-200"
+              }`}
+            >
+              {isOpen ? "Aberta" : "Indisponível"}
+            </span>
+
+            {allowMultiple && (
+              <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
+                Votos: {votesUsed}/{effectiveMaxVotesPerUser}
+              </span>
+            )}
+
+            {cooldownRemaining > 0 && (
+              <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
+                Cooldown: {cooldownRemaining}s
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* TÍTULO */}
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-emerald-700 leading-tight">
+            {poll.title}
+          </h1>
+
+          {/* Instrução curta por tipo de votação (mantém a tela limpa) */}
+          {votingType === "ranking" && (
+            <p className="text-sm text-gray-600">
+              Arraste para ordenar. Depois, envie a classificação.
+            </p>
+          )}
+          {votingType === "multiple" && (
+            <p className="text-sm text-gray-600">
+              {maxOptionsPerVote === Infinity
+                ? "Selecione uma ou mais opções."
+                : `Selecione até ${maxOptionsPerVote} opções.`}
+            </p>
+          )}
+          {votingType === "single" && (
+            <p className="text-sm text-gray-600">Selecione uma opção.</p>
+          )}
+        </div>
+
+        {/* Avisos globais (mantidos, mas com acabamento melhor) */}
+        {participationNotice && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {participationNotice}
+          </div>
+        )}
+
+        {disableReason && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
+            {disableReason}
+          </div>
+        )}
+
+        {/* ================= RANKING ================= */}
+        {votingType === "ranking" && (
+          <>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
+
+                setOptions((items) => {
+                  const oldIndex = items.findIndex((i) => i.id === active.id);
+                  const newIndex = items.findIndex((i) => i.id === over.id);
+                  return arrayMove(items, oldIndex, newIndex);
+                });
+              }}
+            >
+              <SortableContext
+                items={options.map((o) => o.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {options.map((opt, index) => (
+                    <RankingOption
+                      key={opt.id}
+                      id={opt.id}
+                      text={opt.option_text}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+
+            {rankingMessage && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                {rankingMessage}
+              </div>
+            )}
+
+            <button
+              disabled={Boolean(disableReason) || options.length === 0}
+              onClick={async () => {
+                await sendVote(
+                  { option_ids: options.map((o) => o.id) },
+                  setRankingMessage,
+                  "Erro ao enviar ranking."
+                );
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                         active:scale-[0.99] disabled:opacity-50"
+            >
+              Enviar classificação
+            </button>
+          </>
+        )}
+
+        {/* ================= MULTIPLE ================= */}
+        {votingType === "multiple" && (
+          <>
+            <div className="space-y-2">
+              {options.map((o) => {
+                const selected = selectedOptions.includes(o.id);
+                const limitReached =
+                  !selected && selectedOptions.length >= maxOptionsPerVote;
+
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    disabled={limitReached || Boolean(disableReason)}
+                    onClick={() => {
+                      setMultipleMessage(null);
+
+                      if (selected) {
+                        setSelectedOptions((prev) =>
+                          prev.filter((id) => id !== o.id)
+                        );
+                        return;
+                      }
+
+                      if (selectedOptions.length >= maxOptionsPerVote) {
+                        setMultipleMessage(
+                          `Você pode selecionar no máximo ${maxOptionsPerVote} opções.`
+                        );
+                        return;
+                      }
+
+                      setSelectedOptions((prev) => [...prev, o.id]);
+                    }}
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                      active:scale-[0.99]
+                      ${
+                        selected
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                          : "border-gray-200 bg-white hover:border-emerald-300"
+                      }
+                      ${
+                        limitReached || Boolean(disableReason)
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                    aria-pressed={selected}
+                  >
+                    {o.option_text}
+                  </button>
+                );
+              })}
+            </div>
+
+            {multipleMessage && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                {multipleMessage}
+              </div>
+            )}
+
+            <button
+              disabled={Boolean(disableReason) || selectedOptions.length === 0}
+              onClick={async () => {
+                if (selectedOptions.length === 0) {
+                  setMultipleMessage("Selecione ao menos uma opção.");
+                  return;
+                }
+
+                await sendVote(
+                  { option_ids: selectedOptions },
+                  setMultipleMessage,
+                  "Erro ao registrar voto."
+                );
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                         active:scale-[0.99] disabled:opacity-50"
+            >
+              Enviar voto
+            </button>
+          </>
+        )}
+
+        {/* ================= SINGLE ================= */}
+        {votingType === "single" && (
+          <>
+            <div className="space-y-2">
+              {options.map((o) => {
+                const selected = selectedSingleOption === o.id;
+
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    disabled={Boolean(disableReason)}
+                    onClick={() => {
+                      setSingleMessage(null);
+                      setSelectedSingleOption(o.id);
+                    }}
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                      active:scale-[0.99]
+                      ${
+                        selected
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                          : "border-gray-200 bg-white hover:border-emerald-300"
+                      }
+                      ${
+                        Boolean(disableReason)
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                    aria-pressed={selected}
+                  >
+                    {o.option_text}
+                  </button>
+                );
+              })}
+            </div>
+
+            {singleMessage && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                {singleMessage}
+              </div>
+            )}
+
+            <button
+              disabled={Boolean(disableReason) || !selectedSingleOption}
+              onClick={async () => {
+                if (!selectedSingleOption) {
+                  setSingleMessage("Selecione uma opção.");
+                  return;
+                }
+
+                await sendVote(
+                  { option_id: selectedSingleOption },
+                  setSingleMessage,
+                  "Erro ao registrar voto."
+                );
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                         active:scale-[0.99] disabled:opacity-50"
+            >
+              Enviar voto
+            </button>
+          </>
+        )}
       </div>
 
-      <h1 className="text-2xl font-bold text-emerald-600">{poll.title}</h1>
-
-      {/* Avisos globais */}
-      {participationNotice && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {participationNotice}
-        </div>
-      )}
-
-      {disableReason && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
-          {disableReason}
-        </div>
-      )}
-
-      {/* ================= RANKING ================= */}
-      {votingType === 'ranking' && (
-        <>
-          <p className="text-sm text-gray-600">Arraste as opções para definir a ordem desejada.</p>
-
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => {
-              const { active, over } = event;
-              if (!over || active.id === over.id) return;
-
-              setOptions((items) => {
-                const oldIndex = items.findIndex((i) => i.id === active.id);
-                const newIndex = items.findIndex((i) => i.id === over.id);
-                return arrayMove(items, oldIndex, newIndex);
-              });
-            }}
-          >
-            <SortableContext items={options.map((o) => o.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {options.map((opt, index) => (
-                  <RankingOption key={opt.id} id={opt.id} text={opt.option_text} index={index} />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-
-          {rankingMessage && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-              {rankingMessage}
-            </div>
-          )}
-
-          <button
-            disabled={Boolean(disableReason) || options.length === 0}
-            onClick={async () => {
-              await sendVote({ option_ids: options.map((o) => o.id) }, setRankingMessage, 'Erro ao enviar ranking.');
-            }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
-          >
-            Enviar classificação
-          </button>
-        </>
-      )}
-
-      {/* ================= MULTIPLE ================= */}
-      {votingType === 'multiple' && (
-        <>
-          <p className="text-sm text-gray-600">
-            {maxOptionsPerVote === Infinity
-              ? 'Você pode selecionar uma ou mais opções.'
-              : `Selecione até ${maxOptionsPerVote} opções.`}
-          </p>
-
-          <div className="space-y-2">
-            {options.map((o) => {
-              const selected = selectedOptions.includes(o.id);
-              const limitReached = !selected && selectedOptions.length >= maxOptionsPerVote;
-
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  disabled={limitReached || Boolean(disableReason)}
-                  onClick={() => {
-                    setMultipleMessage(null);
-
-                    if (selected) {
-                      setSelectedOptions((prev) => prev.filter((id) => id !== o.id));
-                      return;
-                    }
-
-                    if (selectedOptions.length >= maxOptionsPerVote) {
-                      setMultipleMessage(`Você pode selecionar no máximo ${maxOptionsPerVote} opções.`);
-                      return;
-                    }
-
-                    setSelectedOptions((prev) => [...prev, o.id]);
-                  }}
-                  className={`w-full text-left px-4 py-3 rounded-lg border transition
-                    ${
-                      selected
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
-                        : 'border-gray-300 bg-white hover:border-emerald-400'
-                    }
-                    ${(limitReached || Boolean(disableReason)) ? 'opacity-50 cursor-not-allowed' : ''}
-                  `}
-                >
-                  {o.option_text}
-                </button>
-              );
-            })}
-          </div>
-
-          {multipleMessage && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-              {multipleMessage}
-            </div>
-          )}
-
-          <button
-            disabled={Boolean(disableReason) || selectedOptions.length === 0}
-            onClick={async () => {
-              if (selectedOptions.length === 0) {
-                setMultipleMessage('Selecione ao menos uma opção.');
-                return;
-              }
-
-              await sendVote({ option_ids: selectedOptions }, setMultipleMessage, 'Erro ao registrar voto.');
-            }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
-          >
-            Enviar voto
-          </button>
-        </>
-      )}
-
-      {/* ================= SINGLE ================= */}
-      {votingType === 'single' && (
-        <>
-          <p className="text-sm text-gray-600">Selecione uma opção.</p>
-
-          <div className="space-y-2">
-            {options.map((o) => {
-              const selected = selectedSingleOption === o.id;
-
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  disabled={Boolean(disableReason)}
-                  onClick={() => {
-                    setSingleMessage(null);
-                    setSelectedSingleOption(o.id);
-                  }}
-                  className={`w-full text-left px-4 py-3 rounded-lg border transition
-                    ${
-                      selected
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900'
-                        : 'border-gray-300 bg-white hover:border-emerald-400'
-                    }
-                    ${Boolean(disableReason) ? 'opacity-50 cursor-not-allowed' : ''}
-                  `}
-                >
-                  {o.option_text}
-                </button>
-              );
-            })}
-          </div>
-
-          {singleMessage && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-              {singleMessage}
-            </div>
-          )}
-
-          <button
-            disabled={Boolean(disableReason) || !selectedSingleOption}
-            onClick={async () => {
-              if (!selectedSingleOption) {
-                setSingleMessage('Selecione uma opção.');
-                return;
-              }
-
-              await sendVote({ option_id: selectedSingleOption }, setSingleMessage, 'Erro ao registrar voto.');
-            }}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50"
-          >
-            Enviar voto
-          </button>
-        </>
-      )}
-    </main>
-  );
+      <div className="text-center text-xs text-gray-400">
+        Auditável — votação transparente
+      </div>
+    </div>
+  </main>
+);
 }
