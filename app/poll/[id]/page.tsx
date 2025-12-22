@@ -202,11 +202,42 @@ export default function PollPage() {
       setVotesUsed(used);
       setHasParticipation(used > 0);
 
-      // cooldown
+       // cooldown
       if (!lastVote || voteCooldownSeconds <= 0) {
         setCooldownRemaining(0);
         return;
       }
+      
+      // Parse seguro: se vier sem timezone, force UTC adicionando "Z"
+      function parseDbTs(ts?: string | null) {
+        if (!ts) return 0;
+      
+        // já tem timezone se terminar com Z/z ou com offset tipo +00:00 / -03:00
+        const hasTz = /[zZ]$|[+-]\d{2}:\d{2}$/.test(ts);
+        const safe = hasTz ? ts : `${ts}Z`;
+      
+        const ms = Date.parse(safe);
+        return Number.isFinite(ms) ? ms : 0;
+      }
+      
+      const createdAtMs = parseDbTs(lastVote.created_at);
+      const updatedAtMs = parseDbTs(lastVote.updated_at);
+      
+      // maior atividade
+      let lastActivityMs = Math.max(createdAtMs, updatedAtMs, 0);
+      
+      if (!lastActivityMs) {
+        setCooldownRemaining(0);
+        return;
+      }
+      
+      // Clamp: se o timestamp vier no futuro (ex.: por timezone), não deixa estourar
+      const nowMs = Date.now();
+      if (lastActivityMs > nowMs) lastActivityMs = nowMs;
+      
+      const elapsedSeconds = Math.floor((nowMs - lastActivityMs) / 1000);
+      const remaining = Math.max(0, voteCooldownSeconds - elapsedSeconds);
+      setCooldownRemaining(remaining);
 
       const createdAtMs = lastVote.created_at ? new Date(lastVote.created_at).getTime() : 0;
       const updatedAtMs = lastVote.updated_at ? new Date(lastVote.updated_at).getTime() : 0;
