@@ -1,4 +1,3 @@
-//app/api/vote/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { randomUUID } from "crypto";
@@ -93,7 +92,7 @@ async function assertOptionsBelongToPoll(poll_id: string, ids: string[]): Promis
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { poll_id, option_id, option_ids, participant_id, user_hash } = body as any;
+    let { poll_id, option_id, option_ids, participant_id, user_hash } = body as any;
 
     if (!poll_id || !participant_id || !user_hash) {
       return NextResponse.json({ error: "missing_data" }, { status: 400 });
@@ -128,6 +127,11 @@ export async function POST(req: NextRequest) {
 
     if (!["single", "multiple", "ranking"].includes(poll.voting_type)) {
       return NextResponse.json({ error: "invalid_poll_type" }, { status: 400 });
+    }
+
+    // Normalização defensiva: aceitar option_ids array para um single vote (pegar primeiro)
+    if (poll.voting_type === "single" && (!option_id || option_id == null) && Array.isArray(option_ids) && option_ids.length > 0) {
+      option_id = option_ids[0];
     }
 
     // Regras canônicas:
@@ -241,13 +245,18 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        await supabase.from("votes").insert({
+        const { error: voteErr } = await supabase.from("votes").insert({
           id: voteId,
           poll_id,
           option_id,
           participant_id,
           user_hash,
         });
+
+        if (voteErr) {
+          console.error("insert vote (single, big brother) failed:", voteErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
 
         return NextResponse.json({ success: true });
       }
@@ -270,19 +279,31 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "max_options_exceeded" }, { status: 400 });
         }
 
-        await supabase.from("votes").insert({
+        const { error: voteErr } = await supabase.from("votes").insert({
           id: voteId,
           poll_id,
           participant_id,
           user_hash,
         });
 
-        await supabase.from("vote_options").insert(
+        if (voteErr) {
+          console.error("insert vote (multiple, big brother) failed:", voteErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
+
+        const { error: optsErr } = await supabase.from("vote_options").insert(
           dedup.map((opt) => ({
             vote_id: voteId,
             option_id: opt,
           }))
         );
+
+        if (optsErr) {
+          console.error("insert vote_options failed, rolling back vote:", optsErr);
+          // rollback vote
+          await supabase.from("votes").delete().eq("id", voteId);
+          return NextResponse.json({ error: "insert_vote_options_failed" }, { status: 500 });
+        }
 
         return NextResponse.json({ success: true });
       }
@@ -304,14 +325,19 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await supabase.from("votes").insert({
+      const { error: voteErr } = await supabase.from("votes").insert({
         id: voteId,
         poll_id,
         participant_id,
         user_hash,
       });
 
-      await supabase.from("vote_rankings").insert(
+      if (voteErr) {
+        console.error("insert vote (ranking, big brother) failed:", voteErr);
+        return NextResponse.json({ error: "internal_error" }, { status: 500 });
+      }
+
+      const { error: rankErr } = await supabase.from("vote_rankings").insert(
         option_ids.map((opt: string, idx: number) => ({
           id: randomUUID(),
           vote_id: voteId,
@@ -319,6 +345,12 @@ export async function POST(req: NextRequest) {
           ranking: idx + 1,
         }))
       );
+
+      if (rankErr) {
+        console.error("insert vote_rankings failed, rolling back vote:", rankErr);
+        await supabase.from("votes").delete().eq("id", voteId);
+        return NextResponse.json({ error: "insert_vote_rankings_failed" }, { status: 500 });
+      }
 
       return NextResponse.json({ success: true });
     }
@@ -361,7 +393,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: true, updated: false });
         }
 
-        await supabase
+        const { error: updErr } = await supabase
           .from("votes")
           .update({
             option_id,
@@ -369,14 +401,24 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq("id", voteId);
+
+        if (updErr) {
+          console.error("failed to update existing single vote:", updErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
       } else {
-        await supabase.from("votes").insert({
+        const { error: insErr } = await supabase.from("votes").insert({
           id: voteId,
           poll_id,
           option_id,
           participant_id,
           user_hash,
         });
+
+        if (insErr) {
+          console.error("failed to insert single vote:", insErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
       }
 
       afterState = snapshotSingle(option_id);
@@ -408,12 +450,15 @@ export async function POST(req: NextRequest) {
       // order irrelevante: snapshot ordenado para comparação consistente
       dedup = dedup.slice().sort();
 
+      // fetch prev rows to allow restore if new insert fails
+      let prevRows: { option_id: string }[] = [];
       if (existingVote) {
         const { data: prev } = await supabase
           .from("vote_options")
           .select("option_id")
           .eq("vote_id", voteId);
 
+        prevRows = prev ?? [];
         const prevIds = (prev?.map((r: any) => r.option_id) ?? []).slice().sort();
         beforeState = snapshotMultiple(prevIds);
 
@@ -421,27 +466,59 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: true, updated: false });
         }
 
-        await supabase.from("vote_options").delete().eq("vote_id", voteId);
+        const { error: delErr } = await supabase.from("vote_options").delete().eq("vote_id", voteId);
+        if (delErr) {
+          console.error("failed to delete previous vote_options:", delErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
 
-        await supabase
+        const { error: updErr } = await supabase
           .from("votes")
           .update({ user_hash, updated_at: new Date().toISOString() })
           .eq("id", voteId);
+
+        if (updErr) {
+          console.error("failed to update votes row after deleting vote_options:", updErr);
+          // attempt to restore prevRows
+          if (prevRows.length > 0) {
+            await supabase.from("vote_options").insert(prevRows.map(r => ({ vote_id: voteId, option_id: r.option_id })));
+          }
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
       } else {
-        await supabase.from("votes").insert({
+        const { error: insErr } = await supabase.from("votes").insert({
           id: voteId,
           poll_id,
           participant_id,
           user_hash,
         });
+
+        if (insErr) {
+          console.error("failed to insert vote (multiple):", insErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
       }
 
-      await supabase.from("vote_options").insert(
+      const { error: optsErr } = await supabase.from("vote_options").insert(
         dedup.map((opt: string) => ({
           vote_id: voteId,
           option_id: opt,
         }))
       );
+
+      if (optsErr) {
+        console.error("insert vote_options failed (multiple), attempting restore:", optsErr);
+        // attempt to rollback created vote if it was newly created
+        if (!existingVote) {
+          await supabase.from("votes").delete().eq("id", voteId);
+        } else {
+          // try to restore prevRows
+          if (prevRows.length > 0) {
+            await supabase.from("vote_options").insert(prevRows.map(r => ({ vote_id: voteId, option_id: r.option_id })));
+          }
+        }
+        return NextResponse.json({ error: "insert_vote_options_failed" }, { status: 500 });
+      }
 
       afterState = snapshotMultiple(dedup);
     }
@@ -464,36 +541,57 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // fetch prev rankings to allow restore if needed
+      let prevRankingRows: { option_id: string, ranking?: number }[] = [];
       if (existingVote) {
         const { data: prev } = await supabase
           .from("vote_rankings")
-          .select("option_id")
+          .select("option_id, ranking")
           .eq("vote_id", voteId)
           .order("ranking");
 
-        const prevIds = prev?.map((r: any) => r.option_id) ?? [];
+        prevRankingRows = prev ?? [];
+        const prevIds = prevRankingRows.map((r) => r.option_id);
         beforeState = snapshotRanking(prevIds);
 
         if (arraysEqual(prevIds, option_ids)) {
           return NextResponse.json({ success: true, updated: false });
         }
 
-        await supabase.from("vote_rankings").delete().eq("vote_id", voteId);
+        const { error: delErr } = await supabase.from("vote_rankings").delete().eq("vote_id", voteId);
+        if (delErr) {
+          console.error("failed to delete previous vote_rankings:", delErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
 
-        await supabase
+        const { error: updErr } = await supabase
           .from("votes")
           .update({ user_hash, updated_at: new Date().toISOString() })
           .eq("id", voteId);
+
+        if (updErr) {
+          console.error("failed to update votes row after deleting vote_rankings:", updErr);
+          // attempt to restore prev rankings
+          if (prevRankingRows.length > 0) {
+            await supabase.from("vote_rankings").insert(prevRankingRows.map(r => ({ id: randomUUID(), vote_id: voteId, option_id: r.option_id, ranking: r.ranking })));
+          }
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
       } else {
-        await supabase.from("votes").insert({
+        const { error: insErr } = await supabase.from("votes").insert({
           id: voteId,
           poll_id,
           participant_id,
           user_hash,
         });
+
+        if (insErr) {
+          console.error("failed to insert vote (ranking):", insErr);
+          return NextResponse.json({ error: "internal_error" }, { status: 500 });
+        }
       }
 
-      await supabase.from("vote_rankings").insert(
+      const { error: rankErr } = await supabase.from("vote_rankings").insert(
         option_ids.map((opt: string, idx: number) => ({
           id: randomUUID(),
           vote_id: voteId,
@@ -501,6 +599,18 @@ export async function POST(req: NextRequest) {
           ranking: idx + 1,
         }))
       );
+
+      if (rankErr) {
+        console.error("insert vote_rankings failed, attempting restore:", rankErr);
+        if (!existingVote) {
+          await supabase.from("votes").delete().eq("id", voteId);
+        } else {
+          if (prevRankingRows.length > 0) {
+            await supabase.from("vote_rankings").insert(prevRankingRows.map(r => ({ id: randomUUID(), vote_id: voteId, option_id: r.option_id, ranking: r.ranking })));
+          }
+        }
+        return NextResponse.json({ error: "insert_vote_rankings_failed" }, { status: 500 });
+      }
 
       afterState = snapshotRanking(option_ids);
     }
