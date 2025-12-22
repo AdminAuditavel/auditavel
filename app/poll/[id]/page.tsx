@@ -795,8 +795,9 @@ export default function PollPage() {
         )}
       </div>
         
-      <div className="text-center text-xs" style={{ color: "#8B8A8A" }}>
-        Auditável — “O Brasil vota. Você confere.”
+      <div className="text-center text-xs flex items-center justify-center gap-2" style={{ color: "#8B8A8A" }}>
+        <Image src="/Logo_A.png" alt="Auditável" width={18} height={18} className="inline-block" />
+        <span>Auditável — “O Brasil vota. Você confere.”</span>
       </div>
     </div>
   </main>
