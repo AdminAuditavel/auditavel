@@ -76,6 +76,8 @@ export default function PollPage() {
   const [rankingMessage, setRankingMessage] = useState<string | null>(null);
   const [multipleMessage, setMultipleMessage] = useState<string | null>(null);
   const [singleMessage, setSingleMessage] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [feedbackType, setFeedbackType] = useState<"success" | "error" | null>(null);
 
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [selectedSingleOption, setSelectedSingleOption] = useState<string | null>(null);
@@ -90,9 +92,6 @@ export default function PollPage() {
   const allowMultiple: boolean = Boolean(poll?.allow_multiple);
 
   const effectiveMaxVotesPerUser: number = useMemo(() => {
-    // Regra canônica:
-    // allow_multiple=false => 1 (último voto vale, editável)
-    // allow_multiple=true  => max_votes_per_user (fallback 1)
     if (!poll) return 1;
     if (!allowMultiple) return 1;
     const raw = poll.max_votes_per_user;
@@ -117,7 +116,6 @@ export default function PollPage() {
   const cooldownActive = cooldownRemaining > 0;
 
   const voteLimitReached = useMemo(() => {
-    // Limite só importa quando allow_multiple=true (pois cria votos novos)
     if (!allowMultiple) return false;
     return votesUsed >= effectiveMaxVotesPerUser;
   }, [allowMultiple, votesUsed, effectiveMaxVotesPerUser]);
@@ -145,11 +143,21 @@ export default function PollPage() {
     return m;
   }, [options]);
 
+  // Função para exibir feedback visual (sucesso ou erro)
+  const showFeedback = (message: string, type: "success" | "error") => {
+    setFeedbackMessage(message);
+    setFeedbackType(type);
+
+    setTimeout(() => {
+      setFeedbackMessage(null);
+      setFeedbackType(null);
+    }, 3000);
+  };
+
   // Carregamento principal
   useEffect(() => {
     let mounted = true;
 
-    // reset UI states ao trocar poll
     setRankingMessage(null);
     setMultipleMessage(null);
     setSingleMessage(null);
@@ -159,7 +167,6 @@ export default function PollPage() {
     setVotesUsed(0);
     setCooldownRemaining(0);
 
-    // Inicializar identidades locais
     const pid = getOrCreateParticipantId();
     const uh = ensureUserHash();
     if (mounted) {
@@ -192,7 +199,6 @@ export default function PollPage() {
     const refreshParticipation = async () => {
       const pidLocal = pid;
 
-      // voto mais recente (para cooldown)
       const { data: lastVote } = await supabase
         .from('votes')
         .select('id, created_at, updated_at')
@@ -202,7 +208,6 @@ export default function PollPage() {
         .limit(1)
         .maybeSingle();
 
-      // total de votos (para limite quando allow_multiple=true)
       const { count } = await supabase
         .from('votes')
         .select('id', { count: 'exact', head: true })
@@ -215,7 +220,6 @@ export default function PollPage() {
       setVotesUsed(used);
       setHasParticipation(used > 0);
 
-      // cooldown
       if (!lastVote || voteCooldownSeconds <= 0) {
         setCooldownRemaining(0);
         return;
@@ -224,7 +228,6 @@ export default function PollPage() {
       const createdAtMs = parseDbTs(lastVote.created_at);
       const updatedAtMs = parseDbTs(lastVote.updated_at);
 
-      // maior atividade (created ou updated)
       let lastActivityMs = Math.max(createdAtMs, updatedAtMs, 0);
 
       if (!lastActivityMs) {
@@ -232,7 +235,6 @@ export default function PollPage() {
         return;
       }
 
-      // Clamp: se o timestamp vier no futuro (ex.: problema de timezone), não deixa estourar
       const nowMs = Date.now();
       if (lastActivityMs > nowMs) lastActivityMs = nowMs;
 
@@ -248,10 +250,8 @@ export default function PollPage() {
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeId, router, voteCooldownSeconds]);
 
-  // countdown local do cooldown
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
 
@@ -274,11 +274,7 @@ export default function PollPage() {
     );
   }
 
-  async function sendVote(
-    payload: Record<string, any>,
-    setMsg: (s: string | null) => void,
-    defaultErr: string
-  ) {
+  async function sendVote(payload: Record<string, any>, setMsg: (s: string | null) => void, defaultErr: string) {
     setMsg(null);
 
     const pid = participantId ?? getOrCreateParticipantId();
@@ -306,23 +302,28 @@ export default function PollPage() {
       if (data?.error === 'cooldown_active' && typeof data?.remaining_seconds === 'number') {
         setCooldownRemaining(Math.max(0, Math.floor(data.remaining_seconds)));
         setMsg(`Aguarde ${Math.floor(data.remaining_seconds)}s para participar novamente.`);
+        showFeedback(`Aguarde ${Math.floor(data.remaining_seconds)}s para participar novamente.`, "error");
         return;
       }
 
       if (data?.error === 'vote_limit_reached') {
         setMsg('Limite de participações atingido para esta enquete.');
+        showFeedback('Limite de participações atingido para esta enquete.', "error");
         return;
       }
 
       if (data?.error === 'max_options_exceeded') {
         setMsg('Você selecionou mais opções do que o permitido.');
+        showFeedback('Você selecionou mais opções do que o permitido.', "error");
         return;
       }
 
       setMsg(data?.error ?? defaultErr);
+      showFeedback(data?.error ?? defaultErr, "error");
       return;
     }
 
+    showFeedback('Participação registrada com sucesso!', "success");
     router.push(`/results/${safeId}`);
   }
 
@@ -334,7 +335,7 @@ export default function PollPage() {
       </span>
     );
   }
-  
+
   // Notice (já existente)
   function Notice({
     variant,
@@ -349,7 +350,7 @@ export default function PollPage() {
         : variant === "error"
           ? "border-red-200 bg-red-50 text-red-900"
           : "border-gray-200 bg-gray-50 text-gray-800";
-  
+
     return (
       <div className={`rounded-xl border px-4 py-3 text-sm ${styles}`}>
         {children}
@@ -359,80 +360,93 @@ export default function PollPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-    <div className="p-6 max-w-xl mx-auto space-y-5">
-      {/* Card principal */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5 pb-24 md:pb-5">
-        {/* TOPO */}
-        <div className="flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
-            aria-label="Voltar para a página inicial"
-          >
-            <Image
-              src="/Logotipo.png"
-              alt="Auditável"
-              width={96}
-              height={28}
-              priority
-              className="h-6 md:h-7 w-auto shrink-0"
-            />
-          </Link>
-
-          {/* Badges (simples, limpo e informativo) */}
-          <div className="flex items-center gap-2 text-xs">
-            <span
-              className={`px-2 py-1 rounded-full border ${
-                isOpen
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-gray-50 text-gray-600 border-gray-200"
-              }`}
+      <div className="p-6 max-w-xl mx-auto space-y-5">
+        {/* Card principal */}
+        <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5 pb-24 md:pb-5">
+          {/* TOPO */}
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+              aria-label="Voltar para a página inicial"
             >
-              {isOpen ? "Aberta" : "Indisponível"}
-            </span>
+              <Image
+                src="/Logotipo.png"
+                alt="Auditável"
+                width={96}
+                height={28}
+                priority
+                className="h-6 md:h-7 w-auto shrink-0"
+              />
+            </Link>
 
-            {allowMultiple && (
-              <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-                Participações: {votesUsed}/{effectiveMaxVotesPerUser}
+            {/* Badges (simples, limpo e informativo) */}
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={`px-2 py-1 rounded-full border ${
+                  isOpen
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-gray-50 text-gray-600 border-gray-200"
+                }`}
+              >
+                {isOpen ? "Aberta" : "Indisponível"}
               </span>
+
+              {allowMultiple && (
+                <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
+                  Participações: {votesUsed}/{effectiveMaxVotesPerUser}
+                </span>
+              )}
+
+              {cooldownRemaining > 0 && (
+                <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
+                  Cooldown: {cooldownRemaining}s
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* TÍTULO */}
+          <div className="space-y-1">
+            <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+              {poll.title}
+            </h1>
+
+            {/* Instrução curta por tipo de votação (mantém a tela limpa) */}
+            {votingType === "ranking" && (
+              <p className="text-sm text-gray-600">
+                Arraste para ordenar. Depois, envie a classificação.
+              </p>
             )}
-
-            {cooldownRemaining > 0 && (
-              <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-                Cooldown: {cooldownRemaining}s
-              </span>
+            {votingType === "multiple" && (
+              <p className="text-sm text-gray-600">
+                {maxOptionsPerVote === Infinity
+                  ? "Selecione uma ou mais opções."
+                  : `Selecione até ${maxOptionsPerVote} opções.`}
+              </p>
+            )}
+            {votingType === "single" && (
+              <p className="text-sm text-gray-600">Selecione uma opção.</p>
             )}
           </div>
-        </div>
 
-        {/* TÍTULO */}
-        <div className="space-y-1">
-          <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
-            {poll.title}
-          </h1>
+          {/* Avisos globais */}
+          {participationNotice && <Notice variant="warn">{participationNotice}</Notice>}
 
-          {/* Instrução curta por tipo de votação (mantém a tela limpa) */}
-          {votingType === "ranking" && (
-            <p className="text-sm text-gray-600">
-              Arraste para ordenar. Depois, envie a classificação.
-            </p>
+          {disableReason && <Notice variant="info">{disableReason}</Notice>}
+
+          {/* Feedback Visual */}
+          {feedbackMessage && (
+            <div
+              className={`rounded-xl p-4 text-sm font-semibold transition-all ${
+                feedbackType === "success"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-red-50 text-red-700 border border-red-200"
+              }`}
+            >
+              {feedbackMessage}
+            </div>
           )}
-          {votingType === "multiple" && (
-            <p className="text-sm text-gray-600">
-              {maxOptionsPerVote === Infinity
-                ? "Selecione uma ou mais opções."
-                : `Selecione até ${maxOptionsPerVote} opções.`}
-            </p>
-          )}
-          {votingType === "single" && (
-            <p className="text-sm text-gray-600">Selecione uma opção.</p>
-          )}
-        </div>
-
-        {/* Avisos globais (mantidos, mas com acabamento melhor) */}
-        {participationNotice && <Notice variant="warn">{participationNotice}</Notice>}
-
-        {disableReason && <Notice variant="info">{disableReason}</Notice>}
 
         {/* ================= RANKING ================= */}
         {votingType === "ranking" && (
