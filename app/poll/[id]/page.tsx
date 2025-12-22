@@ -444,15 +444,15 @@ export default function PollPage() {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
         
-                setOptions((items) => {
-                  const oldIndex = items.findIndex((i) => i.id === active.id);
-                  const newIndex = items.findIndex((i) => i.id === over.id);
-                  return arrayMove(items, oldIndex, newIndex);
+                setOptions((prevOptions) => {
+                  const oldIndex = prevOptions.findIndex((opt) => opt.id === active.id);
+                  const newIndex = prevOptions.findIndex((opt) => opt.id === over.id);
+                  return arrayMove(prevOptions, oldIndex, newIndex);
                 });
               }}
             >
               <SortableContext
-                items={options.map((o) => o.id)}
+                items={options.map((opt) => opt.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-2">
@@ -478,9 +478,9 @@ export default function PollPage() {
             <button
               type="button"
               disabled={Boolean(disableReason) || options.length === 0}
-              onClick={() => {
-                void sendVote(
-                  { option_ids: options.map((o) => o.id) },
+              onClick={async () => {
+                await sendVote(
+                  { option_ids: options.map((opt) => opt.id) },
                   setRankingMessage,
                   "Erro ao enviar ranking."
                 );
@@ -504,9 +504,9 @@ export default function PollPage() {
                 <button
                   type="button"
                   disabled={Boolean(disableReason) || options.length === 0}
-                  onClick={() => {
-                    void sendVote(
-                      { option_ids: options.map((o) => o.id) },
+                  onClick={async () => {
+                    await sendVote(
+                      { option_ids: options.map((opt) => opt.id) },
                       setRankingMessage,
                       "Erro ao enviar ranking."
                     );
