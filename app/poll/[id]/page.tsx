@@ -428,7 +428,7 @@ export default function PollPage() {
           {/* Avisos globais */}
           {participationNotice && <Notice variant="warn">{participationNotice}</Notice>}
 
-          {disableReason && <Notice variant="info">{disableReason}</Notice>}
+          {disableReason && !cooldownActive && <Notice variant="info">{disableReason}</Notice>}
 
           {/* Feedback Visual de Cooldown */}
           {cooldownRemaining > 0 && !feedbackMessage && (
