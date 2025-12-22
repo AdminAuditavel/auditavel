@@ -318,6 +318,28 @@ export default function PollPage() {
 
     router.push(`/results/${safeId}`);
   }
+  
+ //padronizar os avisos
+  function Notice({
+    variant,
+    children,
+  }: {
+    variant: "info" | "warn" | "error";
+    children: React.ReactNode;
+  }) {
+    const styles =
+      variant === "warn"
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : variant === "error"
+          ? "border-red-200 bg-red-50 text-red-900"
+          : "border-gray-200 bg-gray-50 text-gray-800";
+  
+    return (
+      <div className={`rounded-xl border px-4 py-3 text-sm ${styles}`}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -392,17 +414,9 @@ export default function PollPage() {
         </div>
 
         {/* Avisos globais (mantidos, mas com acabamento melhor) */}
-        {participationNotice && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {participationNotice}
-          </div>
-        )}
+        {participationNotice && <Notice variant="warn">{participationNotice}</Notice>}
 
-        {disableReason && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800">
-            {disableReason}
-          </div>
-        )}
+        {disableReason && <Notice variant="info">{disableReason}</Notice>}
 
         {/* ================= RANKING ================= */}
         {votingType === "ranking" && (
@@ -563,11 +577,7 @@ export default function PollPage() {
               })}
             </div>
         
-            {multipleMessage && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-                {multipleMessage}
-              </div>
-            )}
+            {multipleMessage && <Notice variant="error">{multipleMessage}</Notice>}
         
             {/* CTA — DESKTOP */}
             <button
