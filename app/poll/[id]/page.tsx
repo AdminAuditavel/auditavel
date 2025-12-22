@@ -124,8 +124,8 @@ export default function PollPage() {
 
   const disableReason = useMemo(() => {
     if (!isOpen) return 'Esta enquete não está aberta para votação.';
-    if (voteLimitReached) return `Limite de votos atingido (${effectiveMaxVotesPerUser}).`;
-    if (cooldownActive) return `Aguarde ${cooldownRemaining}s para votar novamente.`;
+    if (voteLimitReached) return `Limite de participações atingido (${effectiveMaxVotesPerUser}).`;
+    if (cooldownActive) return `Aguarde ${cooldownRemaining}s para participar novamente.`;
     return null;
   }, [isOpen, voteLimitReached, effectiveMaxVotesPerUser, cooldownActive, cooldownRemaining]);
 
@@ -298,12 +298,12 @@ export default function PollPage() {
 
       if (data?.error === 'cooldown_active' && typeof data?.remaining_seconds === 'number') {
         setCooldownRemaining(Math.max(0, Math.floor(data.remaining_seconds)));
-        setMsg(`Aguarde ${Math.floor(data.remaining_seconds)}s para votar novamente.`);
+        setMsg(`Aguarde ${Math.floor(data.remaining_seconds)}s para participar novamente.`);
         return;
       }
 
       if (data?.error === 'vote_limit_reached') {
-        setMsg('Limite de votos atingido para esta enquete.');
+        setMsg('Limite de participações atingido para esta enquete.');
         return;
       }
 
@@ -323,7 +323,7 @@ export default function PollPage() {
     <main className="min-h-screen bg-gray-50">
     <div className="p-6 max-w-xl mx-auto space-y-5">
       {/* Card principal */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
+      <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5 pb-24 md:pb-5">
         {/* TOPO */}
         <div className="flex items-center justify-between gap-3">
           <Link
@@ -355,7 +355,7 @@ export default function PollPage() {
 
             {allowMultiple && (
               <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-                Votos: {votesUsed}/{effectiveMaxVotesPerUser}
+                Participações: {votesUsed}/{effectiveMaxVotesPerUser}
               </span>
             )}
 
@@ -413,7 +413,7 @@ export default function PollPage() {
               onDragEnd={(event) => {
                 const { active, over } = event;
                 if (!over || active.id === over.id) return;
-
+        
                 setOptions((items) => {
                   const oldIndex = items.findIndex((i) => i.id === active.id);
                   const newIndex = items.findIndex((i) => i.id === over.id);
@@ -437,28 +437,58 @@ export default function PollPage() {
                 </div>
               </SortableContext>
             </DndContext>
-
+        
             {rankingMessage && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
                 {rankingMessage}
               </div>
             )}
-
+        
+            {/* CTA — DESKTOP */}
             <button
+              type="button"
               disabled={Boolean(disableReason) || options.length === 0}
-              onClick={async () => {
-                await sendVote(
+              onClick={() => {
+                void sendVote(
                   { option_ids: options.map((o) => o.id) },
                   setRankingMessage,
                   "Erro ao enviar ranking."
                 );
               }}
-              className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+              className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
                          active:scale-[0.99] disabled:opacity-50"
             >
               Enviar classificação
             </button>
+        
+            {/* CTA — MOBILE STICKY */}
+            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-600">
+                  {disableReason
+                    ? disableReason
+                    : `Classificação pronta: ${options.length} opções`}
+                </div>
+        
+                <button
+                  type="button"
+                  disabled={Boolean(disableReason) || options.length === 0}
+                  onClick={() => {
+                    void sendVote(
+                      { option_ids: options.map((o) => o.id) },
+                      setRankingMessage,
+                      "Erro ao enviar ranking."
+                    );
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                             active:scale-[0.99] disabled:opacity-50"
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
           </>
         )}
 
