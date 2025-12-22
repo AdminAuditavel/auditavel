@@ -31,10 +31,14 @@ function ensureUserHash(): string {
   return userHash;
 }
 
+// Parse seguro: se vier sem timezone, force UTC adicionando "Z"
 function parseDbTs(ts?: string | null) {
   if (!ts) return 0;
+
+  // já tem timezone se terminar com Z/z ou com offset tipo +00:00 / -03:00
   const hasTz = /[zZ]$|[+-]\d{2}:\d{2}$/.test(ts);
   const safe = hasTz ? ts : `${ts}Z`;
+
   const ms = Date.parse(safe);
   return Number.isFinite(ms) ? ms : 0;
 }
@@ -57,15 +61,19 @@ export default function PollPage() {
   const [poll, setPoll] = useState<any | null>(null);
   const [options, setOptions] = useState<any[]>([]);
   const [votingType, setVotingType] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
 
+  // Identidade/controle
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [userHash, setUserHash] = useState<string | null>(null);
 
+  // Participação / limite / cooldown
   const [hasParticipation, setHasParticipation] = useState(false);
   const [votesUsed, setVotesUsed] = useState<number>(0);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
 
+  // UI states
   const [rankingMessage, setRankingMessage] = useState<string | null>(null);
   const [multipleMessage, setMultipleMessage] = useState<string | null>(null);
   const [singleMessage, setSingleMessage] = useState<string | null>(null);
@@ -80,6 +88,7 @@ export default function PollPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
+  // Helpers derivados do poll
   const isOpen = poll?.status === 'open';
   const allowMultiple: boolean = Boolean(poll?.allow_multiple);
 
@@ -121,27 +130,32 @@ export default function PollPage() {
 
   const participationNotice = useMemo(() => {
     if (!hasParticipation) return null;
+
     if (!allowMultiple) {
       return 'Você já participou desta enquete. Você pode alterar seu voto. O último voto será contabilizado.';
     }
     return 'Você já votou nesta enquete. Você pode votar novamente (respeitando o limite e o tempo de espera).';
   }, [hasParticipation, allowMultiple]);
 
+  // 1) useMemo do mapa (usa options)
   const optionTextById = useMemo(() => {
     const m = new Map<string, string>();
     for (const o of options) m.set(o.id, o.option_text);
     return m;
   }, [options]);
 
+  // Função para exibir feedback visual (sucesso ou erro)
   const showFeedback = (message: string, type: "success" | "error") => {
     setFeedbackMessage(message);
     setFeedbackType(type);
+
     setTimeout(() => {
       setFeedbackMessage(null);
       setFeedbackType(null);
     }, 3000);
   };
 
+  // Carregamento principal
   useEffect(() => {
     let mounted = true;
 
@@ -163,10 +177,12 @@ export default function PollPage() {
 
     const fetchPollData = async () => {
       const { data: pollData } = await supabase.from('polls').select('*').eq('id', safeId).maybeSingle();
+
       if (!mounted || !pollData || pollData.status === 'draft') {
         router.replace('/404');
         return;
       }
+
       setPoll(pollData);
       setVotingType(pollData.voting_type);
 
@@ -376,13 +392,14 @@ export default function PollPage() {
               >
                 {isOpen ? "Aberta" : "Indisponível"}
               </span>
-            
+
               {allowMultiple && (
                 <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
                   Participações: {votesUsed}/{effectiveMaxVotesPerUser}
                 </span>
               )}
             </div>
+          </div>
 
           {/* TÍTULO */}
           <div className="space-y-1">
@@ -413,19 +430,13 @@ export default function PollPage() {
 
           {disableReason && <Notice variant="info">{disableReason}</Notice>}
 
-          {/* Feedback Visual */}
-          {feedbackMessage && (
-            <div
-              className={`rounded-xl p-4 text-sm font-semibold transition-all ${
-                feedbackType === "success"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-red-50 text-red-700 border border-red-200"
-              }`}
-            >
-              {feedbackMessage}
+          {/* Feedback Visual de Cooldown */}
+          {cooldownRemaining > 0 && !feedbackMessage && (
+            <div className="rounded-xl p-4 text-sm font-semibold text-red-700 bg-red-50 border border-red-200">
+              Aguardando: {cooldownRemaining}s para votar novamente.
             </div>
           )}
-
+        
         {/* ================= RANKING ================= */}
         {votingType === "ranking" && (
           <>
