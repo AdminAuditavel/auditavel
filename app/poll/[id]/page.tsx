@@ -456,14 +456,19 @@ export default function PollPage() {
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-2">
-                  {options.map((opt, index) => (
-                    <RankingOption
-                      key={opt.id}
-                      id={opt.id}
-                      text={opt.option_text}
-                      index={index}
-                    />
-                  ))}
+                  {/* Não exibe as opções classificadas até o envio */}
+                  {options.length > 0 && (
+                    <div className="space-y-2">
+                      {options.map((opt, index) => (
+                        <RankingOption
+                          key={opt.id}
+                          id={opt.id}
+                          text={opt.option_text}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </SortableContext>
             </DndContext>
