@@ -439,343 +439,370 @@ export default function PollPage() {
               Aguardando: {cooldownRemaining}s para votar novamente.
             </div>
           )}
-
-          {/* ================= RANKING ================= */}
-          {votingType === "ranking" && (
-            <>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={(event) => {
-                  const { active, over } = event;
-                  if (!over || active.id === over.id) return;
-
-                  setOptions((prevOptions) => {
-                    const oldIndex = prevOptions.findIndex((opt) => opt.id === active.id);
-                    const newIndex = prevOptions.findIndex((opt) => opt.id === over.id);
-                    return arrayMove(prevOptions, oldIndex, newIndex);
-                  });
-                }}
+        
+        {/* ================= RANKING ================= */}
+        {votingType === "ranking" && (
+          <>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
+        
+                setOptions((prevOptions) => {
+                  const oldIndex = prevOptions.findIndex((opt) => opt.id === active.id);
+                  const newIndex = prevOptions.findIndex((opt) => opt.id === over.id);
+                  return arrayMove(prevOptions, oldIndex, newIndex);
+                });
+              }}
+            >
+              <SortableContext
+                items={options.map((opt) => opt.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <SortableContext
-                  items={options.map((opt) => opt.id)}
-                  strategy={verticalListSortingStrategy}
+                <div className="space-y-2">
+                  {/* Não exibe as opções classificadas até o envio */}
+                  {options.length > 0 && (
+                    <div className="space-y-2">
+                      {options.map((opt, index) => (
+                        <RankingOption
+                          key={opt.id}
+                          id={opt.id}
+                          text={opt.option_text}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </SortableContext>
+            </DndContext>
+        
+            {rankingMessage && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                {rankingMessage}
+              </div>
+            )}
+        
+            {/* CTA — DESKTOP */}
+            <button
+              type="button"
+              disabled={Boolean(disableReason) || options.length === 0}
+              onClick={async () => {
+                await sendVote(
+                  { option_ids: options.map((opt) => opt.id) },
+                  setRankingMessage,
+                  "Erro ao enviar ranking."
+                );
+              }}
+              className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                         active:scale-[0.99] disabled:opacity-50"
+            >
+              Enviar classificação
+            </button>
+        
+            {/* CTA — MOBILE STICKY */}
+            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-600">
+                  {disableReason
+                    ? disableReason
+                    : `Classificação pronta: ${options.length} opções`}
+                </div>
+        
+                <button
+                  type="button"
+                  disabled={Boolean(disableReason) || options.length === 0}
+                  onClick={async () => {
+                    await sendVote(
+                      { option_ids: options.map((opt) => opt.id) },
+                      setRankingMessage,
+                      "Erro ao enviar ranking."
+                    );
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                             active:scale-[0.99] disabled:opacity-50"
                 >
-                  <div className="space-y-2">
-                    {/* Não exibe as opções classificadas até o envio */}
-                    {options.length > 0 && (
-                      <div className="space-y-2">
-                        {options.map((opt, index) => (
-                          <RankingOption
-                            key={opt.id}
-                            id={opt.id}
-                            text={opt.option_text}
-                            index={index}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
-
-              {rankingMessage && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-                  {rankingMessage}
-                </div>
-              )}
-
-              {/* CTA — DESKTOP */}
-              <button
-                type="button"
-                disabled={Boolean(disableReason) || options.length === 0}
-                onClick={async () => {
-                  await sendVote(
-                    { option_ids: options.map((opt) => opt.id) },
-                    setRankingMessage,
-                    "Erro ao enviar ranking."
-                  );
-                }}
-                className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                           active:scale-[0.99] disabled:opacity-50"
-              >
-                Enviar classificação
-              </button>
-
-              {/* CTA — MOBILE STICKY */}
-              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
-                <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="text-xs text-gray-600">
-                    {disableReason
-                      ? disableReason
-                      : `Classificação pronta: ${options.length} opções`}
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={Boolean(disableReason) || options.length === 0}
-                    onClick={async () => {
-                      await sendVote(
-                        { option_ids: options.map((opt) => opt.id) },
-                        setRankingMessage,
-                        "Erro ao enviar ranking."
-                      );
-                    }}
-                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                               active:scale-[0.99] disabled:opacity-50"
-                  >
-                    Enviar
-                  </button>
-                </div>
+                  Enviar
+                </button>
               </div>
-            </>
-          )}
+            </div>
+          </>
+        )}
 
-          {/* ================= MULTIPLE ================= */}
-          {votingType === "multiple" && (
-            <>
-              <div className="space-y-2">
-                {options.map((o) => {
-                  const selected = selectedOptions.includes(o.id);
-                  const limitReached =
-                    !selected && selectedOptions.length >= maxOptionsPerVote;
-
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      disabled={limitReached || Boolean(disableReason)}
-                      onClick={() => {
-                        setMultipleMessage(null);
-
-                        if (selected) {
-                          setSelectedOptions((prev) => prev.filter((id) => id !== o.id));
-                          return;
-                        }
-
-                        if (selectedOptions.length >= maxOptionsPerVote) {
-                          setMultipleMessage(
-                            `Você pode selecionar no máximo ${maxOptionsPerVote} opções.`
-                          );
-                          return;
-                        }
-
-                        setSelectedOptions((prev) => [...prev, o.id]);
-                      }}
-                      className={`w-full px-4 py-3 rounded-xl border transition text-left
-                        ${selected ? "border-emerald-300 bg-emerald-50" : "border-gray-200 bg-white hover:border-emerald-300"}`}
-                      aria-pressed={selected}
-                    >
-                      {/* Indicador */}
-                      <span
-                        className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
-                          selected ? "border-emerald-600 bg-emerald-600" : "border-gray-300 bg-white"
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {selected && <span className="h-2 w-2 rounded-full bg-white" />}
-                      </span>
-
-                      {/* Texto */}
-                      <span className="flex-1 text-justify leading-relaxed text-gray-900">
-                        {o.option_text}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {multipleMessage && <Notice variant="error">{multipleMessage}</Notice>}
-
-              {/* Prévia da participação (chips) */}
-              {selectedOptions.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-600">Selecionadas:</div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedOptions.slice(0, 6).map((id) => (
-                      <Chip key={id}>{optionTextById.get(id) ?? id}</Chip>
-                    ))}
-                    {selectedOptions.length > 6 && (
-                      <Chip>+{selectedOptions.length - 6}</Chip>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* CTA — DESKTOP */}
-              <button
-                type="button"
-                disabled={Boolean(disableReason) || selectedOptions.length === 0}
-                onClick={() => {
-                  if (selectedOptions.length === 0) {
-                    setMultipleMessage("Selecione ao menos uma opção.");
-                    return;
-                  }
-
-                  void sendVote(
-                    { option_ids: selectedOptions },
-                    setMultipleMessage,
-                    "Erro ao registrar participação."
-                  );
-                }}
-                className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                           active:scale-[0.99] disabled:opacity-50"
-              >
-                Enviar participação
-              </button>
-
-              {/* CTA — MOBILE STICKY */}
-              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
-                <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="text-xs text-gray-600">
-                    {disableReason
-                      ? disableReason
-                      : maxOptionsPerVote === Infinity
-                        ? `Selecionadas: ${selectedOptions.length}`
-                        : `Selecionadas: ${selectedOptions.length}/${maxOptionsPerVote}`}
-                  </div>
-
+        {/* ================= MULTIPLE ================= */}
+        {votingType === "multiple" && (
+          <>
+            <div className="space-y-2">
+              {options.map((o) => {
+                const selected = selectedOptions.includes(o.id);
+                const limitReached =
+                  !selected && selectedOptions.length >= maxOptionsPerVote;
+        
+                return (
                   <button
+                    key={o.id}
                     type="button"
-                    disabled={Boolean(disableReason) || selectedOptions.length === 0}
+                    disabled={limitReached || Boolean(disableReason)}
                     onClick={() => {
-                      if (selectedOptions.length === 0) {
-                        setMultipleMessage("Selecione ao menos uma opção.");
+                      setMultipleMessage(null);
+        
+                      if (selected) {
+                        setSelectedOptions((prev) => prev.filter((id) => id !== o.id));
                         return;
                       }
-
-                      void sendVote(
-                        { option_ids: selectedOptions },
-                        setMultipleMessage,
-                        "Erro ao registrar participação."
-                      );
-                    }}
-                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                               active:scale-[0.99] disabled:opacity-50"
-                  >
-                    Enviar
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* ================= SINGLE ================= */}
-          {votingType === "single" && (
-            <>
-              <div className="space-y-2">
-                {options.map((o) => {
-                  const selected = selectedSingleOption === o.id;
-
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      disabled={Boolean(disableReason)}
-                      onClick={() => {
-                        setSingleMessage(null);
-                        setSelectedSingleOption(o.id);  // Aqui o selectedSingleOption recebe o option_id
-                      }}
-                      className={`w-full px-4 py-3 rounded-xl border transition text-left
-                        ${selected ? "border-emerald-300 bg-emerald-50" : "border-gray-200 bg-white hover:border-emerald-300"}`}
-                      aria-pressed={selected}
-                    >
-                      {/* Indicador */}
-                      <span
-                        className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
-                          selected ? "border-emerald-600 bg-emerald-600" : "border-gray-300 bg-white"
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {selected && <span className="h-2 w-2 rounded-full bg-white" />}
-                      </span>
-
-                      {/* Texto */}
-                      <span className="flex-1 text-justify leading-relaxed text-gray-900">
-                        {o.option_text}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {singleMessage && <Notice variant="error">{singleMessage}</Notice>}
-
-              {/* Prévia da participação (chip) */}
-              {selectedSingleOption && (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-600">Selecionada:</div>
-                  <div className="flex flex-wrap gap-2">
-                    <Chip>{optionTextById.get(selectedSingleOption) ?? selectedSingleOption}</Chip>
-                  </div>
-                </div>
-              )}
-
-              {/* CTA — DESKTOP */}
-              <button
-                type="button"
-                disabled={Boolean(disableReason) || !selectedSingleOption}
-                onClick={() => {
-                  if (!selectedSingleOption) {
-                    setSingleMessage("Selecione uma opção.");
-                    return;
-                  }
-
-                  void sendVote(
-                    { option_id: selectedSingleOption },  // Passando option_id
-                    setSingleMessage,
-                    "Erro ao registrar participação."
-                  );
-                }}
-                className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                           active:scale-[0.99] disabled:opacity-50"
-              >
-                Enviar participação
-              </button>
-
-              {/* CTA — MOBILE STICKY */}
-              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
-                <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="text-xs text-gray-600">
-                    {disableReason
-                      ? disableReason
-                      : selectedSingleOption
-                        ? "1 opção selecionada"
-                        : "Selecione uma opção"}
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={Boolean(disableReason) || !selectedSingleOption}
-                    onClick={() => {
-                      if (!selectedSingleOption) {
-                        setSingleMessage("Selecione uma opção.");
+        
+                      if (selectedOptions.length >= maxOptionsPerVote) {
+                        setMultipleMessage(
+                          `Você pode selecionar no máximo ${maxOptionsPerVote} opções.`
+                        );
                         return;
                       }
-
-                      void sendVote(
-                        { option_id: selectedSingleOption },  // Passando option_id
-                        setSingleMessage,
-                        "Erro ao registrar participação."
-                      );
+        
+                      setSelectedOptions((prev) => [...prev, o.id]);
                     }}
-                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
-                               active:scale-[0.99] disabled:opacity-50"
+                    className={`w-full px-4 py-3 rounded-xl border transition text-left
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                      active:scale-[0.99] flex items-start gap-3
+                      ${
+                        selected
+                          ? "border-emerald-300 bg-emerald-50"
+                          : "border-gray-200 bg-white hover:border-emerald-300"
+                      }
+                      ${
+                        limitReached || Boolean(disableReason)
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                    aria-pressed={selected}
                   >
-                    Enviar
+                    {/* Indicador */}
+                    <span
+                      className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
+                        selected
+                          ? "border-emerald-600 bg-emerald-600"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {selected && <span className="h-2 w-2 rounded-full bg-white" />}
+                    </span>
+        
+                    {/* Texto */}
+                    <span className="flex-1 text-justify leading-relaxed text-gray-900">
+                      {o.option_text}
+                    </span>
                   </button>
+                );
+              })}
+            </div>
+        
+            {multipleMessage && <Notice variant="error">{multipleMessage}</Notice>}
+        
+            {/* Prévia da participação (chips) */}
+            {selectedOptions.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-600">Selecionadas:</div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedOptions.slice(0, 6).map((id) => (
+                    <Chip key={id}>{optionTextById.get(id) ?? id}</Chip>
+                  ))}
+                  {selectedOptions.length > 6 && (
+                    <Chip>+{selectedOptions.length - 6}</Chip>
+                  )}
                 </div>
               </div>
-            </>
-          )}
-        </div>
+            )}
+        
+            {/* CTA — DESKTOP */}
+            <button
+              type="button"
+              disabled={Boolean(disableReason) || selectedOptions.length === 0}
+              onClick={() => {
+                if (selectedOptions.length === 0) {
+                  setMultipleMessage("Selecione ao menos uma opção.");
+                  return;
+                }
+        
+                void sendVote(
+                  { option_ids: selectedOptions },
+                  setMultipleMessage,
+                  "Erro ao registrar participação."
+                );
+              }}
+              className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                         active:scale-[0.99] disabled:opacity-50"
+            >
+              Enviar participação
+            </button>
+        
+            {/* CTA — MOBILE STICKY */}
+            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-600">
+                  {disableReason
+                    ? disableReason
+                    : maxOptionsPerVote === Infinity
+                      ? `Selecionadas: ${selectedOptions.length}`
+                      : `Selecionadas: ${selectedOptions.length}/${maxOptionsPerVote}`}
+                </div>
+        
+                <button
+                  type="button"
+                  disabled={Boolean(disableReason) || selectedOptions.length === 0}
+                  onClick={() => {
+                    if (selectedOptions.length === 0) {
+                      setMultipleMessage("Selecione ao menos uma opção.");
+                      return;
+                    }
+        
+                    void sendVote(
+                      { option_ids: selectedOptions },
+                      setMultipleMessage,
+                      "Erro ao registrar participação."
+                    );
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                             active:scale-[0.99] disabled:opacity-50"
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ================= SINGLE ================= */}
+        {votingType === "single" && (
+          <>
+            <div className="space-y-2">
+              {options.map((o) => {
+                const selected = selectedSingleOption === o.id;
+        
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    disabled={Boolean(disableReason)}
+                    onClick={() => {
+                      setSingleMessage(null);
+                      setSelectedSingleOption(o.id);
+                    }}
+                    className={`w-full px-4 py-3 rounded-xl border transition text-left
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                      active:scale-[0.99] flex items-start gap-3
+                      ${
+                        selected
+                          ? "border-emerald-300 bg-emerald-50"
+                          : "border-gray-200 bg-white hover:border-emerald-300"
+                      }
+                      ${Boolean(disableReason) ? "opacity-50 cursor-not-allowed" : ""}`}
+                    aria-pressed={selected}
+                  >
+                    {/* Indicador */}
+                    <span
+                      className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
+                        selected
+                          ? "border-emerald-600 bg-emerald-600"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {selected && <span className="h-2 w-2 rounded-full bg-white" />}
+                    </span>
+        
+                    {/* Texto */}
+                    <span className="flex-1 text-justify leading-relaxed text-gray-900">
+                      {o.option_text}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+        
+            {singleMessage && <Notice variant="error">{singleMessage}</Notice>}
+        
+            {/* Prévia da participação (chip) */}
+            {selectedSingleOption && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-600">Selecionada:</div>
+                <div className="flex flex-wrap gap-2">
+                  <Chip>{optionTextById.get(selectedSingleOption) ?? selectedSingleOption}</Chip>
+                </div>
+              </div>
+            )}
+        
+            {/* CTA — DESKTOP */}
+            <button
+              type="button"
+              disabled={Boolean(disableReason) || !selectedSingleOption}
+              onClick={() => {
+                if (!selectedSingleOption) {
+                  setSingleMessage("Selecione uma opção.");
+                  return;
+                }
+        
+                void sendVote(
+                  { option_id: selectedSingleOption },
+                  setSingleMessage,
+                  "Erro ao registrar participação."
+                );
+              }}
+              className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                         active:scale-[0.99] disabled:opacity-50"
+            >
+              Enviar participação
+            </button>
+        
+            {/* CTA — MOBILE STICKY */}
+            <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-600">
+                  {disableReason
+                    ? disableReason
+                    : selectedSingleOption
+                      ? "1 opção selecionada"
+                      : "Selecione uma opção"}
+                </div>
+        
+                <button
+                  type="button"
+                  disabled={Boolean(disableReason) || !selectedSingleOption}
+                  onClick={() => {
+                    if (!selectedSingleOption) {
+                      setSingleMessage("Selecione uma opção.");
+                      return;
+                    }
+        
+                    void sendVote(
+                      { option_id: selectedSingleOption },
+                      setSingleMessage,
+                      "Erro ao registrar participação."
+                    );
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                             active:scale-[0.99] disabled:opacity-50"
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </main>
-  );
+        
+      <div className="text-center text-xs flex items-center justify-center gap-2" style={{ color: "#8B8A8A" }}>
+        <Image src="/Logo_A.png" alt="Auditável" width={18} height={18} className="inline-block" />
+        <span>Auditável — “O Brasil vota. Você confere.”</span>
+      </div>
+    </div>
+  </main>
+);
 }
