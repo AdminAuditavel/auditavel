@@ -1,4 +1,4 @@
-// app/results/[id]/page.tsx
+//app/results/[id]/page.tsx
 
 import Link from "next/link";
 import Image from "next/image";
@@ -72,7 +72,7 @@ export default async function ResultsPage({
   }
 
   const isPartial = status === "open" || status === "paused";
-  const effectiveMaxVotes = max_votes_per_user ?? 1;  // Garantir fallback para 1 caso esteja nulo
+  const effectiveMaxVotes = max_votes_per_user ?? 1; // Garantir fallback para 1 caso esteja nulo
 
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
@@ -97,6 +97,42 @@ export default async function ResultsPage({
       </Link>
     </div>
   );
+
+  // Footer compartilhado para exibir "Resultados parciais" / "Resultado Final"
+  // alinhado à esquerda e "Participantes / Participações" à direita, obedecendo
+  // a regra de max_votes_per_user.
+  const ResultsFooter = ({
+    isPartial,
+    status,
+    effectiveMaxVotes,
+    totalParticipants,
+    totalSubmissions,
+  }: {
+    isPartial: boolean;
+    status: string;
+    effectiveMaxVotes: number;
+    totalParticipants: number;
+    totalSubmissions: number;
+  }) => {
+    const leftLabel = status === "closed" ? "Resultado Final" : isPartial ? "Resultados parciais" : "";
+
+    return (
+      <div className="flex justify-between text-xs text-gray-500">
+        <div className="text-left">
+          {leftLabel ? <span>{leftLabel}</span> : null}
+        </div>
+        <div className="text-right">
+          {effectiveMaxVotes > 1 ? (
+            <span>
+              Participantes: {totalParticipants} · Participações: {totalSubmissions}
+            </span>
+          ) : (
+            <span>Participantes: {totalParticipants}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   /* =======================
      SINGLE
@@ -165,18 +201,13 @@ export default async function ResultsPage({
               );
             })}
 
-            <div className="flex justify-between text-xs text-gray-500">
-              {isPartial && effectiveMaxVotes > 1 && (
-                <span>Resultados parciais</span>
-              )}
-              {effectiveMaxVotes > 1 ? (
-                <span>
-                  Participantes: {totalParticipants} · Participações: {totalSubmissions}
-                </span>
-              ) : (
-                <span>Participantes: {totalParticipants}</span>
-              )}
-            </div>
+            <ResultsFooter
+              isPartial={isPartial}
+              status={status}
+              effectiveMaxVotes={effectiveMaxVotes}
+              totalParticipants={totalParticipants}
+              totalSubmissions={totalSubmissions}
+            />
 
             <AttributesInviteClient pollId={safeId} />
           </div>
@@ -273,18 +304,13 @@ export default async function ResultsPage({
               })}
             </div>
 
-            <div className="flex justify-between text-xs text-gray-500">
-              {isPartial && effectiveMaxVotes > 1 && (
-                <span>Resultados parciais</span>
-              )}
-              {effectiveMaxVotes > 1 ? (
-                <span>
-                  Participantes: {totalParticipants} · Participações: {totalSubmissions}
-                </span>
-              ) : (
-                <span>Participantes: {totalParticipants}</span>
-              )}
-            </div>
+            <ResultsFooter
+              isPartial={isPartial}
+              status={status}
+              effectiveMaxVotes={effectiveMaxVotes}
+              totalParticipants={totalParticipants}
+              totalSubmissions={totalSubmissions}
+            />
 
             <AttributesInviteClient pollId={safeId} />
           </div>
@@ -303,6 +329,16 @@ export default async function ResultsPage({
   ======================= */
   const json = await getResults(safeId);
   const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
+
+  // para mostrar participantes/participações também no ranking, buscamos votes
+  const { data: rankingVotes } = await supabase
+    .from("votes")
+    .select("id, user_hash")
+    .eq("poll_id", safeId);
+
+  const totalSubmissionsRanking = rankingVotes?.length || 0;
+  const totalParticipantsRanking = new Set((rankingVotes ?? []).map((v) => v.user_hash))
+    .size;
 
   return (
     <main className="min-h-screen bg-gray-50 p-6">
@@ -335,6 +371,14 @@ export default async function ResultsPage({
               </div>
             );
           })}
+
+          <ResultsFooter
+            isPartial={isPartial}
+            status={status}
+            effectiveMaxVotes={effectiveMaxVotes}
+            totalParticipants={totalParticipantsRanking}
+            totalSubmissions={totalSubmissionsRanking}
+          />
 
           <AttributesInviteClient pollId={safeId} />
         </div>
