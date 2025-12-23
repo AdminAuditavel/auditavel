@@ -1,4 +1,4 @@
-//app/results/[id]/page.tsx
+// app/results/[id]/page.tsx
 
 import Link from "next/link";
 import Image from "next/image";
@@ -31,7 +31,7 @@ export default async function ResultsPage({
   const { data: pollData, error: pollError } = await supabase
     .from("polls")
     .select(
-      "title, voting_type, status, show_partial_results, allow_multiple"
+      "title, voting_type, status, show_partial_results, allow_multiple, max_votes_per_user"
     )
     .eq("id", safeId)
     .maybeSingle();
@@ -50,6 +50,7 @@ export default async function ResultsPage({
     status,
     show_partial_results,
     allow_multiple,
+    max_votes_per_user,
   } = pollData;
 
   const canShowResults =
@@ -71,6 +72,7 @@ export default async function ResultsPage({
   }
 
   const isPartial = status === "open" || status === "paused";
+  const effectiveMaxVotes = max_votes_per_user ?? 1;  // Garantir fallback para 1 caso esteja nulo
 
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
@@ -164,8 +166,16 @@ export default async function ResultsPage({
             })}
 
             <div className="flex justify-between text-xs text-gray-500">
-              {isPartial && <span>Resultados parciais</span>}
-              <span>Total de votos: {totalSubmissions}</span>
+              {isPartial && effectiveMaxVotes > 1 && (
+                <span>Resultados parciais</span>
+              )}
+              {effectiveMaxVotes > 1 ? (
+                <span>
+                  Participantes: {totalParticipants} · Participações: {totalSubmissions}
+                </span>
+              ) : (
+                <span>Participantes: {totalParticipants}</span>
+              )}
             </div>
 
             <AttributesInviteClient pollId={safeId} />
@@ -182,7 +192,7 @@ export default async function ResultsPage({
 
   /* =======================
      MULTIPLE
-    ======================= */
+  ======================= */
   if (voting_type === "multiple") {
     const { data: options } = await supabase
       .from("poll_options")
@@ -264,10 +274,16 @@ export default async function ResultsPage({
             </div>
 
             <div className="flex justify-between text-xs text-gray-500">
-              {isPartial && <span>Resultados parciais</span>}
-              <span>
-                Participantes: {totalParticipants} · Participações: {totalSubmissions}
-              </span>
+              {isPartial && effectiveMaxVotes > 1 && (
+                <span>Resultados parciais</span>
+              )}
+              {effectiveMaxVotes > 1 ? (
+                <span>
+                  Participantes: {totalParticipants} · Participações: {totalSubmissions}
+                </span>
+              ) : (
+                <span>Participantes: {totalParticipants}</span>
+              )}
             </div>
 
             <AttributesInviteClient pollId={safeId} />
