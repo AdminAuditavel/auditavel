@@ -10,12 +10,14 @@ module.exports = {
     extend: {
       colors: {
         background: "var(--background)",
+        surface: "var(--surface)",
+        surface2: "var(--surface-2)",
         foreground: "var(--foreground)",
         primary: "var(--primary)",
         muted: "var(--muted)",
         border: "var(--border)",
       },
-    },
+    },    
   },
   plugins: [],
 };
