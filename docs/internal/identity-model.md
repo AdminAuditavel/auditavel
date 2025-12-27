@@ -131,13 +131,11 @@ Isso garante que:
 ## 4. Relação entre identidade e votos
 ### 4.1 Voto único (max_votes_per_user = 1)
 
-Pode existir apenas um voto vigente por (poll_id, participant_id)
+- Pode existir apenas um voto vigente por (poll_id, participant_id)
+- Atualizações substituem o voto anterior
+- Histórico é preservado em vote_events
 
-Atualizações substituem o voto anterior
-
-Histórico é preservado em vote_events
-
-4.2 Voto múltiplo (max_votes_per_user > 1)
+### 4.2 Voto múltiplo (max_votes_per_user > 1)
 
 Cada voto gera uma nova linha em votes
 
@@ -145,7 +143,7 @@ O limite é aplicado por (poll_id, participant_id)
 
 user_hash não interfere no limite
 
-4.3 Ranking
+### 4.3 Ranking
 
 Sempre existe apenas um ranking vigente
 
@@ -155,45 +153,41 @@ Score é recalculado a partir do estado atual
 
 Histórico completo preservado
 
-5. Auditorabilidade e privacidade
+## 5. Auditorabilidade e privacidade
 
 Este modelo garante simultaneamente:
 
 ✅ Um participante = um conjunto consistente de ações
+
 ✅ Possibilidade de auditoria completa
+
 ✅ Nenhuma identificação pessoal
+
 ✅ Nenhum login
+
 ✅ Nenhum dado sensível
+
 
 O sistema sabe o que foi feito, mas não sabe quem é a pessoa.
 
-6. Decisões explícitas de design
+## 6. Decisões explícitas de design
 
-Não usar IP
+- Não usar IP
+- Não usar fingerprinting
+- Não usar cookies de terceiros
+- Não exigir cadastro
+- Não usar user_hash como identidade
+- Essas decisões são intencionais e alinhadas ao propósito público do Auditável.
 
-Não usar fingerprinting
+## 7. Consequências arquiteturais
 
-Não usar cookies de terceiros
+- Deploys não quebram identidade
+- Refresh de página é seguro
+- Navegador fechado não invalida participação
+- Um navegador = um participante
+- Votos são reproduzíveis e auditáveis
 
-Não exigir cadastro
-
-Não usar user_hash como identidade
-
-Essas decisões são intencionais e alinhadas ao propósito público do Auditável.
-
-7. Consequências arquiteturais
-
-Deploys não quebram identidade
-
-Refresh de página é seguro
-
-Navegador fechado não invalida participação
-
-Um navegador = um participante
-
-Votos são reproduzíveis e auditáveis
-
-8. Regra de ouro
+## 8. Regra de ouro
 
 Se uma regra envolve “quem pode votar”, “quantas vezes”, ou “quando” → use participant_id.
 
