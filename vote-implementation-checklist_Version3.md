@@ -45,11 +45,11 @@ Colunas relevantes:
 - `allow_custom_option`, `show_partial_results`
 
 ### Checagens (fazer agora)
-- [ ] **Checar valores reais** de `voting_type` existentes (ex.: só `single` e `ranking`? já tem `multiple`?)
-- [ ] **Checar quantas polls** têm `max_votes_per_user IS NULL`
-- [ ] **Checar quantas polls multiple** têm `max_options_per_vote IS NULL` (no seu requisito isso é permitido e significa “sem limite”)
-- [ ] Checar consistência de janela:
-  - [ ] se vocês usam `closes_at` ou `end_date` de verdade (padronizar no código)
+- [x] **Checar valores reais** de `voting_type` existentes (ex.: só `single` e `ranking`? já tem `multiple`?)
+- [x] **Checar quantas polls** têm `max_votes_per_user IS NULL`
+- [x] **Checar quantas polls multiple** têm `max_options_per_vote IS NULL` (no seu requisito isso é permitido e significa “sem limite”)
+- [x] Checar consistência de janela:
+  - [x] se vocês usam `closes_at` ou `end_date` de verdade (padronizar no código)
 
 ### Decisões já tomadas (registrar)
 - `allow_multiple` pode continuar existindo, mas regra de negócio usa `max_votes_per_user`.
