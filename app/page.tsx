@@ -1,4 +1,4 @@
-//app/page.tsx
+// app/page.tsx
 export const dynamic = "force-dynamic";
 
 import Image from "next/image";
@@ -61,18 +61,36 @@ function statusLabel(status: Poll["status"]) {
   return "Rascunho";
 }
 
+/**
+ * Classes para badges de status com suporte a tema (via tokens do Tailwind + CSS vars).
+ * Evita classes fixas (bg-white / text-gray-*) que quebram o dark automático.
+ */
 function statusColor(status: Poll["status"]) {
-  if (status === "open") return "bg-green-100 text-green-800";
-  if (status === "paused") return "bg-yellow-100 text-yellow-800";
-  if (status === "closed") return "bg-red-100 text-red-800";
-  return "bg-gray-100 text-gray-600";
+  const base =
+    "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-border";
+
+  if (status === "open") {
+    return `${base} bg-muted text-[color:var(--primary)]`;
+  }
+  if (status === "paused") {
+    // neutro/atenção sem amarelo fixo (fica mais consistente no dark)
+    return `${base} bg-surface2 text-[color:var(--brand-gray)]`;
+  }
+  if (status === "closed") {
+    // encerrada: neutro (sem vermelho fixo)
+    return `${base} bg-surface2 text-[color:var(--foreground-muted)]`;
+  }
+  return `${base} bg-surface2 text-[color:var(--foreground-muted)]`;
 }
 
+/**
+ * Mantém uma nuance semântica sutil no título sem quebrar o tema.
+ */
 function titleColor(status: Poll["status"]) {
-  if (status === "open") return "text-emerald-800";
-  if (status === "paused") return "text-yellow-900";
-  if (status === "closed") return "text-red-900";
-  return "text-gray-900";
+  if (status === "open") return "text-foreground";
+  if (status === "paused") return "text-foreground";
+  if (status === "closed") return "text-foreground";
+  return "text-foreground";
 }
 
 function votingTypeLabel(vt: Poll["voting_type"]) {
@@ -119,16 +137,10 @@ function showResultsButton(p: Poll) {
   );
 }
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams?: any;
-}) {
+export default async function Home({ searchParams }: { searchParams?: any }) {
   // Resolve searchParams early so header form can reflect `q` and we can filter results.
   const resolvedSearchParams =
-    searchParams && typeof searchParams.then === "function"
-      ? await searchParams
-      : searchParams;
+    searchParams && typeof searchParams.then === "function" ? await searchParams : searchParams;
 
   const rawQ = resolvedSearchParams?.q;
   const q =
@@ -159,17 +171,15 @@ export default async function Home({
   let pollsData: Poll[] | null = null;
 
   // primeira tentativa: buscar incluindo category
-  const attempt = await supabase
-    .from("polls")
-    .select(selectWithCategory)
-    .order("created_at", { ascending: false });
+  const attempt = await supabase.from("polls").select(selectWithCategory).order("created_at", {
+    ascending: false,
+  });
 
   if (attempt.error) {
     // se falhar (ex.: coluna não existe), refaz sem category
-    const retry = await supabase
-      .from("polls")
-      .select(selectWithoutCategory)
-      .order("created_at", { ascending: false });
+    const retry = await supabase.from("polls").select(selectWithoutCategory).order("created_at", {
+      ascending: false,
+    });
 
     pollsData = retry.data || null;
   } else {
@@ -252,9 +262,7 @@ export default async function Home({
 
         const mapped = (categoryKeyMap[activeCategory.toLowerCase()] ?? activeCategory).toLowerCase();
 
-        visiblePolls = visiblePolls.filter(
-          (p) => (p.category || "").toLowerCase() === mapped
-        );
+        visiblePolls = visiblePolls.filter((p) => (p.category || "").toLowerCase() === mapped);
       }
       // se não houver campo category, não filtramos (mantemos todas)
     }
@@ -277,18 +285,39 @@ export default async function Home({
           </div>
 
           <form method="get" action="/" className="flex-1 max-w-xl">
-            <label htmlFor="q" className="sr-only">Buscar pesquisas</label>
-            <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-2 shadow-sm">
-              <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <label htmlFor="q" className="sr-only">
+              Buscar pesquisas
+            </label>
+            <div className="flex items-center bg-surface border border-border rounded-md px-3 py-2 shadow-sm">
+              <svg
+                className="w-4 h-4 text-[color:var(--foreground-muted)]"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+              >
+                <path
+                  d="M21 21l-4.35-4.35"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="6"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
 
               <input
                 id="q"
                 name="q"
                 defaultValue={q || ""}
-                className="ml-3 w-full text-sm outline-none"
+                className="ml-3 w-full text-sm outline-none bg-transparent text-foreground placeholder:text-[color:var(--foreground-muted)]"
                 placeholder="Buscar pesquisa, tema ou cidade..."
                 aria-label="Buscar pesquisas"
               />
@@ -309,15 +338,17 @@ export default async function Home({
               { key: "economia", label: "Economia" },
             ].map((c) => {
               const isActive = activeCategory === c.key;
-              const href = `/?category=${encodeURIComponent(c.key)}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+              const href = `/?category=${encodeURIComponent(c.key)}${
+                q ? `&q=${encodeURIComponent(q)}` : ""
+              }`;
               return (
                 <li key={c.key} className="flex-shrink-0">
                   <Link
                     href={href}
                     className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition ${
                       isActive
-                        ? "bg-emerald-600 text-white shadow-sm"
-                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                        ? "bg-primary text-[color:var(--on-primary)] shadow-sm"
+                        : "bg-surface text-foreground border border-border hover:bg-surface2"
                     }`}
                     aria-current={isActive ? "page" : undefined}
                   >
@@ -330,7 +361,9 @@ export default async function Home({
         </nav>
 
         <main id="top" className="pt-3 pb-8 max-w-6xl mx-auto">
-          <p className="p-10 text-center">Nenhuma pesquisa disponível.</p>
+          <p className="p-10 text-center text-[color:var(--foreground-muted)]">
+            Nenhuma pesquisa disponível.
+          </p>
         </main>
       </>
     );
@@ -350,8 +383,7 @@ export default async function Home({
       return featuredId ? visiblePolls.find((x) => x.id === featuredId) : undefined;
     })() || undefined;
 
-  const featuredFromAuto =
-    visiblePolls.find((x) => x.is_featured === true) || undefined;
+  const featuredFromAuto = visiblePolls.find((x) => x.is_featured === true) || undefined;
 
   const featuredPoll = featuredFromUrl || featuredFromAuto || visiblePolls[0];
   const otherPolls = visiblePolls.filter((x) => x.id !== featuredPoll.id);
@@ -482,15 +514,10 @@ export default async function Home({
           }
         }
 
-        const maxVotes =
-          typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
+        const maxVotes = typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
 
         const percentBase =
-          vt === "single"
-            ? maxVotes === 1
-              ? participants
-              : pollVotes.length
-            : participants;
+          vt === "single" ? (maxVotes === 1 ? participants : pollVotes.length) : participants;
 
         topSingle = opts
           .map((o) => ({ text: o.option_text, n: count.get(o.id) || 0 }))
@@ -533,9 +560,7 @@ export default async function Home({
   const featuredTypeLabel = p ? votingTypeLabel(p.voting_type) : "";
 
   const featuredShowResults =
-    !!p &&
-    (p.status === "closed" ||
-      ((p.status === "open" || p.status === "paused") && p.show_partial_results));
+    !!p && (p.status === "closed" || ((p.status === "open" || p.status === "paused") && p.show_partial_results));
 
   const featuredBars = p ? computeTopBars(p) : null;
 
@@ -557,18 +582,39 @@ export default async function Home({
         </div>
 
         <form method="get" action="/" className="flex-1 max-w-xl">
-          <label htmlFor="q" className="sr-only">Buscar pesquisas</label>
-          <div className="flex items-center bg-white border border-gray-200 rounded-md px-3 py-2 shadow-sm">
-            <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <label htmlFor="q" className="sr-only">
+            Buscar pesquisas
+          </label>
+          <div className="flex items-center bg-surface border border-border rounded-md px-3 py-2 shadow-sm">
+            <svg
+              className="w-4 h-4 text-[color:var(--foreground-muted)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden
+            >
+              <path
+                d="M21 21l-4.35-4.35"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx="11"
+                cy="11"
+                r="6"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
 
             <input
               id="q"
               name="q"
               defaultValue={q || ""}
-              className="ml-3 w-full text-sm outline-none"
+              className="ml-3 w-full text-sm outline-none bg-transparent text-foreground placeholder:text-[color:var(--foreground-muted)]"
               placeholder="Buscar pesquisa, tema ou cidade..."
               aria-label="Buscar pesquisas"
             />
@@ -596,8 +642,8 @@ export default async function Home({
                   href={href}
                   className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition ${
                     isActive
-                      ? "bg-emerald-600 text-white shadow-sm"
-                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                      ? "bg-primary text-[color:var(--on-primary)] shadow-sm"
+                      : "bg-surface text-foreground border border-border hover:bg-surface2"
                   }`}
                   aria-current={isActive ? "page" : undefined}
                 >
@@ -612,7 +658,7 @@ export default async function Home({
       <main id="top" className="pt-3 pb-8 max-w-6xl mx-auto">
         {/* DESTAQUE */}
         {p ? (
-          <div className="relative group rounded-3xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition overflow-hidden mt-1 md:mt-2">
+          <div className="relative group rounded-3xl border border-border bg-surface shadow-sm hover:shadow-lg transition overflow-hidden mt-1 md:mt-2">
             {/* overlay link - só em telas md+ para não bloquear controles mobile */}
             <Link
               href={`/poll/${p.id}`}
@@ -624,7 +670,7 @@ export default async function Home({
             <div className="p-4 md:p-6 pb-4 md:pb-16 relative z-10">
               <div className="flex flex-col sm:flex-row gap-5">
                 {/* IMAGEM (full width em mobile, tamanho fixo em sm+/md+) */}
-                <div className="w-full sm:w-40 h-44 sm:h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                <div className="w-full sm:w-40 h-44 sm:h-32 md:w-56 md:h-44 shrink-0 overflow-hidden rounded-2xl border border-border bg-surface2">
                   <PollImage
                     src={featuredIconSrc}
                     fallbackSrc={DEFAULT_POLL_ICON}
@@ -638,52 +684,40 @@ export default async function Home({
                 <div className="flex-1 min-w-0">
                   {/* DATA + STATUS — agora sempre na mesma linha; o texto de data trunca se necessário */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-red-700 min-w-0 truncate">
+                    <span className="text-sm text-[color:var(--foreground-muted)] min-w-0 truncate">
                       Início: {formatDate(p.start_date)} · Fim: {formatDate(p.end_date)}
                     </span>
 
-                    <span
-                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                        p.status
-                      )}`}
-                    >
-                      {statusLabel(p.status)}
-                    </span>
+                    <span className={`shrink-0 ${statusColor(p.status)}`}>{statusLabel(p.status)}</span>
                   </div>
 
-                  {/* PERGUNTA (preto) */}
-                  <h2 className="mt-3 text-lg md:text-2xl font-bold text-gray-900 leading-snug break-words">
+                  {/* PERGUNTA */}
+                  <h2 className={`mt-3 text-lg md:text-2xl font-bold leading-snug break-words ${titleColor(p.status)}`}>
                     {p.title}
                   </h2>
 
                   {/* LINHA: Pesquisa tipo + badges */}
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                    <span className="text-gray-500">Pesquisa tipo:</span>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-foreground">
+                    <span className="text-[color:var(--foreground-muted)]">Pesquisa tipo:</span>
 
                     {/* BADGE do tipo */}
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-100">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
                       {featuredTypeLabel}
                     </span>
 
                     {/* BADGE participação */}
                     {(() => {
-                      const maxVotes =
-                        typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
-
+                      const maxVotes = typeof p.max_votes_per_user === "number" ? p.max_votes_per_user : null;
                       const isSingleParticipation = maxVotes === 1;
 
                       const badgeClass = isSingleParticipation
-                        ? "bg-red-100 text-red-800 border border-red-200"
-                        : "bg-sky-100 text-sky-800 border border-sky-200";
+                        ? "bg-surface2 text-foreground border border-border"
+                        : "bg-muted text-foreground border border-border";
 
-                      const badgeText = isSingleParticipation
-                        ? "Participação Única"
-                        : "Múltiplas Participações";
+                      const badgeText = isSingleParticipation ? "Participação Única" : "Múltiplas Participações";
 
                       return (
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}
-                        >
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}>
                           {badgeText}
                         </span>
                       );
@@ -696,7 +730,7 @@ export default async function Home({
               <div className="mt-5 flex flex-col md:flex-row gap-6">
                 {/* TEXTO — 60% */}
                 <div className="md:w-3/5">
-                  <p className="text-gray-700 leading-relaxed text-base text-justify">
+                  <p className="text-foreground leading-relaxed text-base text-justify">
                     {p.description
                       ? p.description
                       : "Participe desta decisão e ajude a construir informação pública confiável."}
@@ -708,10 +742,7 @@ export default async function Home({
                   <div className="md:w-2/5">
                     {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
                       <div className="space-y-2">
-                        {(featuredBars.isRanking
-                          ? featuredBars.topRanking
-                          : featuredBars.topSingle
-                        ).map((o, i) => {
+                        {(featuredBars.isRanking ? featuredBars.topRanking : featuredBars.topSingle).map((o, i) => {
                           const medal =
                             i === 0
                               ? "bg-yellow-400 text-yellow-900"
@@ -722,7 +753,7 @@ export default async function Home({
                           return (
                             <div
                               key={i}
-                              className="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"
+                              className="flex items-center gap-3 rounded-lg bg-surface2 border border-border px-3 py-2"
                             >
                               <span
                                 className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${medal}`}
@@ -730,7 +761,7 @@ export default async function Home({
                                 {i + 1}º
                               </span>
 
-                              <span className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-snug break-words">
+                              <span className="flex-1 min-w-0 text-sm font-semibold text-foreground leading-snug break-words">
                                 {o.text}
                               </span>
                             </div>
@@ -738,19 +769,17 @@ export default async function Home({
                         })}
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-400">
-                        Sem dados computados para exibição.
-                      </div>
+                      <div className="text-sm text-[color:var(--foreground-muted)]">Sem dados computados para exibição.</div>
                     )}
                   </div>
                 )}
               </div>
 
-              {/* BOTÕES para mobile — agora os dois na mesma linha: Participar à esquerda e Ver resultados à direita */}
+              {/* BOTÕES para mobile — agora os dois na mesma linha */}
               <div className="mt-4 md:hidden flex items-center justify-between gap-2">
                 <Link
                   href={`/poll/${p.id}`}
-                  className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition w-[48%] justify-center"
+                  className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-primary text-[color:var(--on-primary)] hover:bg-[color:var(--primary-hover)] transition w-[48%] justify-center"
                 >
                   {primaryCtaLabel(p)}
                 </Link>
@@ -758,7 +787,7 @@ export default async function Home({
                 {featuredShowResults && (
                   <Link
                     href={`/results/${p.id}`}
-                    className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition w-[48%] justify-center"
+                    className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold bg-surface2 text-foreground border border-border hover:bg-muted transition w-[48%] justify-center"
                   >
                     Ver resultados
                   </Link>
@@ -771,7 +800,7 @@ export default async function Home({
               <div className="flex items-center gap-2">
                 <Link
                   href={`/poll/${p.id}`}
-                  className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                  className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-primary text-[color:var(--on-primary)] hover:bg-[color:var(--primary-hover)] transition"
                 >
                   {primaryCtaLabel(p)}
                 </Link>
@@ -779,7 +808,7 @@ export default async function Home({
                 {featuredShowResults && (
                   <Link
                     href={`/results/${p.id}`}
-                    className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 transition"
+                    className="inline-flex items-center px-3 py-2 rounded-xl text-xs md:text-sm font-semibold bg-surface2 text-foreground border border-border hover:bg-muted transition"
                   >
                     Ver resultados
                   </Link>
@@ -791,9 +820,7 @@ export default async function Home({
 
         {/* LISTA COMPACTA */}
         <section className="space-y-4 mt-4">
-          {otherPolls.length > 0 && (
-            <h3 className="text-sm font-semibold text-gray-700">Outras pesquisas</h3>
-          )}
+          {otherPolls.length > 0 && <h3 className="text-sm font-semibold text-foreground">Outras pesquisas</h3>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {otherPolls.map((p) => {
@@ -802,7 +829,7 @@ export default async function Home({
               return (
                 <div
                   key={p.id}
-                  className="relative group border border-gray-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition overflow-hidden"
+                  className="relative group border border-border rounded-2xl bg-surface shadow-sm hover:shadow-md transition overflow-hidden"
                 >
                   {/* Clique promove para o card principal */}
                   <Link
@@ -814,7 +841,7 @@ export default async function Home({
                   {/* Conteúdo */}
                   <div className="relative z-10 pointer-events-none flex gap-4 p-4">
                     {/* IMAGEM */}
-                    <div className="w-20 h-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                    <div className="w-20 h-16 shrink-0 overflow-hidden rounded-xl border border-border bg-surface2">
                       <PollImage
                         src={iconSrc}
                         fallbackSrc={DEFAULT_POLL_ICON}
@@ -826,21 +853,11 @@ export default async function Home({
                     {/* TÍTULO + STATUS */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3">
-                        <h4
-                          className={`text-sm md:text-base font-semibold leading-snug ${titleColor(
-                            p.status
-                          )}`}
-                        >
+                        <h4 className="text-sm md:text-base font-semibold leading-snug text-foreground">
                           {p.title}
                         </h4>
 
-                        <span
-                          className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColor(
-                            p.status
-                          )}`}
-                        >
-                          {statusLabel(p.status)}
-                        </span>
+                        <span className={`shrink-0 ${statusColor(p.status)}`}>{statusLabel(p.status)}</span>
                       </div>
                     </div>
                   </div>
@@ -850,18 +867,15 @@ export default async function Home({
                     const bars = computeTopBars(p);
                     if (!bars.show) return null;
 
-                    const winner = !bars.isRanking
-                      ? bars.topSingle[0]?.text
-                      : bars.topRanking[0]?.text;
-
+                    const winner = !bars.isRanking ? bars.topSingle[0]?.text : bars.topRanking[0]?.text;
                     if (!winner) return null;
 
-                   return (
-                    <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 text-xs font-normal text-gray-900">
-                      <span className="text-yellow-500 leading-none">🥇</span>
-                      <span className="max-w-[120px] truncate">{winner}</span>
-                    </div>
-                  );
+                    return (
+                      <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1 text-xs font-normal text-foreground">
+                        <span className="text-yellow-500 leading-none">🥇</span>
+                        <span className="max-w-[120px] truncate">{winner}</span>
+                      </div>
+                    );
                   })()}
                 </div>
               );
@@ -869,7 +883,7 @@ export default async function Home({
           </div>
         </section>
 
-        <footer className="mt-4 pt-4 border-t border-gray-300 text-center text-sm text-gray-500">
+        <footer className="mt-4 pt-4 border-t border-border text-center text-sm text-[color:var(--foreground-muted)]">
           Uma plataforma para coletar dados, gerar informação e produzir conhecimento público confiável.
         </footer>
       </main>
