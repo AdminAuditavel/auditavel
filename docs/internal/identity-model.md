@@ -1,10 +1,10 @@
-Modelo de Identidade do Auditável
+# Modelo de Identidade do Auditável
 Objetivo deste documento
 
 Definir, de forma inequívoca, como a identidade do participante é modelada, quais identificadores existem, para que cada um serve, e onde podem ou não ser usados.
 Este documento é canônico para decisões futuras de arquitetura.
 
-1. Visão geral
+## 1. Visão geral
 
 O Auditável não utiliza autenticação pessoal (login, e-mail, CPF, etc.).
 Ainda assim, a plataforma precisa garantir:
@@ -20,9 +20,9 @@ Contagem correta de participantes
 Auditabilidade sem identificação pessoal
 
 Para isso, o sistema utiliza dois identificadores distintos, com papéis bem definidos.
-
-2. Identificadores existentes
-2.1 participant_id (IDENTIDADE CANÔNICA)
+---
+# 2. Identificadores existentes
+## 2.1 participant_id (IDENTIDADE CANÔNICA)
 
 Tipo: UUID
 
@@ -36,7 +36,7 @@ Não contém informação pessoal
 
 Nunca muda durante a vida útil do navegador
 
-Função
+#### Função
 
 Representa um participante lógico da plataforma.
 
