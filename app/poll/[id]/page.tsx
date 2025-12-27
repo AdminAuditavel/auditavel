@@ -21,20 +21,6 @@ import {
 
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 
-function ensureUserHash(): string | null {
-  // Garante que só roda no browser
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  let userHash = localStorage.getItem('auditavel_uid');
-  if (!userHash) {
-    userHash = crypto.randomUUID();
-    localStorage.setItem('auditavel_uid', userHash);
-  }
-  return userHash;
-}
-
 // Parse seguro: se vier sem timezone, force UTC adicionando "Z"
 function parseDbTs(ts?: string | null) {
   if (!ts) return 0;
