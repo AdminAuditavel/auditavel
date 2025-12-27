@@ -14,8 +14,9 @@
   --charcoal: #1f2320;    /* texto forte no dark */
 
   /* Tema claro (padrão) */
-  --background: #ffffff;
-  --surface: #f8f8f8;
+   --background: #ffffff; /* fundo geral */
+   --surface: #ffffff;    /* card/superfície elevada */
+   --surface-2: #f8f8f8;  /* fundo suave de seções */
 
   --foreground: #171717;
   --foreground-muted: #4a4a4a;
@@ -36,8 +37,9 @@
    ========================== */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b0f0c;
-    --surface: #111a14;
+   --background: #0b0f0c; /* fundo geral */
+   --surface: #0f1511;    /* card/superfície elevada */
+   --surface-2: #111a14;  /* fundo suave de seções */
 
     --foreground: #ededed;
     --foreground-muted: #b9b9b9;
