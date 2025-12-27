@@ -56,8 +56,8 @@ Colunas relevantes:
 - Se `max_options_per_vote` for NULL e `voting_type='multiple'` ⇒ sem limite (1..todas opções).
 
 ### Ações recomendadas
-- [ ] **(Recomendado)** Backfill: setar `max_votes_per_user=1` quando `NULL` e `allow_multiple=false`
-- [ ] **(Recomendado)** Definir default `max_votes_per_user=1` para novas polls (evitar NULL ambíguo)
+- [x] **(Recomendado)** Backfill: setar `max_votes_per_user=1` quando `NULL` e `allow_multiple=false`
+- [x] **(Recomendado)** Definir default `max_votes_per_user=1` para novas polls (evitar NULL ambíguo)
 
 **Aceite:** a configuração da poll é suficiente para o endpoint decidir o fluxo sem heurística.
 
@@ -71,8 +71,8 @@ Colunas relevantes:
 - `votes_count integer default 0` (contador)
 
 ### Checagens
-- [ ] Confirmar se `votes_count` é usado/atualizado (hoje parece não estar sob trigger)
-- [ ] Confirmar se existe constraint/índice em `poll_id`
+- [x] Confirmar se `votes_count` é usado/atualizado (hoje parece não estar sob trigger)
+- [x] Confirmar se existe constraint/índice em `poll_id`
 
 ### Regras do novo endpoint
 - Toda `option_id` recebida deve existir em `poll_options` com `poll_id = body.poll_id`.
@@ -93,9 +93,9 @@ Colunas relevantes:
 - `votes_count integer default 1` (legado; hoje pouco usado)
 
 ### Checagens críticas
-- [ ] Confirmar se existe índice em `(poll_id, participant_id)` (vai ser a chave mais consultada)
-- [ ] Confirmar se `updated_at` é atualizado de fato em todos fluxos atuais (precisa ser para cooldown)
-- [ ] Checar se existe voto com `participant_id` inválido (sem participant) — deve ser impossível pelo FK? (não aparece FK no dump; hoje `votes.participant_id` não tem FK listado)
+- [x] Confirmar se existe índice em `(poll_id, participant_id)` (vai ser a chave mais consultada)
+- [x] Confirmar se `updated_at` é atualizado de fato em todos fluxos atuais (precisa ser para cooldown)
+- [x] Checar se existe voto com `participant_id` inválido (sem participant) — deve ser impossível pelo FK? (não aparece FK no dump; hoje `votes.participant_id` não tem FK listado)
 
 > **Atenção:** na lista de constraints você não trouxe FK `votes.participant_id -> participants.id`. Se realmente não existir, é uma lacuna.
 
@@ -104,8 +104,8 @@ Colunas relevantes:
 - Para `max_votes_per_user=1`, deve existir **no máximo 1 “voto vigente” por participante** (pela lógica do endpoint; opcionalmente reforçado depois via RPC/locks).
 
 ### Ações recomendadas
-- [ ] Adicionar FK `votes.participant_id -> participants.id` (se realmente não existir)
-- [ ] Adicionar índice `(poll_id, participant_id, updated_at desc)` para cooldown e busca do vigente
+- [x] Adicionar FK `votes.participant_id -> participants.id` (se realmente não existir)
+- [x] Adicionar índice `(poll_id, participant_id, updated_at desc)` para cooldown e busca do vigente
 
 **Aceite:** conseguimos localizar rapidamente o voto vigente e aplicar cooldown corretamente.
 
@@ -120,12 +120,12 @@ Colunas relevantes:
 - `created_at`, `updated_at`
 
 ### Checagens
-- [ ] Confirmar se existem duplicates por `(vote_id, option_id)` hoje (precisa bloquear)
-- [ ] Confirmar se existem dois itens com mesmo `(vote_id, ranking)` (precisa bloquear)
+- [x] Confirmar se existem duplicates por `(vote_id, option_id)` hoje (precisa bloquear)
+- [x] Confirmar se existem dois itens com mesmo `(vote_id, ranking)` (precisa bloquear)
 
 ### Ações necessárias (migrations)
-- [ ] Adicionar UNIQUE `(vote_id, option_id)`
-- [ ] Adicionar UNIQUE `(vote_id, ranking)`
+- [x] Adicionar UNIQUE `(vote_id, option_id)`
+- [x] Adicionar UNIQUE `(vote_id, ranking)`
 
 **Aceite:** ranking não fica inconsistente mesmo com bugs no client.
 
@@ -140,8 +140,8 @@ Colunas relevantes:
 - UNIQUE `(vote_id, option_id)` (já existe)
 
 ### Checagens
-- [ ] Confirmar como `vote_options.id` é gerado (client gera UUID? trigger? código?)
-- [ ] Confirmar se há índice em `vote_id`
+- [x] Confirmar como `vote_options.id` é gerado (client gera UUID? trigger? código?)
+- [x] Confirmar se há índice em `vote_id`
 
 ### Regras do novo endpoint
 - Dentro de um `vote_id`, não pode repetir option (BD já impede).
@@ -157,8 +157,8 @@ Colunas relevantes:
 - `created_at`, `first_seen_at`, `last_seen_at`
 
 ### Checagens
-- [ ] Confirmar se `participants.id` sempre vem do client e se isso é aceitável por enquanto
-- [ ] Confirmar se existem participants “órfãos” (ok) e se existe limpeza (provável não)
+- [x] Confirmar se `participants.id` sempre vem do client e se isso é aceitável por enquanto
+- [x] Confirmar se existem participants “órfãos” (ok) e se existe limpeza (provável não)
 
 ### Regra para biometria (futuro)
 - Hoje não vamos decidir schema.
@@ -174,10 +174,10 @@ Colunas relevantes:
 - `participant_attributes`: parece ser por poll + participant (tem `poll_id`), mas a constraint UNIQUE ficou estranha no dump (mostra repetido)
 
 ### Checagens
-- [ ] Confirmar intenção de uso:
+- [x] Confirmar intenção de uso:
   - `participant_profile`: perfil global do participante
   - `participant_attributes`: atributos por poll (ex.: capturados no momento do voto)
-- [ ] Revisar UNIQUE de `participant_attributes` (deveria ser UNIQUE(participant_id, poll_id))
+- [x] Revisar UNIQUE de `participant_attributes` (deveria ser UNIQUE(participant_id, poll_id))
 
 **Aceite:** não bloqueia votação; apenas registrar que existe.
 
@@ -189,8 +189,8 @@ Colunas relevantes:
 - `created_at`
 
 ### Checagens
-- [ ] Confirmar se isso é protótipo ou já será usado
-- [ ] Confirmar se no futuro a biometria vai mapear para `participant_id` (A: participant_id é a pessoa)
+- [x] Confirmar se isso é protótipo ou já será usado
+- [x] Confirmar se no futuro a biometria vai mapear para `participant_id` (A: participant_id é a pessoa)
 
 **Aceite:** não vamos acoplar agora; apenas manter caminho.
 
@@ -201,9 +201,9 @@ Colunas relevantes:
 - Já existem e podem coexistir com `vote_events`.
 
 ### Checagens
-- [ ] Confirmar se `audit_logs` é usado para voto hoje (parece ser genérico)
-- [ ] Confirmar se `admin_audit_logs` já registra mudanças de configuração
-- [ ] Confirmar como `merkle_snapshots` é gerado (manual/job)
+- [x] Confirmar se `audit_logs` é usado para voto hoje (parece ser genérico)
+- [x] Confirmar se `admin_audit_logs` já registra mudanças de configuração
+- [x] Confirmar como `merkle_snapshots` é gerado (manual/job)
 
 **Aceite:** continuar funcionando sem conflito.
 
@@ -212,32 +212,32 @@ Colunas relevantes:
 # Fase 2 — Novas tabelas/ajustes mínimos (para suportar o requisito)
 
 ## DB-A — Criar `vote_events` (novo, obrigatório para voto único auditável)
-- [ ] Criar tabela `vote_events` com:
-  - [ ] `poll_id`, `vote_id`, `participant_id`
-  - [ ] `event_type`: `created` / `updated`
-  - [ ] `before_state jsonb`, `after_state jsonb`
-  - [ ] `created_at timestamptz default now()`
-- [ ] Criar índices conforme necessidade de auditoria
+- [x] Criar tabela `vote_events` com:
+  - [x] `poll_id`, `vote_id`, `participant_id`
+  - [x] `event_type`: `created` / `updated`
+  - [x] `before_state jsonb`, `after_state jsonb`
+  - [x] `created_at timestamptz default now()`
+- [x] Criar índices conforme necessidade de auditoria
 
 **Aceite:** conseguimos reconstruir toda a evolução do voto único.
 
 ---
 
 ## DB-B — Adicionar constraints em `vote_rankings` (obrigatório)
-- [ ] UNIQUE `(vote_id, option_id)`
-- [ ] UNIQUE `(vote_id, ranking)`
+- [x] UNIQUE `(vote_id, option_id)`
+- [x] UNIQUE `(vote_id, ranking)`
 
 **Aceite:** ranking consistente.
 
 ---
 
 ## DB-C — (Recomendado) FK e índices de performance
-- [ ] Garantir FK `votes.participant_id -> participants.id` (se ainda não existir)
-- [ ] Índices:
-  - [ ] `votes(poll_id, participant_id)`
-  - [ ] `votes(poll_id, participant_id, updated_at desc)`
-  - [ ] `vote_rankings(vote_id, ranking)`
-  - [ ] `vote_options(vote_id)`
+- [x] Garantir FK `votes.participant_id -> participants.id` (se ainda não existir)
+- [x] Índices:
+  - [x] `votes(poll_id, participant_id)`
+  - [x] `votes(poll_id, participant_id, updated_at desc)`
+  - [x] `vote_rankings(vote_id, ranking)`
+  - [x] `vote_options(vote_id)`
 
 **Aceite:** endpoint não degrada em polls com muitas respostas.
 
@@ -246,25 +246,25 @@ Colunas relevantes:
 # Fase 3 — API `/api/vote` (refatoração com regras completas)
 
 ## API-1 — Ordem correta do fluxo (sem efeitos colaterais)
-- [ ] Parse body
-- [ ] Buscar poll (status, voting_type, max_votes_per_user, vote_cooldown_seconds, max_options_per_vote, janelas)
-- [ ] Validar poll aberta/janela
-- [ ] `assertParticipantEligible(...)` (gancho biometria) **ANTES** de escrever qualquer coisa
-- [ ] Validar payload por tipo (single/ranking/multiple)
-- [ ] Validar pertencimento das opções à poll
-- [ ] Aplicar cooldown (somente leitura)
-- [ ] Sync participant (criar/atualizar last_seen_at)
-- [ ] Executar cast vote (max=1 ou max>1)
-- [ ] Retornar resposta
+- [x] Parse body
+- [x] Buscar poll (status, voting_type, max_votes_per_user, vote_cooldown_seconds, max_options_per_vote, janelas)
+- [x] Validar poll aberta/janela
+- [x] `assertParticipantEligible(...)` (gancho biometria) **ANTES** de escrever qualquer coisa
+- [x] Validar payload por tipo (single/ranking/multiple)
+- [x] Validar pertencimento das opções à poll
+- [x] Aplicar cooldown (somente leitura)
+- [x] Sync participant (criar/atualizar last_seen_at)
+- [x] Executar cast vote (max=1 ou max>1)
+- [x] Retornar resposta
 
 **Aceite:** se a poll não permitir votar, nada é gravado (nem participant).
 
 ---
 
 ## API-2 — Decisão do tipo por `poll.voting_type` (Forma A)
-- [ ] `single`: usa `option_id`
-- [ ] `ranking`: usa `option_ids` ordenado
-- [ ] `multiple`: usa `option_ids` como conjunto
+- [x] `single`: usa `option_id`
+- [x] `ranking`: usa `option_ids` ordenado
+- [x] `multiple`: usa `option_ids` como conjunto
 
 **Aceite:** o mesmo payload `option_ids` funciona para ranking e multiple sem conflito.
 
@@ -272,71 +272,71 @@ Colunas relevantes:
 
 ## API-3 — Validações por tipo (conforme decisões)
 ### Single
-- [ ] `option_id` obrigatório
+- [x] `option_id` obrigatório
 
 ### Ranking
-- [ ] `option_ids.length >= 1`
-- [ ] qualquer ordem aceita
-- [ ] duplicatas: rejeitar (400)
+- [x] `option_ids.length >= 1`
+- [x] qualquer ordem aceita
+- [x] duplicatas: rejeitar (400)
 
 ### Multiple
-- [ ] `option_ids.length >= 1`
-- [ ] deduplicar
-- [ ] se `max_options_per_vote != NULL` limitar
-- [ ] se `max_options_per_vote == NULL` sem limite (até todas)
+- [x] `option_ids.length >= 1`
+- [x] deduplicar
+- [x] se `max_options_per_vote != NULL` limitar
+- [x] se `max_options_per_vote == NULL` sem limite (até todas)
 
 **Aceite:** validações impedem inconsistências antes de escrever.
 
 ---
 
 ## API-4 — Cooldown baseado em `votes.updated_at` (confirmado “A”)
-- [ ] Se `vote_cooldown_seconds`:
-  - [ ] `max_votes_per_user=1`: cooldown usa `max(votes.created_at, votes.updated_at)` do voto vigente
-  - [ ] `max_votes_per_user>1`: cooldown usa `created_at` do último voto
-- [ ] Retornar 429 com `remaining_seconds`
+- [x] Se `vote_cooldown_seconds`:
+  - [x] `max_votes_per_user=1`: cooldown usa `max(votes.created_at, votes.updated_at)` do voto vigente
+  - [x] `max_votes_per_user>1`: cooldown usa `created_at` do último voto
+- [x] Retornar 429 com `remaining_seconds`
 
 **Aceite:** mudar voto consome cooldown.
 
 ---
 
 ## API-5 — Identidade canônica: tudo por `participant_id`
-- [ ] Busca do voto vigente por `(poll_id, participant_id)`
-- [ ] Contagem/limite por `(poll_id, participant_id)`
-- [ ] Cooldown por `(poll_id, participant_id)`
-- [ ] `user_hash` fica como campo auxiliar
+- [x] Busca do voto vigente por `(poll_id, participant_id)`
+- [x] Contagem/limite por `(poll_id, participant_id)`
+- [x] Cooldown por `(poll_id, participant_id)`
+- [x] `user_hash` fica como campo auxiliar
 
 **Aceite:** pronto para biometria (participant = pessoa).
 
 ---
 
 ## API-6 — Implementar `max_votes_per_user = 1` (voto único editável + auditável)
-- [ ] Buscar voto vigente:
-  - [ ] se não existir: criar `votes` e filhas
-  - [ ] se existir: atualizar o mesmo `vote_id`
-- [ ] Atualizar sempre `votes.updated_at = now()`
-- [ ] Nunca permitir “limpar” (sempre termina com voto válido)
+- [x] Buscar voto vigente:
+  - [x] se não existir: criar `votes` e filhas
+  - [x] se existir: atualizar o mesmo `vote_id`
+- [x] Atualizar sempre `votes.updated_at = now()`
+- [x] Nunca permitir “limpar” (sempre termina com voto válido)
 
 **Aceite:** não existe mais delete de votes para “atualizar” voto.
 
 ---
 
 ## API-7 — `vote_events` (somente `max_votes_per_user=1`)
-- [ ] Em criação: `event_type='created'`, before null, after snapshot
-- [ ] Em update: `event_type='updated'`, before snapshot, after snapshot
+- [x] Em criação: `event_type='created'`, before null, after snapshot
+- [x] Em update: `event_type='updated'`, before snapshot, after snapshot
 
 Snapshots:
-- [ ] single: `{ voting_type:'single', option_id }`
-- [ ] ranking: `{ voting_type:'ranking', option_ids:[...] }`
-- [ ] multiple: `{ voting_type:'multiple', option_ids:[...] }`
+- [x] single: `{ voting_type:'single', option_id }`
+- [x] ranking: `{ voting_type:'ranking', option_ids:[...] }`
+- [x] multiple: `{ voting_type:'multiple', option_ids:[...] }`
 
 **Aceite:** trilha auditável completa do voto único.
 
 ---
 
 ## API-8 — Implementar `max_votes_per_user > 1` (Big Brother)
-- [ ] Contar votos existentes; bloquear se `>= max_votes_per_user`
-- [ ] Inserir novo `votes` e filhas
-- [ ] Permitir votar “igual” várias vezes (repetição entre votos)
+- [x] Contar votos existentes; bloquear se `>= max_votes_per_user`
+- [x] Inserir novo `votes` e filhas
+- [x] Permitir votar “igual” várias vezes (repetição entre votos)
 
 **Aceite:** limite é respeitado; repetição de votos iguais é permitida.
 
