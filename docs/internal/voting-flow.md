@@ -1,6 +1,6 @@
 # Auditável — Documentação Interna: Fluxo de Votação (V1)
 
-> **Escopo**: documentação interna (engenharia). Describe o comportamento esperado do fluxo de voto, regras de negócio, identidade do participante, cooldown, persistência no Supabase e auditoria via `vote_events`.  
+> **Escopo**: documentação interna (engenharia). Descreve o comportamento esperado do fluxo de voto, regras de negócio, identidade do participante, cooldown, persistência no Supabase e auditoria via `vote_events`.  
 > **Versão**: alinhada ao estado atual do código e testes relatados em **27/12/2025**.
 
 ---
