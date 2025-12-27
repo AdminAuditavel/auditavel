@@ -96,9 +96,13 @@ Exemplos:
 #### Onde NÃO pode ser usado
 
 🚫 Limite de voto
+
 🚫 Cooldown
+
 🚫 Identidade de participante
+
 🚫 Regras de “último voto vale”
+
 
 ## 3. Geração dos identificadores
 ### 3.1 Frontend (browser)
@@ -155,7 +159,7 @@ Histórico completo preservado
 
 ## 5. Auditorabilidade e privacidade
 
-Este modelo garante simultaneamente:
+#### Este modelo garante simultaneamente:
 
 ✅ Um participante = um conjunto consistente de ações
 
@@ -166,7 +170,6 @@ Este modelo garante simultaneamente:
 ✅ Nenhum login
 
 ✅ Nenhum dado sensível
-
 
 O sistema sabe o que foi feito, mas não sabe quem é a pessoa.
 
@@ -189,6 +192,5 @@ O sistema sabe o que foi feito, mas não sabe quem é a pessoa.
 
 ## 8. Regra de ouro
 
-Se uma regra envolve “quem pode votar”, “quantas vezes”, ou “quando” → use participant_id.
-
-Se envolve estatística agregada → user_hash é aceitável
+#### Se uma regra envolve “quem pode votar”, “quantas vezes”, ou “quando” → use participant_id.
+#### Se envolve estatística agregada → user_hash é aceitável
