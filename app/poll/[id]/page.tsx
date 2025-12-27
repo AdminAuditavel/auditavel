@@ -6,9 +6,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { getOrCreateParticipantId } from '@/lib/participant';
+import { getOrCreateParticipantId, getOrCreateUserHash } from '@/lib/participant';
 import Image from "next/image";
-
 import RankingOption from './RankingOption';
 
 import {
@@ -174,7 +173,7 @@ export default function PollPage() {
     setCooldownRemaining(0);
 
     const pid = getOrCreateParticipantId();
-    const uh = ensureUserHash();
+    const uh = getOrCreateUserHash();
     if (mounted) {
       setParticipantId(pid);
       setUserHash(uh);
@@ -287,7 +286,7 @@ export default function PollPage() {
     setMsg(null);
 
     const pid = participantId ?? getOrCreateParticipantId();
-    const uh = userHash ?? ensureUserHash();
+    const uh = userHash ?? getOrCreateUserHash();
 
     // GARANTIA: não envia voto sem identidade válida
     if (!pid || !uh) {
