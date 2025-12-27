@@ -1,3 +1,5 @@
+//app/poll/[id]/VoteButton.tsx
+
 'use client';
 
 import React, { useState } from 'react';
@@ -10,6 +12,18 @@ interface VoteButtonProps {
   text: string;
   allowMultiple: boolean;
   userHasVoted: boolean;
+}
+
+function getOrCreateUserHash(): string | null {
+  // Garante que só roda no browser
+  if (typeof window === "undefined") return null;
+
+  let uid = localStorage.getItem('auditavel_uid');
+  if (!uid) {
+    uid = crypto.randomUUID();
+    localStorage.setItem('auditavel_uid', uid);
+  }
+  return uid;
 }
 
 export default function VoteButton({
@@ -48,13 +62,19 @@ export default function VoteButton({
     setMessage(null);
 
     try {
-      let uid = localStorage.getItem('auditavel_uid');
-      if (!uid) {
-        uid = crypto.randomUUID();
-        localStorage.setItem('auditavel_uid', uid);
-      }
-      
+      const uid = getOrCreateUserHash();
       const participantId = getOrCreateParticipantId();
+
+      // GARANTIA no ponto de uso: não envia voto sem identidade válida
+      if (!uid || !participantId) {
+        setLoading(false);
+        setMessage({
+          text: 'Identidade do participante indisponível. Recarregue a página.',
+          type: 'error',
+        });
+        return;
+      }
+
       const res = await fetch('/api/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
