@@ -1,422 +1,274 @@
-//app/results/[id]/page.tsx
+//app/results/[id]/AttributesInvite.tsx
 
-import Link from "next/link";
-import Image from "next/image";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
-import { getResults } from "@/lib/getResults";
-import AttributesInviteClient from "./AttributesInviteClient";
+"use client";
 
-export default async function ResultsPage({
-  params,
-}: {
-  params: Promise<{ id: string }> | any;
-}) {
-  const resolvedParams =
-    params && typeof params.then === "function" ? await params : params;
-  const { id } = resolvedParams ?? {};
+import { useEffect, useState } from "react";
 
-  if (!id || typeof id !== "string" || id.trim() === "") {
-    return (
-      <main className="p-6 max-w-xl mx-auto text-center">
-        ID da pesquisa inválido.
-      </main>
-    );
-  }
+type Props = {
+  participantId: string;
+  pollId: string;
+};
 
-  const safeId = id.trim();
+export default function AttributesInvite({
+  participantId,
+  pollId,
+}: Props) {
+  const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasPrefill, setHasPrefill] = useState(false);
+
+  const [form, setForm] = useState({
+    age_range: "",
+    education_level: "",
+    region: "",
+    income_range: "",
+  });
 
   /* =======================
-     POLL
+     VERIFICAR SE JÁ RESPONDEU (POR PESQUISA)
   ======================= */
-  const { data: pollData, error: pollError } = await supabase
-    .from("polls")
-    .select(
-      "title, voting_type, status, show_partial_results, allow_multiple, max_votes_per_user"
-    )
-    .eq("id", safeId)
-    .maybeSingle();
+  useEffect(() => {
+    async function check() {
+      const res = await fetch(
+        `/api/participant-attributes/check?participant_id=${participantId}&poll_id=${pollId}`
+      );
 
-  if (!pollData || pollError) {
+      if (res.ok) {
+        const json = await res.json();
+        if (!json.exists) setVisible(true);
+      }
+    }
+
+    if (participantId && pollId) check();
+  }, [participantId, pollId]);
+
+  /* =======================
+     PRÉ-PREENCHIMENTO (PERFIL GLOBAL)
+  ======================= */
+  useEffect(() => {
+    async function loadProfile() {
+      const res = await fetch(
+        `/api/participant-profile?participant_id=${participantId}`
+      );
+
+      if (!res.ok) return;
+
+      const json = await res.json();
+
+      if (json.profile) {
+        setForm({
+          age_range: json.profile.age_range ?? "",
+          education_level: json.profile.education_level ?? "",
+          region: json.profile.region ?? "",
+          income_range: json.profile.income_range ?? "",
+        });
+        setHasPrefill(true);
+      }
+    }
+
+    if (participantId) loadProfile();
+  }, [participantId]);
+
+  if (!visible) return null;
+
+  /* =======================
+     APÓS ENVIO
+  ======================= */
+  if (submitted) {
     return (
-      <main className="p-6 max-w-xl mx-auto text-center">
-        Erro ao carregar a pesquisa.
-      </main>
-    );
-  }
-
-  const {
-    title,
-    voting_type,
-    status,
-    show_partial_results,
-    allow_multiple,
-    max_votes_per_user,
-  } = pollData;
-
-  const canShowResults =
-    status === "closed" ||
-    ((status === "open" || status === "paused") && show_partial_results);
-
-  if (!canShowResults) {
-    return (
-      <main className="p-6 max-w-xl mx-auto text-center space-y-4">
-        <h1 className="text-xl font-semibold">Resultados</h1>
-        <p className="text-sm text-muted-foreground">
-          Os resultados serão divulgados ao final da votação.
+      <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
+        <h3 className="font-semibold mb-1">
+          Obrigado pela sua contribuição
+        </h3>
+        <p>
+          Suas informações foram registradas com sucesso e serão usadas apenas
+          para análise estatística, de forma anônima.
         </p>
-        <Link href={`/poll/${safeId}`} className="text-emerald-600 hover:underline">
-          ← Voltar para a pesquisa
-        </Link>
-      </main>
-    );
-  }
-
-  const isPartial = status === "open" || status === "paused";
-
-  // Regra canônica: allow_multiple=false => max=1; allow_multiple=true => max_votes_per_user (fallback 1)
-  const effectiveMaxVotes = allow_multiple ? (max_votes_per_user ?? 1) : 1;
-
-  const Navigation = () => (
-    <div className="flex justify-between items-center mb-4 text-sm">
-      <Link href={`/poll/${safeId}`} className="text-emerald-600 hover:underline">
-        ← Voltar para Opções
-      </Link>
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 hover:underline"
-        aria-label="Voltar para a página inicial"
-      >
-        <Image
-          src="/Logo_A.png"
-          alt="Auditável"
-          width={36}
-          height={24}
-          className="h-8 w-6 shrink-0"
-        />
-        <span className="font-semibold text-sm" style={{ color: "#23854F" }}>
-          Auditável
-        </span>
-      </Link>
-    </div>
-  );
-
-  // Footer compartilhado para exibir "Resultados parciais" / "Resultado Final"
-  // alinhado à esquerda e "Participantes / Participações" à direita, obedecendo
-  // a regra de max_votes_per_user.
-  const ResultsFooter = ({
-    isPartial,
-    status,
-    effectiveMaxVotes,
-    totalParticipants,
-    totalSubmissions,
-  }: {
-    isPartial: boolean;
-    status: string;
-    effectiveMaxVotes: number;
-    totalParticipants: number;
-    totalSubmissions: number;
-  }) => {
-    const leftLabel =
-      status === "closed" ? "Resultado Final" : isPartial ? "Resultados parciais" : "";
-
-    return (
-      <div className="flex justify-between text-xs text-gray-500">
-        <div className="text-left">
-          {leftLabel ? <span>{leftLabel}</span> : null}
-        </div>
-        <div className="text-right">
-          {effectiveMaxVotes > 1 ? (
-            <span>
-              Participantes: {totalParticipants} · Participações: {totalSubmissions}
-            </span>
-          ) : (
-            <span>Participantes: {totalParticipants}</span>
-          )}
-        </div>
       </div>
     );
-  };
-
-  /* =======================
-     SINGLE
-  ======================= */
-  if (voting_type === "single") {
-    const { data: options } = await supabase
-      .from("poll_options")
-      .select("id, option_text")
-      .eq("poll_id", safeId);
-
-    const { data: votes } = await supabase
-      .from("votes")
-      .select("option_id, participant_id")
-      .eq("poll_id", safeId);
-
-    const totalSubmissions = votes?.length || 0;
-    const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id)).size;
-
-    const count: Record<string, number> = {};
-    votes?.forEach((v) => {
-      if (!v.option_id) return;
-      count[v.option_id] = (count[v.option_id] || 0) + 1;
-    });
-
-    const sortedOptions =
-      options
-        ?.map((o) => ({
-          ...o,
-          votes: count[o.id] || 0,
-        }))
-        .sort((a, b) => b.votes - a.votes) || [];
-
-    return (
-      <main className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-xl mx-auto space-y-5">
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
-            <Navigation />
-
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
-                {title}
-              </h1>
-            </div>
-
-            {sortedOptions.map((o) => {
-              const pct = totalSubmissions
-                ? Math.round((o.votes / totalSubmissions) * 100)
-                : 0;
-
-              return (
-                <div key={o.id} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-black">{o.option_text}</span>
-                    <span>
-                      {o.votes} votos ({pct}%)
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded">
-                    <div
-                      className="h-2 bg-emerald-500 rounded"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-
-            <ResultsFooter
-              isPartial={isPartial}
-              status={status}
-              effectiveMaxVotes={effectiveMaxVotes}
-              totalParticipants={totalParticipants}
-              totalSubmissions={totalSubmissions}
-            />
-
-            <AttributesInviteClient pollId={safeId} />
-          </div>
-
-          <div
-            className="text-center text-xs flex items-center justify-center gap-2"
-            style={{ color: "#8B8A8A" }}
-          >
-            <Image
-              src="/Logo_A.png"
-              alt="Auditável"
-              width={18}
-              height={18}
-              className="inline-block"
-            />
-            <span>Auditável — “O Brasil vota. Você confere.”</span>
-          </div>
-        </div>
-      </main>
-    );
   }
 
   /* =======================
-     MULTIPLE
+     SALVAR
   ======================= */
-  if (voting_type === "multiple") {
-    const { data: options } = await supabase
-      .from("poll_options")
-      .select("id, option_text")
-      .eq("poll_id", safeId);
+  async function handleSubmit() {
+    setError(null);
 
-    const { data: votes } = await supabase
-      .from("votes")
-      .select("id, participant_id")
-      .eq("poll_id", safeId);
+    if (
+      !form.age_range ||
+      !form.education_level ||
+      !form.region ||
+      !form.income_range
+    ) {
+      setError("Por favor, responda todas as perguntas antes de continuar.");
+      return;
+    }
 
-    const voteIds = (votes ?? []).map((v) => v.id);
+    setLoading(true);
 
-    const { data: marks } = voteIds.length
-      ? await supabase.from("vote_options").select("option_id").in("vote_id", voteIds)
-      : { data: [] as any[] };
-
-    const totalSubmissions = votes?.length || 0;
-    const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id)).size;
-
-    const count: Record<string, number> = {};
-    marks?.forEach((m: any) => {
-      count[m.option_id] = (count[m.option_id] || 0) + 1;
+    const res = await fetch("/api/participant-attributes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        participant_id: participantId,
+        poll_id: pollId,
+        ...form,
+      }),
     });
 
-    const sortedOptions =
-      options
-        ?.map((o) => ({
-          ...o,
-          marks: count[o.id] || 0,
-        }))
-        .sort((a, b) => b.marks - a.marks) || [];
+    setLoading(false);
 
-    return (
-      <main className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-xl mx-auto space-y-5">
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
-            <Navigation />
-
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
-                {title}
-              </h1>
-            </div>
-
-            <p className="text-sm text-gray-600">
-              Nesta pesquisa, cada participante pôde selecionar mais de uma opção.
-              Os percentuais abaixo representam a proporção de participações em que
-              cada opção foi marcada.
-            </p>
-
-            <div className="space-y-4">
-              {sortedOptions.map((o) => {
-                const pct = totalSubmissions
-                  ? Math.round((o.marks / totalSubmissions) * 100)
-                  : 0;
-
-                return (
-                  <div key={o.id} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-black">{o.option_text}</span>
-                      <span className="text-gray-600">
-                        {o.marks} marcas ({pct}%)
-                      </span>
-                    </div>
-
-                    <div className="h-2 bg-gray-200 rounded">
-                      <div
-                        className="h-2 bg-emerald-500 rounded transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <ResultsFooter
-              isPartial={isPartial}
-              status={status}
-              effectiveMaxVotes={effectiveMaxVotes}
-              totalParticipants={totalParticipants}
-              totalSubmissions={totalSubmissions}
-            />
-
-            <AttributesInviteClient pollId={safeId} />
-          </div>
-
-          <div
-            className="text-center text-xs flex items-center justify-center gap-2"
-            style={{ color: "#8B8A8A" }}
-          >
-            <Image
-              src="/Logo_A.png"
-              alt="Auditável"
-              width={18}
-              height={18}
-              className="inline-block"
-            />
-            <span>Auditável — “O Brasil vota. Você confere.”</span>
-          </div>
-        </div>
-      </main>
-    );
+    if (res.ok) {
+      setSubmitted(true);
+    } else {
+      setError(
+        "Não foi possível salvar suas respostas. Tente novamente."
+      );
+    }
   }
 
   /* =======================
-     RANKING (inalterado, título ajustado)
+     RENDER
   ======================= */
-  const json = await getResults(safeId);
-
-  const scores = (json?.result ?? []).map((r: any) => Number(r.score) || 0);
-  const maxScore = Math.max(...scores, 1);
-
-  // para mostrar participantes/participações também no ranking, buscamos votes
-  const { data: rankingVotes } = await supabase
-    .from("votes")
-    .select("id, participant_id")
-    .eq("poll_id", safeId);
-
-  const totalSubmissionsRanking = rankingVotes?.length || 0;
-  const totalParticipantsRanking = new Set(
-    (rankingVotes ?? []).map((v) => v.participant_id)
-  ).size;
-
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-xl mx-auto space-y-5">
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
-          <Navigation />
-
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
-              {title}
-            </h1>
-          </div>
-
-          {(json?.result ?? []).map((row: any, index: number) => {
-            const pct = Math.round(((Number(row.score) || 0) / maxScore) * 100);
-            return (
-              <div key={row.option_id} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-black">
-                    <strong>{index + 1}º</strong> — {row.option_text}
-                  </span>
-                  <span>{row.score} pts</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded">
-                  <div
-                    className="h-2 bg-emerald-500 rounded"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-
-          <ResultsFooter
-            isPartial={isPartial}
-            status={status}
-            effectiveMaxVotes={effectiveMaxVotes}
-            totalParticipants={totalParticipantsRanking}
-            totalSubmissions={totalSubmissionsRanking}
-          />
-
-          <AttributesInviteClient pollId={safeId} />
-        </div>
-
-        <div
-          className="text-center text-xs flex items-center justify-center gap-2"
-          style={{ color: "#8B8A8A" }}
-        >
-          <Image
-            src="/Logo_A.png"
-            alt="Auditável"
-            width={18}
-            height={18}
-            className="inline-block"
-          />
-          <span>Auditável — “O Brasil vota. Você confere.”</span>
-        </div>
+    <div className="mt-6 rounded-xl border bg-white p-5 shadow-sm space-y-5">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-800">
+          Ajude a qualificar os resultados
+        </h3>
+        <p className="text-xs text-gray-600">
+          Suas respostas são anônimas e usadas apenas para análise estatística.
+        </p>
       </div>
-    </main>
+
+      {hasPrefill && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          Algumas informações estatísticas já foram usadas anteriormente.
+          Você pode confirmar ou alterar antes de enviar.
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-xs text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* FAIXA ETÁRIA */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-gray-700">
+          Faixa etária
+        </legend>
+        {["-18", "18-24", "25-34", "35-44", "45-59", "60+"].map(v => (
+          <label key={v} className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="age_range"
+              value={v}
+              checked={form.age_range === v}
+              onChange={() =>
+                setForm(f => ({ ...f, age_range: v }))
+              }
+            />
+            {v === "-18" ? "Menor de 18" : v}
+          </label>
+        ))}
+      </fieldset>
+
+      {/* ESCOLARIDADE */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-gray-700">
+          Escolaridade
+        </legend>
+        {[
+          ["fundamental", "Ensino fundamental"],
+          ["medio", "Ensino médio"],
+          ["superior", "Ensino superior"],
+          ["pos", "Pós-graduação"],
+        ].map(([value, label]) => (
+          <label key={value} className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="education_level"
+              value={value}
+              checked={form.education_level === value}
+              onChange={() =>
+                setForm(f => ({
+                  ...f,
+                  education_level: value,
+                }))
+              }
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
+
+      {/* REGIÃO */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-gray-700">
+          Região
+        </legend>
+        {[
+          ["norte", "Norte"],
+          ["nordeste", "Nordeste"],
+          ["centro-oeste", "Centro-Oeste"],
+          ["sudeste", "Sudeste"],
+          ["sul", "Sul"],
+        ].map(([value, label]) => (
+          <label key={value} className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="region"
+              value={value}
+              checked={form.region === value}
+              onChange={() =>
+                setForm(f => ({ ...f, region: value }))
+              }
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
+
+      {/* RENDA */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-gray-700">
+          Faixa de renda
+        </legend>
+        {[
+          ["ate_2", "Até 2 salários mínimos"],
+          ["2_5", "2 a 5 salários mínimos"],
+          ["5_10", "5 a 10 salários mínimos"],
+          ["10_plus", "Acima de 10 salários mínimos"],
+        ].map(([value, label]) => (
+          <label key={value} className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="income_range"
+              value={value}
+              checked={form.income_range === value}
+              onChange={() =>
+                setForm(f => ({
+                  ...f,
+                  income_range: value,
+                }))
+              }
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
+
+      <button
+        onClick={handleSubmit}
+        disabled={loading}
+        className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+      >
+        {loading ? "Salvando…" : "Salvar respostas"}
+      </button>
+    </div>
   );
 }
