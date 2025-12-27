@@ -1,24 +1,75 @@
 @import "tailwindcss";
 
+/* ==========================
+   PALETA AUDITÁVEL
+   ========================== */
 :root {
+  /* Cores oficiais */
+  --brand-green: #23854f;
+  --brand-gray: #8b8a8a;
+
+  /* Cores complementares */
+  --green-900: #0e3b23;   /* hover / active */
+  --green-050: #e6f4ed;   /* fundos suaves */
+  --charcoal: #1f2320;    /* texto forte no dark */
+
+  /* Tema claro (padrão) */
   --background: #ffffff;
+  --surface: #f8f8f8;
+
   --foreground: #171717;
+  --foreground-muted: #4a4a4a;
+
+  --border: rgba(0, 0, 0, 0.12);
+
+  /* Semânticas */
+  --primary: var(--brand-green);
+  --primary-hover: #1e6f41;
+  --primary-active: var(--green-900);
+  --on-primary: #ffffff;
+
+  --muted: var(--green-050);
 }
 
+/* ==========================
+   TEMA ESCURO AUTOMÁTICO
+   ========================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b0f0c;
+    --surface: #111a14;
+
+    --foreground: #ededed;
+    --foreground-muted: #b9b9b9;
+
+    --border: rgba(255, 255, 255, 0.14);
+
+    --primary: #2aa463;
+    --primary-hover: #33b874;
+    --primary-active: #1f7f4e;
+    --on-primary: #07110b;
+
+    --muted: rgba(42, 164, 99, 0.15);
+  }
+}
+
+/* ==========================
+   INTEGRAÇÃO COM TAILWIND
+   ========================== */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ==========================
+   BASE
+   ========================== */
 body {
   background: var(--background);
   color: var(--foreground);
