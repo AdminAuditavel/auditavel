@@ -40,7 +40,7 @@ Nunca muda durante a vida útil do navegador
 
 Representa um participante lógico da plataforma.
 
-Onde é usado
+#### Onde é usado
 
 Chave principal para regras de voto
 
@@ -52,7 +52,7 @@ Limite de participações
 
 Contagem de participantes
 
-Onde é armazenado
+#### Onde é armazenado
 
 participants.id
 
@@ -60,12 +60,12 @@ votes.participant_id
 
 vote_events.participant_id
 
-Regra fundamental
+#### Regra fundamental
 
 Todas as regras de negócio usam (poll_id, participant_id)
 Nunca usam user_hash.
 
-2.2 user_hash (IDENTIFICADOR AUXILIAR)
+### 2.2 user_hash (IDENTIFICADOR AUXILIAR)
 
 Tipo: UUID
 
@@ -77,54 +77,44 @@ Pode ser resetado em cenários extremos (ex: limpeza parcial)
 
 Não é usado como identidade lógica
 
-Função
+#### Função
 
 Apoio estatístico e agregações auxiliares.
 
 Exemplos:
 
-Contagem de usuários únicos em janelas de tempo
+- Contagem de usuários únicos em janelas de tempo
+- Destaque de pesquisas
+- Métricas globais
+- Agrupamentos sem custo de join com participants
 
-Destaque de pesquisas
+#### Onde é usado
+- Campos auxiliares em votes.user_hash
+- Scripts de estatística
+- Métricas de popularidade
 
-Métricas globais
-
-Agrupamentos sem custo de join com participants
-
-Onde é usado
-
-Campos auxiliares em votes.user_hash
-
-Scripts de estatística
-
-Métricas de popularidade
-
-Onde NÃO pode ser usado
+#### Onde NÃO pode ser usado
 
 🚫 Limite de voto
 🚫 Cooldown
 🚫 Identidade de participante
 🚫 Regras de “último voto vale”
 
-3. Geração dos identificadores
-3.1 Frontend (browser)
+## 3. Geração dos identificadores
+### 3.1 Frontend (browser)
 
 Arquivo canônico:
 
 lib/participant.ts
 
 
-Responsabilidades:
-
-Garantir que sempre exista um participant_id
-
-Garantir que sempre exista um user_hash
-
-Nunca retornar valores vazios
-
+#### Responsabilidades:
+- Garantir que sempre exista um participant_id
+- Garantir que sempre exista um user_hash
+- Nunca retornar valores vazios
 Essas funções só rodam no client.
 
-3.2 Garantia no ponto de uso
+### 3.2 Garantia no ponto de uso
 
 Antes de qualquer voto ser enviado:
 
@@ -134,15 +124,12 @@ if (!participant_id || !user_hash) {
 
 
 Isso garante que:
+- Nenhum voto órfão é criado
+- Nenhuma linha inválida entra no banco
+- A integridade do modelo é preservada
 
-Nenhum voto órfão é criado
-
-Nenhuma linha inválida entra no banco
-
-A integridade do modelo é preservada
-
-4. Relação entre identidade e votos
-4.1 Voto único (max_votes_per_user = 1)
+## 4. Relação entre identidade e votos
+### 4.1 Voto único (max_votes_per_user = 1)
 
 Pode existir apenas um voto vigente por (poll_id, participant_id)
 
