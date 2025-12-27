@@ -72,7 +72,9 @@ export default async function ResultsPage({
   }
 
   const isPartial = status === "open" || status === "paused";
-  const effectiveMaxVotes = max_votes_per_user ?? 1; // Garantir fallback para 1 caso esteja nulo
+
+  // Regra canônica: allow_multiple=false => max=1; allow_multiple=true => max_votes_per_user (fallback 1)
+  const effectiveMaxVotes = allow_multiple ? (max_votes_per_user ?? 1) : 1;
 
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
@@ -114,7 +116,8 @@ export default async function ResultsPage({
     totalParticipants: number;
     totalSubmissions: number;
   }) => {
-    const leftLabel = status === "closed" ? "Resultado Final" : isPartial ? "Resultados parciais" : "";
+    const leftLabel =
+      status === "closed" ? "Resultado Final" : isPartial ? "Resultados parciais" : "";
 
     return (
       <div className="flex justify-between text-xs text-gray-500">
@@ -145,12 +148,11 @@ export default async function ResultsPage({
 
     const { data: votes } = await supabase
       .from("votes")
-      .select("option_id, user_hash")
+      .select("option_id, participant_id")
       .eq("poll_id", safeId);
 
     const totalSubmissions = votes?.length || 0;
-    const totalParticipants = new Set((votes ?? []).map((v) => v.user_hash))
-      .size;
+    const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id)).size;
 
     const count: Record<string, number> = {};
     votes?.forEach((v) => {
@@ -212,8 +214,17 @@ export default async function ResultsPage({
             <AttributesInviteClient pollId={safeId} />
           </div>
 
-          <div className="text-center text-xs flex items-center justify-center gap-2" style={{ color: "#8B8A8A" }}>
-            <Image src="/Logo_A.png" alt="Auditável" width={18} height={18} className="inline-block" />
+          <div
+            className="text-center text-xs flex items-center justify-center gap-2"
+            style={{ color: "#8B8A8A" }}
+          >
+            <Image
+              src="/Logo_A.png"
+              alt="Auditável"
+              width={18}
+              height={18}
+              className="inline-block"
+            />
             <span>Auditável — “O Brasil vota. Você confere.”</span>
           </div>
         </div>
@@ -232,23 +243,20 @@ export default async function ResultsPage({
 
     const { data: votes } = await supabase
       .from("votes")
-      .select("id, user_hash")
+      .select("id, participant_id")
       .eq("poll_id", safeId);
 
-    const { data: marks } = await supabase
-      .from("vote_options")
-      .select("option_id")
-      .in(
-        "vote_id",
-        (votes ?? []).map((v) => v.id)
-      );
+    const voteIds = (votes ?? []).map((v) => v.id);
+
+    const { data: marks } = voteIds.length
+      ? await supabase.from("vote_options").select("option_id").in("vote_id", voteIds)
+      : { data: [] as any[] };
 
     const totalSubmissions = votes?.length || 0;
-    const totalParticipants = new Set((votes ?? []).map((v) => v.user_hash))
-      .size;
+    const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id)).size;
 
     const count: Record<string, number> = {};
-    marks?.forEach((m) => {
+    marks?.forEach((m: any) => {
       count[m.option_id] = (count[m.option_id] || 0) + 1;
     });
 
@@ -315,8 +323,17 @@ export default async function ResultsPage({
             <AttributesInviteClient pollId={safeId} />
           </div>
 
-          <div className="text-center text-xs flex items-center justify-center gap-2" style={{ color: "#8B8A8A" }}>
-            <Image src="/Logo_A.png" alt="Auditável" width={18} height={18} className="inline-block" />
+          <div
+            className="text-center text-xs flex items-center justify-center gap-2"
+            style={{ color: "#8B8A8A" }}
+          >
+            <Image
+              src="/Logo_A.png"
+              alt="Auditável"
+              width={18}
+              height={18}
+              className="inline-block"
+            />
             <span>Auditável — “O Brasil vota. Você confere.”</span>
           </div>
         </div>
@@ -328,17 +345,20 @@ export default async function ResultsPage({
      RANKING (inalterado, título ajustado)
   ======================= */
   const json = await getResults(safeId);
-  const maxScore = Math.max(...json.result.map((r: any) => r.score), 1);
+
+  const scores = (json?.result ?? []).map((r: any) => Number(r.score) || 0);
+  const maxScore = Math.max(...scores, 1);
 
   // para mostrar participantes/participações também no ranking, buscamos votes
   const { data: rankingVotes } = await supabase
     .from("votes")
-    .select("id, user_hash")
+    .select("id, participant_id")
     .eq("poll_id", safeId);
 
   const totalSubmissionsRanking = rankingVotes?.length || 0;
-  const totalParticipantsRanking = new Set((rankingVotes ?? []).map((v) => v.user_hash))
-    .size;
+  const totalParticipantsRanking = new Set(
+    (rankingVotes ?? []).map((v) => v.participant_id)
+  ).size;
 
   return (
     <main className="min-h-screen bg-gray-50 p-6">
@@ -352,8 +372,8 @@ export default async function ResultsPage({
             </h1>
           </div>
 
-          {json.result.map((row: any, index: number) => {
-            const pct = Math.round((row.score / maxScore) * 100);
+          {(json?.result ?? []).map((row: any, index: number) => {
+            const pct = Math.round(((Number(row.score) || 0) / maxScore) * 100);
             return (
               <div key={row.option_id} className="space-y-1">
                 <div className="flex justify-between text-sm">
@@ -383,8 +403,17 @@ export default async function ResultsPage({
           <AttributesInviteClient pollId={safeId} />
         </div>
 
-        <div className="text-center text-xs flex items-center justify-center gap-2" style={{ color: "#8B8A8A" }}>
-          <Image src="/Logo_A.png" alt="Auditável" width={18} height={18} className="inline-block" />
+        <div
+          className="text-center text-xs flex items-center justify-center gap-2"
+          style={{ color: "#8B8A8A" }}
+        >
+          <Image
+            src="/Logo_A.png"
+            alt="Auditável"
+            width={18}
+            height={18}
+            className="inline-block"
+          />
           <span>Auditável — “O Brasil vota. Você confere.”</span>
         </div>
       </div>
