@@ -1,4 +1,4 @@
-//app/results/[id]/page.tsx
+/app/results/[id]/page.tsx
 
 import Link from "next/link";
 import Image from "next/image";
@@ -18,7 +18,7 @@ export default async function ResultsPage({
   if (!id || typeof id !== "string" || id.trim() === "") {
     return (
       <main className="p-6 max-w-xl mx-auto text-center">
-        ID da pesquisa inválido.
+        <p className="text-foreground">ID da pesquisa inválido.</p>
       </main>
     );
   }
@@ -39,7 +39,7 @@ export default async function ResultsPage({
   if (!pollData || pollError) {
     return (
       <main className="p-6 max-w-xl mx-auto text-center">
-        Erro ao carregar a pesquisa.
+        <p className="text-foreground">Erro ao carregar a pesquisa.</p>
       </main>
     );
   }
@@ -60,11 +60,11 @@ export default async function ResultsPage({
   if (!canShowResults) {
     return (
       <main className="p-6 max-w-xl mx-auto text-center space-y-4">
-        <h1 className="text-xl font-semibold">Resultados</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-xl font-semibold text-foreground">Resultados</h1>
+        <p className="text-sm text-[color:var(--foreground-muted)]">
           Os resultados serão divulgados ao final da votação.
         </p>
-        <Link href={`/poll/${safeId}`} className="text-emerald-600 hover:underline">
+        <Link href={`/poll/${safeId}`} className="text-[color:var(--primary)] hover:underline">
           ← Voltar para a pesquisa
         </Link>
       </main>
@@ -78,7 +78,7 @@ export default async function ResultsPage({
 
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
-      <Link href={`/poll/${safeId}`} className="text-emerald-600 hover:underline">
+      <Link href={`/poll/${safeId}`} className="text-[color:var(--primary)] hover:underline">
         ← Voltar para Opções
       </Link>
       <Link
@@ -93,7 +93,7 @@ export default async function ResultsPage({
           height={24}
           className="h-8 w-6 shrink-0"
         />
-        <span className="font-semibold text-sm" style={{ color: "#23854F" }}>
+        <span className="font-semibold text-sm text-[color:var(--primary)]">
           Auditável
         </span>
       </Link>
@@ -101,8 +101,6 @@ export default async function ResultsPage({
   );
 
   // Footer compartilhado para exibir "Resultados parciais" / "Resultado Final"
-  // alinhado à esquerda e "Participantes / Participações" à direita, obedecendo
-  // a regra de max_votes_per_user.
   const ResultsFooter = ({
     isPartial,
     status,
@@ -120,7 +118,7 @@ export default async function ResultsPage({
       status === "closed" ? "Resultado Final" : isPartial ? "Resultados parciais" : "";
 
     return (
-      <div className="flex justify-between text-xs text-gray-500">
+      <div className="flex justify-between text-xs text-[color:var(--foreground-muted)]">
         <div className="text-left">
           {leftLabel ? <span>{leftLabel}</span> : null}
         </div>
@@ -169,13 +167,13 @@ export default async function ResultsPage({
         .sort((a, b) => b.votes - a.votes) || [];
 
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-surface p-6">
         <div className="max-w-xl mx-auto space-y-5">
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
+          <div className="rounded-2xl bg-surface shadow-sm border border-border p-5 space-y-5">
             <Navigation />
 
             <div className="flex items-center justify-between gap-3">
-              <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+              <h1 className="text-lg font-semibold leading-relaxed text-justify text-foreground">
                 {title}
               </h1>
             </div>
@@ -188,14 +186,14 @@ export default async function ResultsPage({
               return (
                 <div key={o.id} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="text-black">{o.option_text}</span>
-                    <span>
+                    <span className="text-foreground">{o.option_text}</span>
+                    <span className="text-[color:var(--foreground-muted)]">
                       {o.votes} votos ({pct}%)
                     </span>
                   </div>
-                  <div className="h-2 bg-gray-200 rounded">
+                  <div className="h-2 bg-surface2 rounded">
                     <div
-                      className="h-2 bg-emerald-500 rounded"
+                      className="h-2 bg-primary rounded"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -214,10 +212,7 @@ export default async function ResultsPage({
             <AttributesInviteClient pollId={safeId} />
           </div>
 
-          <div
-            className="text-center text-xs flex items-center justify-center gap-2"
-            style={{ color: "#8B8A8A" }}
-          >
+          <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
             <Image
               src="/Logo_A.png"
               alt="Auditável"
@@ -269,18 +264,18 @@ export default async function ResultsPage({
         .sort((a, b) => b.marks - a.marks) || [];
 
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
+      <main className="min-h-screen bg-surface p-6">
         <div className="max-w-xl mx-auto space-y-5">
-          <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
+          <div className="rounded-2xl bg-surface shadow-sm border border-border p-5 space-y-5">
             <Navigation />
 
             <div className="flex items-center justify-between gap-3">
-              <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+              <h1 className="text-lg font-semibold leading-relaxed text-justify text-foreground">
                 {title}
               </h1>
             </div>
 
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[color:var(--foreground-muted)]">
               Nesta pesquisa, cada participante pôde selecionar mais de uma opção.
               Os percentuais abaixo representam a proporção de participações em que
               cada opção foi marcada.
@@ -295,15 +290,15 @@ export default async function ResultsPage({
                 return (
                   <div key={o.id} className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-black">{o.option_text}</span>
-                      <span className="text-gray-600">
+                      <span className="text-foreground">{o.option_text}</span>
+                      <span className="text-[color:var(--foreground-muted)]">
                         {o.marks} marcas ({pct}%)
                       </span>
                     </div>
 
-                    <div className="h-2 bg-gray-200 rounded">
+                    <div className="h-2 bg-surface2 rounded">
                       <div
-                        className="h-2 bg-emerald-500 rounded transition-all"
+                        className="h-2 bg-primary rounded transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -323,10 +318,7 @@ export default async function ResultsPage({
             <AttributesInviteClient pollId={safeId} />
           </div>
 
-          <div
-            className="text-center text-xs flex items-center justify-center gap-2"
-            style={{ color: "#8B8A8A" }}
-          >
+          <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
             <Image
               src="/Logo_A.png"
               alt="Auditável"
@@ -342,7 +334,7 @@ export default async function ResultsPage({
   }
 
   /* =======================
-     RANKING (inalterado, título ajustado)
+     RANKING
   ======================= */
   const json = await getResults(safeId);
 
@@ -361,13 +353,13 @@ export default async function ResultsPage({
   ).size;
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <main className="min-h-screen bg-surface p-6">
       <div className="max-w-xl mx-auto space-y-5">
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5">
+        <div className="rounded-2xl bg-surface shadow-sm border border-border p-5 space-y-5">
           <Navigation />
 
           <div className="flex items-center justify-between gap-3">
-            <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+            <h1 className="text-lg font-semibold leading-relaxed text-justify text-foreground">
               {title}
             </h1>
           </div>
@@ -377,14 +369,14 @@ export default async function ResultsPage({
             return (
               <div key={row.option_id} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-black">
+                  <span className="text-foreground">
                     <strong>{index + 1}º</strong> — {row.option_text}
                   </span>
-                  <span>{row.score} pts</span>
+                  <span className="text-[color:var(--foreground-muted)]">{row.score} pts</span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded">
+                <div className="h-2 bg-surface2 rounded">
                   <div
-                    className="h-2 bg-emerald-500 rounded"
+                    className="h-2 bg-primary rounded"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -403,10 +395,7 @@ export default async function ResultsPage({
           <AttributesInviteClient pollId={safeId} />
         </div>
 
-        <div
-          className="text-center text-xs flex items-center justify-center gap-2"
-          style={{ color: "#8B8A8A" }}
-        >
+        <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
           <Image
             src="/Logo_A.png"
             alt="Auditável"
