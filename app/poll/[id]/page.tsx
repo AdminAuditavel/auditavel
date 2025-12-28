@@ -329,8 +329,15 @@ export default function PollPage() {
       return;
     }
 
-    showFeedback('Participação registrada com sucesso!', "success");
-    router.push(`/results/${safeId}?from_vote=1`);
+    showFeedback("Participação registrada com sucesso!", "success");
+    // MOSTRAR QUESTIONÁRIO APENAS APÓS VOTO (nesta poll, nesta sessão)
+    try {
+      sessionStorage.setItem(`auditavel_show_attrs_${safeId}`, "1");
+    } catch {
+      // ignore
+    }
+    
+    router.push(`/results/${safeId}`);
   }
 
   // Chip (componente de UI)
