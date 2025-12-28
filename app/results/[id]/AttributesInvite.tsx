@@ -78,11 +78,9 @@ export default function AttributesInvite({
   ======================= */
   if (submitted) {
     return (
-      <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
-        <h3 className="font-semibold mb-1">
-          Obrigado pela sua contribuição
-        </h3>
-        <p>
+      <div className="mt-6 rounded-xl border border-border bg-[color:var(--muted)] p-5 text-sm text-[color:var(--primary)]">
+        <h3 className="font-semibold mb-1 text-foreground">Obrigado pela sua contribuição</h3>
+        <p className="text-[color:var(--foreground)]">
           Suas informações foram registradas com sucesso e serão usadas apenas
           para análise estatística, de forma anônima.
         </p>
@@ -133,18 +131,18 @@ export default function AttributesInvite({
      RENDER
   ======================= */
   return (
-    <div className="mt-6 rounded-xl border bg-white p-5 shadow-sm space-y-5">
+    <div className="mt-6 rounded-xl border border-border bg-surface p-5 shadow-sm space-y-5">
       <div>
-        <h3 className="text-sm font-semibold text-gray-800">
+        <h3 className="text-sm font-semibold text-[color:var(--foreground)]">
           Ajude a qualificar os resultados
         </h3>
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-[color:var(--foreground-muted)]">
           Suas respostas são anônimas e usadas apenas para análise estatística.
         </p>
       </div>
 
       {hasPrefill && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <div className="rounded-md border border-border bg-[color:var(--muted)] p-3 text-xs text-[color:var(--primary)]">
           Algumas informações estatísticas já foram usadas anteriormente.
           Você pode confirmar ou alterar antes de enviar.
         </div>
@@ -158,11 +156,11 @@ export default function AttributesInvite({
 
       {/* FAIXA ETÁRIA */}
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-gray-700">
+        <legend className="text-sm font-medium text-[color:var(--foreground)]">
           Faixa etária
         </legend>
         {["-18", "18-24", "25-34", "35-44", "45-59", "60+"].map(v => (
-          <label key={v} className="flex items-center gap-2 text-sm">
+          <label key={v} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
             <input
               type="radio"
               name="age_range"
@@ -179,7 +177,7 @@ export default function AttributesInvite({
 
       {/* ESCOLARIDADE */}
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-gray-700">
+        <legend className="text-sm font-medium text-[color:var(--foreground)]">
           Escolaridade
         </legend>
         {[
@@ -188,7 +186,7 @@ export default function AttributesInvite({
           ["superior", "Ensino superior"],
           ["pos", "Pós-graduação"],
         ].map(([value, label]) => (
-          <label key={value} className="flex items-center gap-2 text-sm">
+          <label key={value} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
             <input
               type="radio"
               name="education_level"
@@ -208,7 +206,7 @@ export default function AttributesInvite({
 
       {/* REGIÃO */}
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-gray-700">
+        <legend className="text-sm font-medium text-[color:var(--foreground)]">
           Região
         </legend>
         {[
@@ -218,7 +216,7 @@ export default function AttributesInvite({
           ["sudeste", "Sudeste"],
           ["sul", "Sul"],
         ].map(([value, label]) => (
-          <label key={value} className="flex items-center gap-2 text-sm">
+          <label key={value} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
             <input
               type="radio"
               name="region"
@@ -235,7 +233,7 @@ export default function AttributesInvite({
 
       {/* RENDA */}
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-gray-700">
+        <legend className="text-sm font-medium text-[color:var(--foreground)]">
           Faixa de renda
         </legend>
         {[
@@ -244,7 +242,7 @@ export default function AttributesInvite({
           ["5_10", "5 a 10 salários mínimos"],
           ["10_plus", "Acima de 10 salários mínimos"],
         ].map(([value, label]) => (
-          <label key={value} className="flex items-center gap-2 text-sm">
+          <label key={value} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
             <input
               type="radio"
               name="income_range"
@@ -265,7 +263,7 @@ export default function AttributesInvite({
       <button
         onClick={handleSubmit}
         disabled={loading}
-        className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+        className="w-full rounded-lg bg-[color:var(--primary)] py-2 text-sm font-medium text-[color:var(--on-primary)] hover:brightness-95 disabled:opacity-60"
       >
         {loading ? "Salvando…" : "Salvar respostas"}
       </button>
