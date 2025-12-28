@@ -7,11 +7,13 @@ import { useEffect, useState } from "react";
 type Props = {
   participantId: string;
   pollId: string;
+  forceShow?: boolean; // NOVO
 };
 
 export default function AttributesInvite({
   participantId,
   pollId,
+  forceShow = false,
 }: Props) {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,35 +29,59 @@ export default function AttributesInvite({
   });
 
   /* =======================
-     VERIFICAR SE JÁ RESPONDEU (POR PESQUISA)
+     VISIBILIDADE
+     - forceShow=true: mostra sempre (pós-voto/alteração)
+     - caso contrário: mostra somente se ainda não respondeu nesta poll
   ======================= */
   useEffect(() => {
-    async function check() {
-      const res = await fetch(
-        `/api/participant-attributes/check?participant_id=${participantId}&poll_id=${pollId}`
-      );
-
-      if (res.ok) {
-        const json = await res.json();
-        if (!json.exists) setVisible(true);
-      }
+    if (forceShow) {
+      setVisible(true);
+      return;
     }
 
-    if (participantId && pollId) check();
-  }, [participantId, pollId]);
+    let cancelled = false;
 
-  /* =======================
-     PRÉ-PREENCHIMENTO (PERFIL GLOBAL)
-  ======================= */
-  useEffect(() => {
-    async function loadProfile() {
+    async function check() {
+      setVisible(false); // estado determinístico
       const res = await fetch(
-        `/api/participant-profile?participant_id=${participantId}`
+        `/api/participant-attributes/check?participant_id=${encodeURIComponent(
+          participantId
+        )}&poll_id=${encodeURIComponent(pollId)}`
       );
 
       if (!res.ok) return;
 
       const json = await res.json();
+      if (cancelled) return;
+
+      if (!json.exists) setVisible(true);
+      else setVisible(false);
+    }
+
+    if (participantId && pollId) check();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [participantId, pollId, forceShow]);
+
+  /* =======================
+     PRÉ-PREENCHIMENTO (PERFIL GLOBAL)
+  ======================= */
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      const res = await fetch(
+        `/api/participant-profile?participant_id=${encodeURIComponent(
+          participantId
+        )}`
+      );
+
+      if (!res.ok) return;
+
+      const json = await res.json();
+      if (cancelled) return;
 
       if (json.profile) {
         setForm({
@@ -69,6 +95,10 @@ export default function AttributesInvite({
     }
 
     if (participantId) loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [participantId]);
 
   if (!visible) return null;
@@ -79,7 +109,9 @@ export default function AttributesInvite({
   if (submitted) {
     return (
       <div className="mt-6 rounded-xl border border-border bg-[color:var(--muted)] p-5 text-sm text-[color:var(--primary)]">
-        <h3 className="font-semibold mb-1 text-foreground">Obrigado pela sua contribuição</h3>
+        <h3 className="font-semibold mb-1 text-foreground">
+          Obrigado pela sua contribuição
+        </h3>
         <p className="text-[color:var(--foreground)]">
           Suas informações foram registradas com sucesso e serão usadas apenas
           para análise estatística, de forma anônima.
@@ -121,9 +153,7 @@ export default function AttributesInvite({
     if (res.ok) {
       setSubmitted(true);
     } else {
-      setError(
-        "Não foi possível salvar suas respostas. Tente novamente."
-      );
+      setError("Não foi possível salvar suas respostas. Tente novamente.");
     }
   }
 
@@ -143,8 +173,8 @@ export default function AttributesInvite({
 
       {hasPrefill && (
         <div className="rounded-md border border-border bg-[color:var(--muted)] p-3 text-xs text-[color:var(--primary)]">
-          Algumas informações estatísticas já foram usadas anteriormente.
-          Você pode confirmar ou alterar antes de enviar.
+          Algumas informações estatísticas já foram usadas anteriormente. Você
+          pode confirmar ou alterar antes de enviar.
         </div>
       )}
 
@@ -159,16 +189,17 @@ export default function AttributesInvite({
         <legend className="text-sm font-medium text-[color:var(--foreground)]">
           Faixa etária
         </legend>
-        {["-18", "18-24", "25-34", "35-44", "45-59", "60+"].map(v => (
-          <label key={v} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
+        {["-18", "18-24", "25-34", "35-44", "45-59", "60+"].map((v) => (
+          <label
+            key={v}
+            className="flex items-center gap-2 text-sm text-[color:var(--foreground)]"
+          >
             <input
               type="radio"
               name="age_range"
               value={v}
               checked={form.age_range === v}
-              onChange={() =>
-                setForm(f => ({ ...f, age_range: v }))
-              }
+              onChange={() => setForm((f) => ({ ...f, age_range: v }))}
             />
             {v === "-18" ? "Menor de 18" : v}
           </label>
@@ -186,17 +217,17 @@ export default function AttributesInvite({
           ["superior", "Ensino superior"],
           ["pos", "Pós-graduação"],
         ].map(([value, label]) => (
-          <label key={value} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
+          <label
+            key={value}
+            className="flex items-center gap-2 text-sm text-[color:var(--foreground)]"
+          >
             <input
               type="radio"
               name="education_level"
               value={value}
               checked={form.education_level === value}
               onChange={() =>
-                setForm(f => ({
-                  ...f,
-                  education_level: value,
-                }))
+                setForm((f) => ({ ...f, education_level: value }))
               }
             />
             {label}
@@ -216,15 +247,16 @@ export default function AttributesInvite({
           ["sudeste", "Sudeste"],
           ["sul", "Sul"],
         ].map(([value, label]) => (
-          <label key={value} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
+          <label
+            key={value}
+            className="flex items-center gap-2 text-sm text-[color:var(--foreground)]"
+          >
             <input
               type="radio"
               name="region"
               value={value}
               checked={form.region === value}
-              onChange={() =>
-                setForm(f => ({ ...f, region: value }))
-              }
+              onChange={() => setForm((f) => ({ ...f, region: value }))}
             />
             {label}
           </label>
@@ -242,18 +274,16 @@ export default function AttributesInvite({
           ["5_10", "5 a 10 salários mínimos"],
           ["10_plus", "Acima de 10 salários mínimos"],
         ].map(([value, label]) => (
-          <label key={value} className="flex items-center gap-2 text-sm text-[color:var(--foreground)]">
+          <label
+            key={value}
+            className="flex items-center gap-2 text-sm text-[color:var(--foreground)]"
+          >
             <input
               type="radio"
               name="income_range"
               value={value}
               checked={form.income_range === value}
-              onChange={() =>
-                setForm(f => ({
-                  ...f,
-                  income_range: value,
-                }))
-              }
+              onChange={() => setForm((f) => ({ ...f, income_range: value }))}
             />
             {label}
           </label>
