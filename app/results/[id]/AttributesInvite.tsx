@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 type Props = {
   participantId: string;
   pollId: string;
-  forceShow?: boolean; // NOVO
+  forceShow?: boolean;
 };
 
 export default function AttributesInvite({
@@ -42,7 +42,8 @@ export default function AttributesInvite({
     let cancelled = false;
 
     async function check() {
-      setVisible(false); // estado determinístico
+      setVisible(false);
+
       const res = await fetch(
         `/api/participant-attributes/check?participant_id=${encodeURIComponent(
           participantId
@@ -54,6 +55,7 @@ export default function AttributesInvite({
       const json = await res.json();
       if (cancelled) return;
 
+      // Se ainda NÃO respondeu nessa poll => mostrar
       if (!json.exists) setVisible(true);
       else setVisible(false);
     }
@@ -226,9 +228,7 @@ export default function AttributesInvite({
               name="education_level"
               value={value}
               checked={form.education_level === value}
-              onChange={() =>
-                setForm((f) => ({ ...f, education_level: value }))
-              }
+              onChange={() => setForm((f) => ({ ...f, education_level: value }))}
             />
             {label}
           </label>
