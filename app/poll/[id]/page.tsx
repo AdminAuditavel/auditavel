@@ -123,7 +123,7 @@ export default function PollPage() {
     if (!allowMultiple) {
       return 'Você já participou desta enquete. Você pode alterar seu voto. O último voto será contabilizado.';
     }
-    return 'Você já votou nesta enquete. Você pode votar novamente (respeitando o limite e o tempo de espera).';
+    return 'Você já participou desta enquete. Você pode votar novamente (respeitando o limite e o tempo de espera).';
   }, [hasParticipation, allowMultiple]);
 
   // 1) useMemo do mapa (usa options)
@@ -352,11 +352,12 @@ export default function PollPage() {
   }) {
     const styles =
       variant === "warn"
-        ? "border border-amber-200 bg-[color:var(--muted)] text-amber-900"
+        // usar foreground + border-border garante leitura em claro e escuro
+        ? "border border-border bg-[color:var(--muted)] text-[color:var(--foreground)]"
         : variant === "error"
-          ? "border border-red-200 bg-red-50 text-red-900"
-          : "border border-border bg-surface2 text-[color:var(--foreground)]";
-
+        ? "border border-red-200 bg-red-50 text-red-900"
+        : "border border-border bg-surface2 text-[color:var(--foreground)]";
+  
     return (
       <div className={`rounded-xl px-4 py-3 text-sm ${styles}`}>
         {children}
