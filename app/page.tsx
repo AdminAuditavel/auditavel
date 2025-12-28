@@ -276,7 +276,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
         <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center">
             <Image
-              src="/Logotipo.svg"
+              src="/Logotipo_transparent_tight.png"
               alt="Auditável"
               width={156}
               height={156}
@@ -573,7 +573,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
       <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center">
           <Image
-            src="/Logotipo.svg"
+            src="/Logotipo_transparent_tight.png"
             alt="Auditável"
             width={156}
             height={156}
