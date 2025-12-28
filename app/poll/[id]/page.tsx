@@ -1,5 +1,4 @@
 // app/poll/[id]/page.tsx
-
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -40,7 +39,7 @@ export default function PollPage() {
 
   if (!id || typeof id !== 'string' || id.trim() === '') {
     return (
-      <main className="p-6 max-w-xl mx-auto text-center text-red-600">
+      <main className="p-6 max-w-xl mx-auto text-center text-[color:var(--foreground-muted)]">
         Erro interno: ID da pesquisa inválido.
       </main>
     );
@@ -257,12 +256,12 @@ export default function PollPage() {
   }, [cooldownRemaining]);
 
   if (loading) {
-    return <main className="p-6 max-w-xl mx-auto">Carregando…</main>;
+    return <main className="p-6 max-w-xl mx-auto text-[color:var(--foreground-muted)]">Carregando…</main>;
   }
 
   if (!poll) {
     return (
-      <main className="p-6 max-w-xl mx-auto text-center text-red-600">
+      <main className="p-6 max-w-xl mx-auto text-center text-[color:var(--foreground-muted)]">
         Erro ao carregar a pesquisa.
       </main>
     );
@@ -337,13 +336,13 @@ export default function PollPage() {
   // Chip (componente de UI)
   function Chip({ children }: { children: React.ReactNode }) {
     return (
-      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700">
+      <span className="inline-flex items-center rounded-full border border-border bg-surface2 px-2.5 py-1 text-xs text-[color:var(--foreground)]">
         {children}
       </span>
     );
   }
 
-  // Notice (já existente)
+  // Notice (já existente) — adaptei para usar tokens de tema
   function Notice({
     variant,
     children,
@@ -353,28 +352,28 @@ export default function PollPage() {
   }) {
     const styles =
       variant === "warn"
-        ? "border-amber-200 bg-amber-50 text-amber-900"
+        ? "border border-amber-200 bg-[color:var(--muted)] text-amber-900"
         : variant === "error"
-          ? "border-red-200 bg-red-50 text-red-900"
-          : "border-gray-200 bg-gray-50 text-gray-800";
+          ? "border border-red-200 bg-red-50 text-red-900"
+          : "border border-border bg-surface2 text-[color:var(--foreground)]";
 
     return (
-      <div className={`rounded-xl border px-4 py-3 text-sm ${styles}`}>
+      <div className={`rounded-xl px-4 py-3 text-sm ${styles}`}>
         {children}
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-surface">
       <div className="p-6 max-w-xl mx-auto space-y-5">
         {/* Card principal */}
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-5 space-y-5 pb-24 md:pb-5">
+        <div className="rounded-2xl bg-surface shadow-sm border border-border p-5 space-y-5 pb-24 md:pb-5">
           {/* TOPO */}
           <div className="flex items-center justify-between gap-3">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+              className="inline-flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-surface2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30"
               aria-label="Voltar para a página inicial"
             >
               <Image
@@ -385,7 +384,7 @@ export default function PollPage() {
                 priority
                 className="h-8 w-6 shrink-0"
               />
-              <span className="font-semibold text-sm" style={{ color: '#23854F' }}>
+              <span className="font-semibold text-sm text-[color:var(--primary)]">
                 Auditável
               </span>
             </Link>
@@ -395,15 +394,15 @@ export default function PollPage() {
               <span
                 className={`px-2 py-1 rounded-full border ${
                   isOpen
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-gray-50 text-gray-600 border-gray-200"
+                    ? "bg-[color:var(--muted)] text-[color:var(--primary)] border-border"
+                    : "bg-surface2 text-[color:var(--foreground-muted)] border-border"
                 }`}
               >
                 {isOpen ? "Aberta" : "Indisponível"}
               </span>
 
               {allowMultiple && (
-                <span className="px-2 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
+                <span className="px-2 py-1 rounded-full border bg-surface2 text-[color:var(--foreground)] border-border">
                   Participações: {votesUsed}/{effectiveMaxVotesPerUser}
                 </span>
               )}
@@ -412,25 +411,25 @@ export default function PollPage() {
 
           {/* TÍTULO */}
           <div className="space-y-1">
-            <h1 className="text-lg font-semibold leading-relaxed text-justify text-black">
+            <h1 className="text-lg font-semibold leading-relaxed text-justify text-foreground">
               {poll.title}
             </h1>
 
             {/* Instrução curta por tipo de votação (mantém a tela limpa) */}
             {votingType === "ranking" && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[color:var(--foreground-muted)]">
                 Arraste para ordenar. Depois, envie a classificação.
               </p>
             )}
             {votingType === "multiple" && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[color:var(--foreground-muted)]">
                 {maxOptionsPerVote === Infinity
                   ? "Selecione uma ou mais opções."
                   : `Selecione até ${maxOptionsPerVote} opções.`}
               </p>
             )}
             {votingType === "single" && (
-              <p className="text-sm text-gray-600">Selecione uma opção.</p>
+              <p className="text-sm text-[color:var(--foreground-muted)]">Selecione uma opção.</p>
             )}
           </div>
 
@@ -502,17 +501,17 @@ export default function PollPage() {
                     "Erro ao enviar ranking."
                   );
                 }}
-                className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                className="hidden md:block w-full px-4 py-3 rounded-xl bg-primary text-on-primary hover:brightness-95 transition
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                            active:scale-[0.99] disabled:opacity-50"
               >
                 Enviar classificação
               </button>
 
               {/* CTA — MOBILE STICKY */}
-              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
                 <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-[color:var(--foreground-muted)]">
                     {disableReason
                       ? disableReason
                       : `Classificação pronta: ${options.length} opções`}
@@ -528,8 +527,8 @@ export default function PollPage() {
                         "Erro ao enviar ranking."
                       );
                     }}
-                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                    className="shrink-0 px-4 py-2 rounded-xl bg-primary text-on-primary hover:brightness-95 transition
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                                active:scale-[0.99] disabled:opacity-50"
                   >
                     Enviar
@@ -571,12 +570,12 @@ export default function PollPage() {
                         setSelectedOptions((prev) => [...prev, o.id]);
                       }}
                       className={`w-full px-4 py-3 rounded-xl border transition text-left
-                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                         active:scale-[0.99] flex items-start gap-3
                         ${
                           selected
-                            ? "border-emerald-300 bg-emerald-50"
-                            : "border-gray-200 bg-white hover:border-emerald-300"
+                            ? "border-[color:var(--primary)] bg-[color:var(--muted)]"
+                            : "border-border bg-surface hover:border-[color:var(--primary)]"
                         }
                         ${
                           limitReached || Boolean(disableReason)
@@ -589,16 +588,16 @@ export default function PollPage() {
                       <span
                         className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
                           selected
-                            ? "border-emerald-600 bg-emerald-600"
-                            : "border-gray-300 bg-white"
+                            ? "border-[color:var(--primary)] bg-[color:var(--primary)]"
+                            : "border-[color:var(--border)] bg-surface"
                         }`}
                         aria-hidden="true"
                       >
-                        {selected && <span className="h-2 w-2 rounded-full bg-white" />}
+                        {selected && <span className="h-2 w-2 rounded-full bg-[color:var(--on-primary)]" />}
                       </span>
 
                       {/* Texto */}
-                      <span className="flex-1 text-justify leading-relaxed text-gray-900">
+                      <span className="flex-1 text-justify leading-relaxed text-foreground">
                         {o.option_text}
                       </span>
                     </button>
@@ -611,7 +610,7 @@ export default function PollPage() {
               {/* Prévia da participação (chips) */}
               {selectedOptions.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs text-gray-600">Selecionadas:</div>
+                  <div className="text-xs text-[color:var(--foreground-muted)]">Selecionadas:</div>
                   <div className="flex flex-wrap gap-2">
                     {selectedOptions.slice(0, 6).map((id) => (
                       <Chip key={id}>{optionTextById.get(id) ?? id}</Chip>
@@ -639,17 +638,17 @@ export default function PollPage() {
                     "Erro ao registrar participação."
                   );
                 }}
-                className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                className="hidden md:block w-full px-4 py-3 rounded-xl bg-primary text-on-primary hover:brightness-95 transition
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                            active:scale-[0.99] disabled:opacity-50"
               >
                 Enviar participação
               </button>
 
               {/* CTA — MOBILE STICKY */}
-              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
                 <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-[color:var(--foreground-muted)]">
                     {disableReason
                       ? disableReason
                       : maxOptionsPerVote === Infinity
@@ -672,8 +671,8 @@ export default function PollPage() {
                         "Erro ao registrar participação."
                       );
                     }}
-                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                    className="shrink-0 px-4 py-2 rounded-xl bg-primary text-on-primary hover:brightness-95 transition
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                                active:scale-[0.99] disabled:opacity-50"
                   >
                     Enviar
@@ -700,12 +699,12 @@ export default function PollPage() {
                         setSelectedSingleOption(o.id);
                       }}
                       className={`w-full px-4 py-3 rounded-xl border transition text-left
-                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                         active:scale-[0.99] flex items-start gap-3
                         ${
                           selected
-                            ? "border-emerald-300 bg-emerald-50"
-                            : "border-gray-200 bg-white hover:border-emerald-300"
+                            ? "border-[color:var(--primary)] bg-[color:var(--muted)]"
+                            : "border-border bg-surface hover:border-[color:var(--primary)]"
                         }
                         ${Boolean(disableReason) ? "opacity-50 cursor-not-allowed" : ""}`}
                       aria-pressed={selected}
@@ -714,16 +713,16 @@ export default function PollPage() {
                       <span
                         className={`mt-1 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${
                           selected
-                            ? "border-emerald-600 bg-emerald-600"
-                            : "border-gray-300 bg-white"
+                            ? "border-[color:var(--primary)] bg-[color:var(--primary)]"
+                            : "border-[color:var(--border)] bg-surface"
                         }`}
                         aria-hidden="true"
                       >
-                        {selected && <span className="h-2 w-2 rounded-full bg-white" />}
+                        {selected && <span className="h-2 w-2 rounded-full bg-[color:var(--on-primary)]" />}
                       </span>
 
                       {/* Texto */}
-                      <span className="flex-1 text-justify leading-relaxed text-gray-900">
+                      <span className="flex-1 text-justify leading-relaxed text-foreground">
                         {o.option_text}
                       </span>
                     </button>
@@ -736,7 +735,7 @@ export default function PollPage() {
               {/* Prévia da participação (chip) */}
               {selectedSingleOption && (
                 <div className="space-y-2">
-                  <div className="text-xs text-gray-600">Selecionada:</div>
+                  <div className="text-xs text-[color:var(--foreground-muted)]">Selecionada:</div>
                   <div className="flex flex-wrap gap-2">
                     <Chip>{optionTextById.get(selectedSingleOption) ?? selectedSingleOption}</Chip>
                   </div>
@@ -759,17 +758,17 @@ export default function PollPage() {
                     "Erro ao registrar participação."
                   );
                 }}
-                className="hidden md:block w-full px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                className="hidden md:block w-full px-4 py-3 rounded-xl bg-primary text-on-primary hover:brightness-95 transition
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                            active:scale-[0.99] disabled:opacity-50"
               >
                 Enviar participação
               </button>
 
               {/* CTA — MOBILE STICKY */}
-              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
+              <div className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
                 <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-[color:var(--foreground-muted)]">
                     {disableReason
                       ? disableReason
                       : selectedSingleOption
@@ -792,8 +791,8 @@ export default function PollPage() {
                         "Erro ao registrar participação."
                       );
                     }}
-                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30
+                    className="shrink-0 px-4 py-2 rounded-xl bg-primary text-on-primary hover:brightness-95 transition
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/30
                                active:scale-[0.99] disabled:opacity-50"
                   >
                     Enviar
@@ -804,7 +803,7 @@ export default function PollPage() {
           )}
         </div>
 
-        <div className="text-center text-xs flex items-center justify-center gap-2" style={{ color: "#8B8A8A" }}>
+        <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
           <Image src="/Logo_A.png" alt="Auditável" width={18} height={18} className="inline-block" />
           <span>Auditável — “O Brasil vota. Você confere.”</span>
         </div>
