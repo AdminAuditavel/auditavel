@@ -1,4 +1,4 @@
-//app/results/[id] /AttributesInviteClient.tsx
+//app/results/[id]/AttributesInviteClient.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,9 +6,10 @@ import AttributesInvite from "./AttributesInvite";
 
 type Props = {
   pollId: string;
+  forceShow?: boolean; // NOVO
 };
 
-export default function AttributesInviteClient({ pollId }: Props) {
+export default function AttributesInviteClient({ pollId, forceShow = false }: Props) {
   const [participantId, setParticipantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export default function AttributesInviteClient({ pollId }: Props) {
     <AttributesInvite
       participantId={participantId}
       pollId={pollId}
+      forceShow={forceShow}
     />
   );
 }
-
