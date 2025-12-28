@@ -330,7 +330,7 @@ export default function PollPage() {
     }
 
     showFeedback('Participação registrada com sucesso!', "success");
-    router.push(`/results/${safeId}`);
+    router.push(`/results/${safeId}?from_vote=1`);
   }
 
   // Chip (componente de UI)
