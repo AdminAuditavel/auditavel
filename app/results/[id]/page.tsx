@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
-import AttributesInviteClient from "./AttributesInviteClient";
+import AttributesGateClient from "./AttributesGateClient";
 
 export default async function ResultsPage({
   params,
@@ -229,7 +229,7 @@ export default async function ResultsPage({
               totalSubmissions={totalSubmissions}
             />
 
-            {showParticipantProfile && (<AttributesInviteClient pollId={safeId} forceShow />)}
+            <AttributesGateClient pollId={safeId} />
           </div>
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
@@ -340,7 +340,7 @@ export default async function ResultsPage({
               totalSubmissions={totalSubmissions}
             />
 
-            {showParticipantProfile && (<AttributesInviteClient pollId={safeId} forceShow />)}
+            <AttributesGateClient pollId={safeId} />
           </div>
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
@@ -419,7 +419,7 @@ export default async function ResultsPage({
             totalSubmissions={totalSubmissionsRanking}
           />
 
-          {showParticipantProfile && (<AttributesInviteClient pollId={safeId} forceShow />)}
+          <AttributesGateClient pollId={safeId} />
         </div>
 
         <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
