@@ -87,7 +87,7 @@ export default async function ResultsPage({
         aria-label="Voltar para a página inicial"
       >
         <Image
-          src="/Logo_A_transparent_tight.png"
+          src="/Logo_A-removebg-preview.png"
           alt="Auditável"
           width={36}
           height={24}
@@ -214,7 +214,7 @@ export default async function ResultsPage({
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
             <Image
-              src="/Logo_A_transparent_tight.png"
+              src="/Logo_A-removebg-preview.png"
               alt="Auditável"
               width={18}
               height={18}
@@ -320,7 +320,7 @@ export default async function ResultsPage({
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
             <Image
-              src="/Logo_A_transparent_tight.png"
+              src="/Logo_A-removebg-preview.png"
               alt="Auditável"
               width={18}
               height={18}
@@ -397,7 +397,7 @@ export default async function ResultsPage({
 
         <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
           <Image
-            src="/Logo_A_transparent_tight.png"
+            src="/Logo_A-removebg-preview.png"
             alt="Auditável"
             width={18}
             height={18}
