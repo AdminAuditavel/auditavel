@@ -8,8 +8,10 @@ import AttributesInviteClient from "./AttributesInviteClient";
 
 export default async function ResultsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }> | any;
+  searchParams?: { [key: string]: string | string[] | undefined };
 }) {
   const resolvedParams =
     params && typeof params.then === "function" ? await params : params;
@@ -24,6 +26,11 @@ export default async function ResultsPage({
   }
 
   const safeId = id.trim();
+
+  // Exibe perfil/atributos apenas quando veio do fluxo de voto/alteração
+  const fromVoteRaw = searchParams?.from_vote;
+  const fromVote = Array.isArray(fromVoteRaw) ? fromVoteRaw[0] : fromVoteRaw;
+  const showParticipantProfile = fromVote === "1";
 
   /* =======================
      POLL
@@ -64,7 +71,10 @@ export default async function ResultsPage({
         <p className="text-sm text-[color:var(--foreground-muted)]">
           Os resultados serão divulgados ao final da votação.
         </p>
-        <Link href={`/poll/${safeId}`} className="text-[color:var(--primary)] hover:underline">
+        <Link
+          href={`/poll/${safeId}`}
+          className="text-[color:var(--primary)] hover:underline"
+        >
           ← Voltar para a pesquisa
         </Link>
       </main>
@@ -78,7 +88,10 @@ export default async function ResultsPage({
 
   const Navigation = () => (
     <div className="flex justify-between items-center mb-4 text-sm">
-      <Link href={`/poll/${safeId}`} className="text-[color:var(--primary)] hover:underline">
+      <Link
+        href={`/poll/${safeId}`}
+        className="text-[color:var(--primary)] hover:underline"
+      >
         ← Voltar para Opções
       </Link>
       <Link
@@ -115,7 +128,11 @@ export default async function ResultsPage({
     totalSubmissions: number;
   }) => {
     const leftLabel =
-      status === "closed" ? "Resultado Final" : isPartial ? "Resultados parciais" : "";
+      status === "closed"
+        ? "Resultado Final"
+        : isPartial
+        ? "Resultados parciais"
+        : "";
 
     return (
       <div className="flex justify-between text-xs text-[color:var(--foreground-muted)]">
@@ -125,7 +142,8 @@ export default async function ResultsPage({
         <div className="text-right">
           {effectiveMaxVotes > 1 ? (
             <span>
-              Participantes: {totalParticipants} · Participações: {totalSubmissions}
+              Participantes: {totalParticipants} · Participações:{" "}
+              {totalSubmissions}
             </span>
           ) : (
             <span>Participantes: {totalParticipants}</span>
@@ -150,7 +168,9 @@ export default async function ResultsPage({
       .eq("poll_id", safeId);
 
     const totalSubmissions = votes?.length || 0;
-    const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id)).size;
+    const totalParticipants = new Set(
+      (votes ?? []).map((v) => v.participant_id)
+    ).size;
 
     const count: Record<string, number> = {};
     votes?.forEach((v) => {
@@ -209,7 +229,7 @@ export default async function ResultsPage({
               totalSubmissions={totalSubmissions}
             />
 
-            <AttributesInviteClient pollId={safeId} />
+            {showParticipantProfile && <AttributesInviteClient pollId={safeId} />}
           </div>
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
@@ -244,11 +264,16 @@ export default async function ResultsPage({
     const voteIds = (votes ?? []).map((v) => v.id);
 
     const { data: marks } = voteIds.length
-      ? await supabase.from("vote_options").select("option_id").in("vote_id", voteIds)
+      ? await supabase
+          .from("vote_options")
+          .select("option_id")
+          .in("vote_id", voteIds)
       : { data: [] as any[] };
 
     const totalSubmissions = votes?.length || 0;
-    const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id)).size;
+    const totalParticipants = new Set(
+      (votes ?? []).map((v) => v.participant_id)
+    ).size;
 
     const count: Record<string, number> = {};
     marks?.forEach((m: any) => {
@@ -276,9 +301,9 @@ export default async function ResultsPage({
             </div>
 
             <p className="text-sm text-[color:var(--foreground-muted)]">
-              Nesta pesquisa, cada participante pôde selecionar mais de uma opção.
-              Os percentuais abaixo representam a proporção de participações em que
-              cada opção foi marcada.
+              Nesta pesquisa, cada participante pôde selecionar mais de uma
+              opção. Os percentuais abaixo representam a proporção de
+              participações em que cada opção foi marcada.
             </p>
 
             <div className="space-y-4">
@@ -315,7 +340,7 @@ export default async function ResultsPage({
               totalSubmissions={totalSubmissions}
             />
 
-            <AttributesInviteClient pollId={safeId} />
+            {showParticipantProfile && <AttributesInviteClient pollId={safeId} />}
           </div>
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
@@ -372,7 +397,9 @@ export default async function ResultsPage({
                   <span className="text-foreground">
                     <strong>{index + 1}º</strong> — {row.option_text}
                   </span>
-                  <span className="text-[color:var(--foreground-muted)]">{row.score} pts</span>
+                  <span className="text-[color:var(--foreground-muted)]">
+                    {row.score} pts
+                  </span>
                 </div>
                 <div className="h-2 bg-surface2 rounded">
                   <div
@@ -392,7 +419,7 @@ export default async function ResultsPage({
             totalSubmissions={totalSubmissionsRanking}
           />
 
-          <AttributesInviteClient pollId={safeId} />
+          {showParticipantProfile && <AttributesInviteClient pollId={safeId} />}
         </div>
 
         <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
