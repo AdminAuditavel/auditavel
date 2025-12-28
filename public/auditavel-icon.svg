@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 360 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Auditável icon">
+  <title>Auditável icon</title>
+  <desc>Fingerprint with letter A — mono, uses currentColor</desc>
+
+  <!-- Fingerprint strokes (use currentColor with reduced opacity so 'A' stands out) -->
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" stroke-opacity="0.26">
+    <path d="M62 172c18-40 64-78 116-86 68-11 132 24 162 62" />
+    <path d="M46 220c20-34 72-72 130-84 74-14 152 24 184 72" />
+    <path d="M34 264c22-28 88-64 150-78 86-18 170 16 196 64" />
+    <path d="M30 312c26-18 100-48 166-62 94-20 196 6 220 52" />
+    <path d="M38 364c26-12 110-36 172-52 90-22 196 8 216 46" />
+    <path d="M84 420c24-8 96-24 170-40 86-18 196 2 212 30" />
+    <!-- inner rings -->
+    <path d="M120 200c12-12 40-28 80-28 48 0 84 22 104 42" stroke-width="10"/>
+    <path d="M140 240c8-8 32-18 64-18 38 0 68 18 84 34" stroke-width="10"/>
+    <path d="M156 280c6-6 26-12 48-12 30 0 52 14 64 26" stroke-width="10"/>
+    <path d="M172 312c4-4 18-8 36-8 24 0 42 10 52 20" stroke-width="10"/>
+    <path d="M184 340c2-2 12-4 24-4 16 0 28 6 34 12" stroke-width="10"/>
+  </g>
+
+  <!-- Large 'A' using even-odd fill to create inner hole (stylized) -->
+  <g transform="translate(0,0)">
+    <!-- Outer A shape -->
+    <path fill="currentColor" fill-rule="evenodd" d="
+      M180 110
+      L112 360
+      L152 360
+      L170 318
+      L210 318
+      L228 360
+      L268 360
+      L200 110
+      Z
+      M180 168
+      L152 260
+      L208 260
+      L180 168
+      Z
+    "/>
+
+    <!-- Optional slight white stroke to separate from fingerprint (keeps legible on busy backgrounds)
+         The stroke uses 0.08 white with mix-blend not required; can be removed if undesired -->
+    <path d="
+      M180 110
+      L112 360
+      L152 360
+      L170 318
+      L210 318
+      L228 360
+      L268 360
+      L200 110
+      Z" fill="none" stroke="rgba(255,255,255,0.06)" stroke-linejoin="round" stroke-width="6" />
+  </g>
+</svg>
