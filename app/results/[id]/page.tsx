@@ -1,4 +1,4 @@
-/app/results/[id]/page.tsx
+//app/results/[id]/page.tsx
 
 import Link from "next/link";
 import Image from "next/image";
