@@ -229,7 +229,7 @@ export default async function ResultsPage({
               totalSubmissions={totalSubmissions}
             />
 
-            {showParticipantProfile && <AttributesInviteClient pollId={safeId} />}
+            {showParticipantProfile && (<AttributesInviteClient pollId={safeId} forceShow />)}
           </div>
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
@@ -340,7 +340,7 @@ export default async function ResultsPage({
               totalSubmissions={totalSubmissions}
             />
 
-            {showParticipantProfile && <AttributesInviteClient pollId={safeId} />}
+            {showParticipantProfile && (<AttributesInviteClient pollId={safeId} forceShow />)}
           </div>
 
           <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
@@ -419,7 +419,7 @@ export default async function ResultsPage({
             totalSubmissions={totalSubmissionsRanking}
           />
 
-          {showParticipantProfile && <AttributesInviteClient pollId={safeId} />}
+          {showParticipantProfile && (<AttributesInviteClient pollId={safeId} forceShow />)}
         </div>
 
         <div className="text-center text-xs flex items-center justify-center gap-2 text-[color:var(--foreground-muted)]">
