@@ -113,19 +113,13 @@ export default async function ResultsPage({
     </div>
   );
 
-  // Footer compartilhado para exibir "Resultados parciais" / "Resultado Final"
+  // Footer compartilhado: exibir "Resultados parciais" / "Resultado Final"
   const ResultsFooter = ({
     isPartial,
     status,
-    effectiveMaxVotes,
-    totalParticipants,
-    totalSubmissions,
   }: {
     isPartial: boolean;
     status: string;
-    effectiveMaxVotes: number;
-    totalParticipants: number;
-    totalSubmissions: number;
   }) => {
     const leftLabel =
       status === "closed"
@@ -133,22 +127,14 @@ export default async function ResultsPage({
         : isPartial
         ? "Resultados parciais"
         : "";
-
+  
     return (
       <div className="flex justify-between text-xs text-[color:var(--foreground-muted)]">
         <div className="text-left">
           {leftLabel ? <span>{leftLabel}</span> : null}
         </div>
-        <div className="text-right">
-          {effectiveMaxVotes > 1 ? (
-            <span>
-              Participantes: {totalParticipants} · Participações:{" "}
-              {totalSubmissions}
-            </span>
-          ) : (
-            <span>Participantes: {totalParticipants}</span>
-          )}
-        </div>
+        {/* removido: Participantes/Participações */}
+        <div />
       </div>
     );
   };
@@ -221,13 +207,7 @@ export default async function ResultsPage({
               );
             })}
 
-            <ResultsFooter
-              isPartial={isPartial}
-              status={status}
-              effectiveMaxVotes={effectiveMaxVotes}
-              totalParticipants={totalParticipants}
-              totalSubmissions={totalSubmissions}
-            />
+            <ResultsFooter isPartial={isPartial} status={status} />
 
             <AttributesGateClient pollId={safeId} />
           </div>
@@ -309,7 +289,7 @@ export default async function ResultsPage({
             <div className="space-y-4">
               {sortedOptions.map((o) => {
                 const pct = totalSubmissions
-                  ? Math.round((o.marks / totalSubmissions) * 100)
+                  ? Math.round((o.marks / totalParticipants) * 100)
                   : 0;
 
                 return (
@@ -317,7 +297,7 @@ export default async function ResultsPage({
                     <div className="flex justify-between text-sm">
                       <span className="text-foreground">{o.option_text}</span>
                       <span className="text-[color:var(--foreground-muted)]">
-                        {o.marks} marcas ({pct}%)
+                        {pct}%
                       </span>
                     </div>
 
@@ -332,13 +312,7 @@ export default async function ResultsPage({
               })}
             </div>
 
-            <ResultsFooter
-              isPartial={isPartial}
-              status={status}
-              effectiveMaxVotes={effectiveMaxVotes}
-              totalParticipants={totalParticipants}
-              totalSubmissions={totalSubmissions}
-            />
+            <ResultsFooter isPartial={isPartial} status={status} />
 
             <AttributesGateClient pollId={safeId} />
           </div>
@@ -411,13 +385,7 @@ export default async function ResultsPage({
             );
           })}
 
-          <ResultsFooter
-            isPartial={isPartial}
-            status={status}
-            effectiveMaxVotes={effectiveMaxVotes}
-            totalParticipants={totalParticipantsRanking}
-            totalSubmissions={totalSubmissionsRanking}
-          />
+          <ResultsFooter isPartial={isPartial} status={status} />
 
           <AttributesGateClient pollId={safeId} />
         </div>
