@@ -42,17 +42,29 @@ function toDatetimeLocal(value?: string | null) {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
+
   const pad = (n: number) => String(n).padStart(2, "0");
+
   const yyyy = d.getFullYear();
   const mm = pad(d.getMonth() + 1);
   const dd = pad(d.getDate());
   const hh = pad(d.getHours());
   const mi = pad(d.getMinutes());
+
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 }
 
 function nowDatetimeLocal() {
-  return toDatetimeLocal(new Date().toISOString());
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 }
 
 function formatPtBrDateTime(value: string) {
@@ -62,7 +74,7 @@ function formatPtBrDateTime(value: string) {
 }
 
 /**
- * Converte o valor do input `datetime-local` (YYYY-MM-DDTHH:mm) para ISO UTC.
+ * 3) datetime-local "YYYY-MM-DDTHH:mm" (LOCAL) -> ISO UTC ("...Z")
  * - "" -> null
  * - inválido -> null
  */
@@ -70,10 +82,21 @@ function datetimeLocalToISOOrNull(value: string): string | null {
   const s = (value ?? "").trim();
   if (!s) return null;
 
-  const d = new Date(s);
+  // Parse manual para garantir que é interpretado como horário LOCAL,
+  // evitando variações de engine com new Date("YYYY-MM-DDTHH:mm")
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(s);
+  if (!m) return null;
+
+  const year = Number(m[1]);
+  const month = Number(m[2]) - 1; // 0-based
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+
+  const d = new Date(year, month, day, hour, minute, 0, 0); // LOCAL
   if (Number.isNaN(d.getTime())) return null;
 
-  return d.toISOString();
+  return d.toISOString(); // UTC (Z)
 }
 
 function isValidDatetimeLocal(value: string) {
