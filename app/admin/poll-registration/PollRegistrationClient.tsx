@@ -102,7 +102,17 @@ function datetimeLocalToISOOrNull(value: string): string | null {
 function isValidDatetimeLocal(value: string) {
   const s = (value ?? "").trim();
   if (!s) return false;
-  const d = new Date(s);
+
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(s);
+  if (!m) return false;
+
+  const year = Number(m[1]);
+  const month = Number(m[2]) - 1;
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+
+  const d = new Date(year, month, day, hour, minute, 0, 0); // LOCAL
   return !Number.isNaN(d.getTime());
 }
 
