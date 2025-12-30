@@ -186,16 +186,14 @@ export default async function ResultsPage({
 
             {sortedOptions.map((o) => {
               const pct = totalSubmissions
-                ? Math.round((o.votes / totalSubmissions) * 100)
+                ? Math.round((o.votes / totalParticipants) * 100)
                 : 0;
 
               return (
                 <div key={o.id} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-foreground">{o.option_text}</span>
-                    <span className="text-[color:var(--foreground-muted)]">
-                      {o.votes} votos ({pct}%)
-                    </span>
+                    <span className="text-[color:var(--foreground-muted)]">{pct}%</span>
                   </div>
                   <div className="h-2 bg-surface2 rounded">
                     <div
