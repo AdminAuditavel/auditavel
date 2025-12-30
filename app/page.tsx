@@ -740,19 +740,11 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
                 {/* POSIÇÕES — 40% */}
                 {featuredShowResults && featuredBars && (
                   <div className="md:w-2/5">
-                    {/* TÍTULO DO PÓDIO (reduz confusão de “clicar para votar”) */}
-                    <div className="mb-2 select-none">
-                      <div className="text-xs font-semibold text-[color:var(--foreground-muted)]">
-                        {p.voting_type === "multiple"
-                          ? "Mais escolhidos"
-                          : featuredBars.isRanking
-                          ? "Top 3 (ranking)"
-                          : "Mais votados"}
-                      </div>
-                
-                      <div className="text-[11px] text-[color:var(--foreground-muted)]">
-                        {p.status === "closed" ? "Resultado" : "Prévia de resultados"}
-                      </div>
+                    {/* BADGE “P Ó D I O” centralizado */}
+                    <div className="flex justify-center mb-3 select-none">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border border-border bg-orange-100 text-orange-900">
+                        Pódio
+                      </span>
                     </div>
                 
                     {featuredBars.topSingle.length > 0 || featuredBars.topRanking.length > 0 ? (
