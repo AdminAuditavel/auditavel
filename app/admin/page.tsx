@@ -93,7 +93,7 @@ export default async function AdminPage(props: {
 
               {/* NOVO */}
               <th className="px-4 py-3 text-left font-semibold">Editar</th>
-
+              <th className="px-4 py-3 text-left font-semibold">Resultados</th>
               <th className="px-4 py-3 text-left font-semibold">Auditoria</th>
               <th className="px-4 py-3 text-left font-semibold">Criada em</th>
             </tr>
@@ -149,10 +149,21 @@ export default async function AdminPage(props: {
                         )}&poll_id=${encodeURIComponent(poll.id)}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
-                        Abrir Formulário
+                        Formulário
                       </Link>
                     </td>
 
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/results?token=${encodeURIComponent(
+                          token ?? ""
+                        )}&poll_id=${encodeURIComponent(poll.id)}`}
+                        className="text-sm text-emerald-600 hover:underline"
+                      >
+                        Resultados
+                      </Link>
+                    </td>
+                    
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/audit?token=${encodeURIComponent(
@@ -160,7 +171,7 @@ export default async function AdminPage(props: {
                         )}&poll_id=${encodeURIComponent(poll.id)}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
-                        Ver auditoria
+                        Auditoria
                       </Link>
                     </td>
 
