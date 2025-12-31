@@ -3,10 +3,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
-export async function GET(
-  req: NextRequest,
-  context: { params: { id: string } }
-) {
+type Ctx = {
+  params: Promise<{ id: string }> | { id: string };
+};
+
+export async function GET(req: NextRequest, context: Ctx) {
   try {
     // =========================
     // AUTH (token via query)
@@ -16,7 +17,15 @@ export async function GET(
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const pollId = (context?.params?.id || "").trim();
+    // =========================
+    // PARAMS (compat: Promise | plain)
+    // =========================
+    const resolvedParams =
+      context?.params && typeof (context.params as any).then === "function"
+        ? await (context.params as Promise<{ id: string }>)
+        : (context.params as { id: string });
+
+    const pollId = (resolvedParams?.id || "").trim();
     if (!pollId) {
       return NextResponse.json({ error: "invalid_poll_id" }, { status: 400 });
     }
@@ -36,7 +45,10 @@ export async function GET(
       return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
 
-    const votingType = poll.voting_type as "single" | "multiple" | "ranking";
+    const votingType = (poll.voting_type || "single") as
+      | "single"
+      | "multiple"
+      | "ranking";
 
     // =========================
     // OPTIONS
@@ -73,12 +85,10 @@ export async function GET(
       (votes ?? []).map((v: any) => v.participant_id)
     ).size;
 
-    // map vote_id -> participant_id
+    // vote_id -> participant_id
     const participantByVoteId = new Map<string, string>();
     for (const v of votes ?? []) {
-      if (v?.id && v?.participant_id) {
-        participantByVoteId.set(v.id, v.participant_id);
-      }
+      if (v?.id && v?.participant_id) participantByVoteId.set(v.id, v.participant_id);
     }
 
     // =========================
@@ -90,11 +100,10 @@ export async function GET(
 
       for (const v of votes ?? []) {
         if (!v.option_id) continue;
+
         count[v.option_id] = (count[v.option_id] || 0) + 1;
 
-        if (!uniqueByOption.has(v.option_id)) {
-          uniqueByOption.set(v.option_id, new Set());
-        }
+        if (!uniqueByOption.has(v.option_id)) uniqueByOption.set(v.option_id, new Set());
         uniqueByOption.get(v.option_id)!.add(v.participant_id);
       }
 
@@ -103,9 +112,7 @@ export async function GET(
           .map((o: any) => {
             const unique = uniqueByOption.get(o.id)?.size || 0;
             const pctParticipants =
-              totalParticipants > 0
-                ? Math.round((unique / totalParticipants) * 100)
-                : 0;
+              totalParticipants > 0 ? Math.round((unique / totalParticipants) * 100) : 0;
 
             return {
               option_id: o.id,
@@ -150,17 +157,12 @@ export async function GET(
       for (const m of marks ?? []) {
         if (!m.option_id || !m.vote_id) continue;
 
-        // total de marcas
-        marksByOption[m.option_id] =
-          (marksByOption[m.option_id] || 0) + 1;
+        marksByOption[m.option_id] = (marksByOption[m.option_id] || 0) + 1;
 
-        // votos únicos (por participante)
         const participantId = participantByVoteId.get(m.vote_id);
         if (!participantId) continue;
 
-        if (!uniqueByOption.has(m.option_id)) {
-          uniqueByOption.set(m.option_id, new Set());
-        }
+        if (!uniqueByOption.has(m.option_id)) uniqueByOption.set(m.option_id, new Set());
         uniqueByOption.get(m.option_id)!.add(participantId);
       }
 
@@ -177,14 +179,9 @@ export async function GET(
               option_text: o.option_text,
               unique_voters: unique,
               pct_participants:
-                totalParticipants > 0
-                  ? Math.round((unique / totalParticipants) * 100)
-                  : 0,
+                totalParticipants > 0 ? Math.round((unique / totalParticipants) * 100) : 0,
               marks: marksCount,
-              pct_marks:
-                totalMarks > 0
-                  ? Math.round((marksCount / totalMarks) * 100)
-                  : 0,
+              pct_marks: totalMarks > 0 ? Math.round((marksCount / totalMarks) * 100) : 0,
             };
           })
           .sort((a: any, b: any) => b.unique_voters - a.unique_voters) || [];
@@ -199,7 +196,6 @@ export async function GET(
     // =========================
     // RANKING (admin detalhado)
     // =========================
-    // vote_rankings: vote_id, option_id, ranking
     const voteIds = (votes ?? []).map((v: any) => v.id).filter(Boolean);
 
     const { data: rankings, error: rankError } = voteIds.length
@@ -223,17 +219,14 @@ export async function GET(
     for (const r of rankings ?? []) {
       if (!r.option_id || !r.vote_id) continue;
 
-      sumByOption[r.option_id] =
-        (sumByOption[r.option_id] || 0) + Number(r.ranking || 0);
-      countByOption[r.option_id] =
-        (countByOption[r.option_id] || 0) + 1;
+      const rk = Number(r.ranking || 0);
+      sumByOption[r.option_id] = (sumByOption[r.option_id] || 0) + rk;
+      countByOption[r.option_id] = (countByOption[r.option_id] || 0) + 1;
 
       const participantId = participantByVoteId.get(r.vote_id);
       if (!participantId) continue;
 
-      if (!uniqueByOption.has(r.option_id)) {
-        uniqueByOption.set(r.option_id, new Set());
-      }
+      if (!uniqueByOption.has(r.option_id)) uniqueByOption.set(r.option_id, new Set());
       uniqueByOption.get(r.option_id)!.add(participantId);
     }
 
@@ -242,17 +235,14 @@ export async function GET(
         .map((o: any) => {
           const appearances = countByOption[o.id] || 0;
           const unique = uniqueByOption.get(o.id)?.size || 0;
-          const avgRank =
-            appearances > 0 ? sumByOption[o.id] / appearances : null;
+          const avgRank = appearances > 0 ? sumByOption[o.id] / appearances : null;
 
           return {
             option_id: o.id,
             option_text: o.option_text,
             unique_voters: unique,
             pct_participants:
-              totalParticipants > 0
-                ? Math.round((unique / totalParticipants) * 100)
-                : 0,
+              totalParticipants > 0 ? Math.round((unique / totalParticipants) * 100) : 0,
             appearances,
             avg_rank: avgRank !== null ? Number(avgRank.toFixed(2)) : null,
           };
