@@ -1,11 +1,13 @@
-//app/api/admin/results/[id]/route.ts
+// app/api/admin/results/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // token via query (mesmo padrão do resto do admin)
@@ -14,7 +16,10 @@ export async function GET(
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const pollId = (params?.id || "").trim();
+    // ✅ Next (no seu build) tipa params como Promise<{id:string}>
+    const { id } = await context.params;
+    const pollId = (id || "").trim();
+
     if (!pollId) {
       return NextResponse.json({ error: "invalid_poll_id" }, { status: 400 });
     }
