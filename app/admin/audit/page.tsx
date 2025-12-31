@@ -3,6 +3,7 @@
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import AdminResultsPanel from "./AdminResultsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function AdminAuditPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const token = searchParams?.token;
-  const pollId = searchParams?.poll_id;
+  const pollId = (searchParams?.poll_id || "").trim();
 
   if (token !== process.env.ADMIN_TOKEN) {
     redirect("/");
@@ -62,9 +63,7 @@ export default async function AdminAuditPage(props: {
   ======================= */
   let query = supabase
     .from("admin_audit_logs")
-    .select(
-      "id, action, old_value, new_value, created_at, poll_id"
-    )
+    .select("id, action, old_value, new_value, created_at, poll_id")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -85,26 +84,19 @@ export default async function AdminAuditPage(props: {
   /* =======================
      MAPEAR TÍTULOS DAS POLLS
   ======================= */
-  const pollIds = Array.from(
-    new Set(logs?.map(l => l.poll_id).filter(Boolean))
-  ) as string[];
+  const pollIds = Array.from(new Set((logs ?? []).map((l) => l.poll_id).filter(Boolean))) as string[];
 
   let pollMap: PollMap = {};
 
   if (pollIds.length > 0) {
-    const { data: polls } = await supabase
-      .from("polls")
-      .select("id, title")
-      .in("id", pollIds);
+    const { data: polls } = await supabase.from("polls").select("id, title").in("id", pollIds);
 
-    polls?.forEach(p => {
+    polls?.forEach((p: any) => {
       pollMap[p.id] = p.title;
     });
   }
 
-  const pageTitle = pollId
-    ? "Auditoria da pesquisa"
-    : "Admin — Auditoria";
+  const pageTitle = pollId ? "Auditoria da pesquisa" : "Admin — Auditoria";
 
   /* =======================
      RENDER
@@ -113,64 +105,49 @@ export default async function AdminAuditPage(props: {
     <main className="p-6 max-w-5xl mx-auto space-y-6">
       {/* HEADER */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-emerald-700">
-          {pageTitle}
-        </h1>
+        <h1 className="text-2xl font-bold text-emerald-700">{pageTitle}</h1>
 
         <div className="flex gap-4 text-sm">
-          <Link
-            href={`/admin?token=${token}`}
-            className="text-emerald-600 hover:underline"
-          >
+          <Link href={`/admin?token=${encodeURIComponent(token ?? "")}`} className="text-emerald-600 hover:underline">
             Admin
           </Link>
-          <Link
-            href="/"
-            className="text-emerald-600 hover:underline"
-          >
+
+          <Link href="/" className="text-emerald-600 hover:underline">
             Site
           </Link>
         </div>
       </div>
 
-      {/* TABELA */}
+      {/* NOVO: RESULTADOS DETALHADOS (somente quando vier poll_id) */}
+      {pollId ? (
+        <AdminResultsPanel token={String(token || "")} pollId={pollId} />
+      ) : null}
+
+      {/* TABELA DE AUDITORIA */}
       <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold">
-                Data
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                Pesquisa
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                Ação
-              </th>
-              <th className="px-4 py-3 text-left font-semibold">
-                Alteração
-              </th>
+              <th className="px-4 py-3 text-left font-semibold">Data</th>
+              <th className="px-4 py-3 text-left font-semibold">Pesquisa</th>
+              <th className="px-4 py-3 text-left font-semibold">Ação</th>
+              <th className="px-4 py-3 text-left font-semibold">Alteração</th>
             </tr>
           </thead>
 
           <tbody>
             {logs && logs.length > 0 ? (
-              logs.map(log => {
+              logs.map((log: AuditLog) => {
                 const badge = getActionBadge(log.action);
 
                 return (
-                  <tr
-                    key={log.id}
-                    className="border-b last:border-b-0 hover:bg-gray-50"
-                  >
+                  <tr key={log.id} className="border-b last:border-b-0 hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {new Date(log.created_at).toLocaleString("pt-BR")}
                     </td>
 
                     <td className="px-4 py-3 font-medium">
-                      {log.poll_id && pollMap[log.poll_id]
-                        ? pollMap[log.poll_id]
-                        : "—"}
+                      {log.poll_id && pollMap[log.poll_id] ? pollMap[log.poll_id] : "—"}
                     </td>
 
                     <td className="px-4 py-3">
@@ -182,16 +159,10 @@ export default async function AdminAuditPage(props: {
                     </td>
 
                     <td className="px-4 py-3 text-gray-700">
-                      {log.old_value !== null &&
-                      log.new_value !== null ? (
+                      {log.old_value !== null && log.new_value !== null ? (
                         <>
-                          <span className="text-gray-500">
-                            {log.old_value}
-                          </span>{" "}
-                          →{" "}
-                          <span className="font-semibold">
-                            {log.new_value}
-                          </span>
+                          <span className="text-gray-500">{log.old_value}</span> →{" "}
+                          <span className="font-semibold">{log.new_value}</span>
                         </>
                       ) : (
                         "—"
@@ -202,10 +173,7 @@ export default async function AdminAuditPage(props: {
               })
             ) : (
               <tr>
-                <td
-                  colSpan={4}
-                  className="px-4 py-6 text-center text-gray-500"
-                >
+                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
                   Nenhum registro de auditoria encontrado.
                 </td>
               </tr>
