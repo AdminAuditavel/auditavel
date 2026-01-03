@@ -188,10 +188,10 @@ export default function PollPage() {
 
     const refreshParticipation = async () => {
       const pidLocal = pid;
-
-      // se a identidade não estiver disponível, não tenta consultar
+    
       if (!pidLocal) return;
-
+    
+      // 1) Busca somente o último voto (1 chamada). Sem HEAD.
       const { data: lastVote } = await supabase
         .from('votes')
         .select('id, created_at, updated_at')
@@ -200,37 +200,52 @@ export default function PollPage() {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-
-      const { count } = await supabase
-        .from('votes')
-        .select('id', { count: 'exact', head: true })
-        .eq('poll_id', safeId)
-        .eq('participant_id', pidLocal);
-
+    
       if (!mounted) return;
-
-      const used = typeof count === 'number' ? count : 0;
-      setVotesUsed(used);
-      setHasParticipation(used > 0);
-
-      if (!lastVote || voteCooldownSeconds <= 0) {
+    
+      // 2) Se existe lastVote, já sabemos que houve participação.
+      //    Para max_votes_per_user = 1, votesUsed pode ser tratado como 1.
+      //    Para max_votes_per_user > 1, você tem duas opções:
+      //      (A) continuar sem count e só tratar "hasParticipation" + cooldown (rápido)
+      //      (B) fazer count SOB DEMANDA (quando precisar bloquear/enforçar limite)
+      const maxVotes = typeof poll?.max_votes_per_user === 'number' ? poll.max_votes_per_user : null;
+    
+      if (!lastVote) {
+        setVotesUsed(0);
+        setHasParticipation(false);
         setCooldownRemaining(0);
         return;
       }
-
+    
+      setHasParticipation(true);
+    
+      // Heurística segura para o seu caso mais comum (voto único)
+      if (maxVotes === 1) {
+        setVotesUsed(1);
+      } else {
+        // Sem count aqui para não gerar latência no carregamento.
+        // Se você realmente precisa do número exato (multi-participação),
+        // calcule depois (ex.: ao clicar em "Votar").
+        setVotesUsed(1);
+      }
+    
+      if (voteCooldownSeconds <= 0) {
+        setCooldownRemaining(0);
+        return;
+      }
+    
       const createdAtMs = parseDbTs(lastVote.created_at);
       const updatedAtMs = parseDbTs(lastVote.updated_at);
-
+    
       let lastActivityMs = Math.max(createdAtMs, updatedAtMs, 0);
-
       if (!lastActivityMs) {
         setCooldownRemaining(0);
         return;
       }
-
+    
       const nowMs = Date.now();
       if (lastActivityMs > nowMs) lastActivityMs = nowMs;
-
+    
       const elapsedSeconds = Math.floor((nowMs - lastActivityMs) / 1000);
       const remaining = Math.max(0, voteCooldownSeconds - elapsedSeconds);
       setCooldownRemaining(remaining);
