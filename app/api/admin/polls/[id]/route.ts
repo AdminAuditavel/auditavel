@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
-import { isAdminRequest } from "@/lib/admin-auth";
 
-export async function PATCH(req: NextRequest, context: any) {
-  // =========================
-  // AUTH (token OU sessão)
-  // =========================
+function assertAdmin(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
-  const admin = await isAdminRequest({ token });
-
-  if (!admin.ok) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  return !!token && token === process.env.ADMIN_TOKEN;
+}
 
 /**
  * Campos alinhados com a sua tabela atual:
