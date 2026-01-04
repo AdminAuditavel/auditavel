@@ -1,10 +1,12 @@
 //app/api/admin/polls/[id]/options/[optionId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { isAdminRequest } from "@/lib/admin-auth";
 
-function assertAdmin(req: NextRequest) {
+async function isAdmin(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
-  return !!token && token === process.env.ADMIN_TOKEN;
+  const admin = await isAdminRequest({ token });
+  return admin.ok;
 }
 
 export async function PUT(
@@ -12,7 +14,7 @@ export async function PUT(
   context: { params: Promise<{ id: string; optionId: string }> }
 ) {
   try {
-    if (!assertAdmin(req)) {
+    if (!(await assertAdmin(req))) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -52,7 +54,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string; optionId: string }> }
 ) {
   try {
-    if (!assertAdmin(req)) {
+    if (!(await assertAdmin(req))) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
