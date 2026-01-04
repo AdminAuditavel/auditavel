@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 /**
  * Normaliza valores vindos do form (datetime-local):
@@ -54,9 +55,13 @@ function parseDateOrNull(value: unknown, fieldName: string): Date | null {
 
 export async function POST(req: NextRequest) {
   try {
-    // token via query (mesmo padrão do resto do admin)
+    // =========================
+    // AUTH (token OU sessão)
+    // =========================
     const token = req.nextUrl.searchParams.get("token");
-    if (!token || token !== process.env.ADMIN_TOKEN) {
+    
+    const admin = await isAdminRequest({ token });
+    if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
