@@ -5,6 +5,7 @@ import Link from "next/link";
 import PollStatusSelect from "./PollStatusSelect";
 import PollVisibilityToggle from "./PollVisibilityToggle";
 import { redirect } from "next/navigation";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +21,11 @@ export default async function AdminPage(props: {
   searchParams: Promise<{ token?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const token = searchParams?.token;
+    const token = typeof searchParams?.token === "string" ? searchParams.token : null;
 
-  if (token !== process.env.ADMIN_TOKEN) {
-    redirect("/");
+  const admin = await isAdminRequest({ token });
+  if (!admin.ok) {
+    redirect("/admin/login?next=/admin");
   }
 
   function getPublicVisibility(
