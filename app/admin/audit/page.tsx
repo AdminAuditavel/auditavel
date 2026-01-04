@@ -4,6 +4,7 @@ import { supabaseServer as supabase } from "@/lib/supabase-server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminResultsPanel from "./AdminResultsPanel";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -54,9 +55,13 @@ export default async function AdminAuditPage(props: {
   const token = searchParams?.token;
   const pollId = (searchParams?.poll_id || "").trim();
 
-  if (token !== process.env.ADMIN_TOKEN) {
-    redirect("/");
-  }
+  const token =
+     typeof searchParams?.token === "string" ? searchParams.token : null;
+   
+   const admin = await isAdminRequest({ token });
+   if (!admin.ok) {
+     redirect("/admin/login?next=/admin/audit");
+   }
 
   /* =======================
      BUSCAR LOGS
