@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 function assertAdmin(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
-  return !!token && token === process.env.ADMIN_TOKEN;
+// =========================
+// AUTH (token OU sessão)
+// =========================
+const token = req.nextUrl.searchParams.get("token");
+
+const admin = await isAdminRequest({ token });
+if (!admin.ok) {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 }
 
 /**
