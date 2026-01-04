@@ -4,6 +4,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,8 @@ export default async function AdminResultsPage(props: {
   const token = sp?.token;
   const pollId = (sp?.poll_id ?? "").trim();
 
-  if (token !== process.env.ADMIN_TOKEN) redirect("/");
+  const admin = await isAdminRequest({ token: typeof token === "string" ? token : null });
+  if (!admin.ok) redirect("/admin/login?next=/admin/results");
   if (!pollId) {
     return (
       <main className="p-6 max-w-4xl mx-auto">
