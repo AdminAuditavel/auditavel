@@ -14,9 +14,9 @@ export async function PUT(
   context: { params: Promise<{ id: string; optionId: string }> }
 ) {
   try {
-    if (!(await assertAdmin(req))) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+   if (!(await isAdmin(req))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
     const { id: pollId, optionId } = await context.params;
 
@@ -54,7 +54,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string; optionId: string }> }
 ) {
   try {
-    if (!(await assertAdmin(req))) {
+    if (!(await isAdmin(req))) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
