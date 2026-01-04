@@ -51,17 +51,17 @@ function getActionBadge(action: string) {
 export default async function AdminAuditPage(props: {
   searchParams: Promise<{ token?: string; poll_id?: string }>;
 }) {
-  const searchParams = await props.searchParams;
-  const token = searchParams?.token;
-  const pollId = (searchParams?.poll_id || "").trim();
+   const searchParams = await props.searchParams;
 
   const token =
-     typeof searchParams?.token === "string" ? searchParams.token : null;
-   
-   const admin = await isAdminRequest({ token });
-   if (!admin.ok) {
-     redirect("/admin/login?next=/admin/audit");
-   }
+    typeof searchParams?.token === "string" ? searchParams.token : null;
+
+  const pollId = String(searchParams?.poll_id ?? "").trim();
+
+  const admin = await isAdminRequest({ token });
+  if (!admin.ok) {
+    redirect("/admin/login?next=/admin/audit");
+  }
 
   /* =======================
      BUSCAR LOGS
