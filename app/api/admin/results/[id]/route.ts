@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 type Ctx = {
   params: Promise<{ id: string }> | { id: string };
@@ -10,10 +11,12 @@ type Ctx = {
 export async function GET(req: NextRequest, context: Ctx) {
   try {
     // =========================
-    // AUTH (token via query)
+    // AUTH (token OU sessão)
     // =========================
     const token = req.nextUrl.searchParams.get("token");
-    if (!token || token !== process.env.ADMIN_TOKEN) {
+
+    const admin = await isAdminRequest({ token });
+    if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
