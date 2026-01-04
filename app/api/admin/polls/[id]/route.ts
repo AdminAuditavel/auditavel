@@ -77,7 +77,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!assertAdmin(req)) {
+    if (!(await assertAdmin(req))) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -118,7 +118,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!assertAdmin(req)) {
+    if (!(await assertAdmin(req))) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
