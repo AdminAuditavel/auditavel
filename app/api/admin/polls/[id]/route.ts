@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { isAdminRequest } from "@/lib/admin-auth";
 
-function assertAdmin(req: NextRequest) {
+async function assertAdmin(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
-  return !!token && token === process.env.ADMIN_TOKEN;
+  const admin = await isAdminRequest({ token });
+  return admin.ok;
 }
 
 /**
