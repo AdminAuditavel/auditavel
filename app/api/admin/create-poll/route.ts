@@ -1,8 +1,8 @@
-//app/api/admin/create-poll/route.ts
+// app/api/admin/create-poll/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
-import { isAdminRequest } from "@/lib/admin-auth";
+import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando o supabaseServer para SSR
+import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
 
 /**
  * Normaliza valores vindos do form (datetime-local):
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     // AUTH (token OU sessão)
     // =========================
         
+    // Verificando se o usuário tem permissões de admin via cookies
     const admin = await isAdminRequest();
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -189,7 +190,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Obs: estamos mantendo seu shape atual, só inserindo
+    // Inserção de pesquisa no banco
     const { data, error } = await supabase
       .from("polls")
       .insert({
