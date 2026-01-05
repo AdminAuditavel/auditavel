@@ -1,3 +1,4 @@
+// app/auth/callback/AuthCallbackClient.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -27,7 +28,8 @@ export default function AuthCallbackClient() {
 
       const access_token = hp.get("access_token");
       const refresh_token = hp.get("refresh_token");
-      const error_description = hp.get("error_description") || hp.get("error");
+      const error_description =
+        hp.get("error_description") || hp.get("error") || null;
 
       if (error_description) {
         router.replace(
@@ -43,8 +45,20 @@ export default function AuthCallbackClient() {
         });
 
         if (error) {
-          router.replace(`/admin/login?error=${encodeURIComponent(error.message)}`);
+          router.replace(
+            `/admin/login?error=${encodeURIComponent(error.message)}`
+          );
           return;
+        }
+
+        // (debug temporário) confirma user após setSession
+        // Remova quando estabilizar.
+        try {
+          const { data } = await supabase.auth.getUser();
+          // eslint-disable-next-line no-console
+          console.log("CALLBACK_user_after_setSession", data?.user?.email);
+        } catch {
+          // ignore
         }
 
         // Remove tokens da URL (segurança)
@@ -53,6 +67,9 @@ export default function AuthCallbackClient() {
           document.title,
           window.location.pathname + window.location.search
         );
+
+        // Força revalidação no App Router (ajuda SSR ler cookies)
+        router.refresh();
       }
 
       const next = safeNext(sp.get("next"));
