@@ -95,15 +95,30 @@ export default async function AdminLoginPage(props: {
       email,
       options: { emailRedirectTo: redirectTo },
     });
-
+    
     if (error) {
+      const anyErr = error as any;
+    
+      // Log completo no servidor (Vercel logs)
+      console.log("OTP_ERROR_FULL", {
+        name: anyErr?.name,
+        message: anyErr?.message,
+        status: anyErr?.status,
+        code: anyErr?.code,
+        cause: anyErr?.cause,
+      });
+    
+      // Mostra mais sinal no UI (sem depender só da message)
+      const packed = JSON.stringify({
+        m: anyErr?.message,
+        s: anyErr?.status,
+        c: anyErr?.code,
+      });
+    
       redirect(
-        `/admin/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`
+        `/admin/login?error=${encodeURIComponent(packed)}&next=${encodeURIComponent(next)}`
       );
     }
-
-    redirect(`/admin/login?next=${encodeURIComponent(next)}&error=sent`);
-  }
 
   const error = typeof searchParams?.error === "string" ? searchParams.error : "";
 
