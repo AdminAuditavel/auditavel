@@ -1,10 +1,11 @@
 // app/admin/results/page.tsx
+
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
-import { getResults } from "@/lib/getResults";
+import { supabaseServer } from "@/lib/supabase-server"; // Certifique-se de importar a função corretamente
 import { isAdminRequest } from "@/lib/admin-auth";
+import { getResults } from "@/lib/getResults";  // Se necessário para o tipo de votação "ranking"
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,9 @@ export default async function AdminResultsPage(props: {
       </main>
     );
   }
+
+  // Garantir que o cliente Supabase seja instanciado corretamente
+  const supabase = supabaseServer(); // instanciando o cliente corretamente
 
   const { data: poll, error: pollError } = await supabase
     .from("polls")
