@@ -23,7 +23,7 @@ export default async function AdminPage(props: {
   const searchParams = await props.searchParams;
   const token = typeof searchParams?.token === "string" ? searchParams.token : null;
 
-  const admin = await isAdminRequest({ token });
+  const admin = await isAdminRequest();
   if (!admin.ok) {
     // ALTERAÇÃO NECESSÁRIA: evita loop com next=/admin
     redirect("/admin/login");
