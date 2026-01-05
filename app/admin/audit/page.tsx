@@ -1,4 +1,4 @@
-import { supabaseServer } from "@/lib/supabase-server"; // Importação do cliente
+import { supabaseServer } from "@/lib/supabase-server"; // Corrigido para instanciar a função corretamente
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminResultsPanel from "./AdminResultsPanel";
@@ -51,6 +51,9 @@ export default async function AdminAuditPage(props: {
   if (!admin.ok) {
     redirect("/admin/login?next=/admin/audit");
   }
+
+  // Instanciando o cliente supabase corretamente
+  const supabase = supabaseServer();
 
   let query = supabase
     .from("admin_audit_logs")
