@@ -21,11 +21,14 @@ export default async function AdminPage(props: {
   searchParams: Promise<{ token?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const token = typeof searchParams?.token === "string" ? searchParams.token : null;
+
+  // NOVO: limpa token legado da URL (bookmark/histórico)
+  if (typeof searchParams?.token === "string" && searchParams.token.length > 0) {
+    redirect("/admin");
+  }
 
   const admin = await isAdminRequest();
   if (!admin.ok) {
-    // ALTERAÇÃO NECESSÁRIA: evita loop com next=/admin
     redirect("/admin/login");
   }
 
@@ -62,28 +65,22 @@ export default async function AdminPage(props: {
         <h1 className="text-2xl font-bold text-emerald-700">
           Admin — Pesquisas
         </h1>
-      
+
         <div className="flex items-center gap-4">
-          {/* NOVO: criar pesquisa (mantém token) */}
+          {/* criar pesquisa (sem token) */}
           <Link
-            href={`/admin/poll-registration?token=${encodeURIComponent(
-              token ?? ""
-            )}`}
+            href="/admin/poll-registration"
             className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
             Nova pesquisa
           </Link>
-      
+
           <Link href="/" className="text-sm text-emerald-600 hover:underline">
             Voltar ao site
           </Link>
-      
-          {/* NOVO: sair */}
+
           <form action="/admin/logout" method="post">
-            <button
-              type="submit"
-              className="text-sm text-red-600 hover:underline"
-            >
+            <button type="submit" className="text-sm text-red-600 hover:underline">
               Sair
             </button>
           </form>
@@ -103,8 +100,6 @@ export default async function AdminPage(props: {
               <th className="px-4 py-3 text-center font-semibold">
                 Visibilidade pública
               </th>
-
-              {/* NOVO */}
               <th className="px-4 py-3 text-left font-semibold">Editar</th>
               <th className="px-4 py-3 text-left font-semibold">Resultados</th>
               <th className="px-4 py-3 text-left font-semibold">Auditoria</th>
@@ -154,12 +149,9 @@ export default async function AdminPage(props: {
                       </span>
                     </td>
 
-                    {/* NOVO: abrir no formulário */}
                     <td className="px-4 py-3">
                       <Link
-                        href={`/admin/poll-registration?token=${encodeURIComponent(
-                          token ?? ""
-                        )}&poll_id=${encodeURIComponent(poll.id)}`}
+                        href={`/admin/poll-registration?poll_id=${encodeURIComponent(poll.id)}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
                         Formulário
@@ -168,9 +160,7 @@ export default async function AdminPage(props: {
 
                     <td className="px-4 py-3">
                       <Link
-                        href={`/admin/results?token=${encodeURIComponent(
-                          token ?? ""
-                        )}&poll_id=${encodeURIComponent(poll.id)}`}
+                        href={`/admin/results?poll_id=${encodeURIComponent(poll.id)}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
                         Resultados
@@ -179,9 +169,7 @@ export default async function AdminPage(props: {
 
                     <td className="px-4 py-3">
                       <Link
-                        href={`/admin/audit?token=${encodeURIComponent(
-                          token ?? ""
-                        )}&poll_id=${encodeURIComponent(poll.id)}`}
+                        href={`/admin/audit?poll_id=${encodeURIComponent(poll.id)}`}
                         className="text-sm text-emerald-600 hover:underline"
                       >
                         Auditoria
@@ -196,7 +184,7 @@ export default async function AdminPage(props: {
               })
             ) : (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
                   Nenhuma pesquisa encontrada.
                 </td>
               </tr>
