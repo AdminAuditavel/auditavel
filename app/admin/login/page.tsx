@@ -119,6 +119,7 @@ export default async function AdminLoginPage(props: {
         `/admin/login?error=${encodeURIComponent(packed)}&next=${encodeURIComponent(next)}`
       );
     }
+  }
 
   const error = typeof searchParams?.error === "string" ? searchParams.error : "";
 
