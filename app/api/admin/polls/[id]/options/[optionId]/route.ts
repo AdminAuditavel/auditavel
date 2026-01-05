@@ -3,9 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { isAdminRequest } from "@/lib/admin-auth";
 
-async function isAdmin(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
-  const admin = await isAdminRequest({ token });
+async function isAdmin() {
+  const admin = await isAdminRequest();
   return admin.ok;
 }
 
