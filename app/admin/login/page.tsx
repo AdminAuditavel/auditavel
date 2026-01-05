@@ -6,61 +6,102 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = { next?: string; error?: string };
 
+function safeNext(raw: unknown, fallback = "/admin") {
+  if (typeof raw !== "string") return fallback;
+
+  const next = raw.trim();
+  if (!next) return fallback;
+
+  // só permite path interno
+  if (!next.startsWith("/")) return fallback;
+  if (next.startsWith("//")) return fallback;
+
+  // evita caracteres que podem quebrar redirect
+  if (next.includes("\n") || next.includes("\r")) return fallback;
+
+  return next;
+}
+
+function sanitizeEmail(raw: unknown) {
+  return String(raw ?? "")
+    .trim()
+    // remove espaços e quebras em qualquer posição (inclui tabs/linhas)
+    .replace(/\s+/g, "")
+    // remove caracteres invisíveis comuns (zero-width)
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    // remove aspas acidentais no começo/fim
+    .replace(/^"+|"+$/g, "")
+    .toLowerCase();
+}
+
+function isValidEmail(email: string) {
+  // validação simples para UI; o Supabase valida mais estrito internamente
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getSiteUrl() {
+  // prioridade: NEXT_PUBLIC_SITE_URL / SITE_URL
+  const a = process.env.NEXT_PUBLIC_SITE_URL;
+  const b = process.env.SITE_URL;
+  if (a && a.trim()) return a.trim();
+  if (b && b.trim()) return b.trim();
+
+  // fallback: VERCEL_URL (sem protocolo)
+  const v = process.env.VERCEL_URL;
+  if (!v) return "";
+  return v.startsWith("http") ? v : `https://${v}`;
+}
+
 export default async function AdminLoginPage(props: {
   searchParams: Promise<SearchParams>;
 }) {
   const searchParams = await props.searchParams;
-  const next =
-    typeof searchParams?.next === "string" ? searchParams.next : "/admin";
+
+  const next = safeNext(searchParams?.next, "/admin");
 
   // Se já estiver logado, manda direto para /admin (ou next)
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
   if (user) redirect(next);
 
   async function sendMagicLink(formData: FormData) {
     "use server";
 
-    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const email = sanitizeEmail(formData.get("email"));
+
     if (!email) {
       redirect(`/admin/login?error=missing_email&next=${encodeURIComponent(next)}`);
     }
 
-    // URL base (Vercel usa headers, mas aqui vamos pelo env; é o mais estável)
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      process.env.SITE_URL ||
-      process.env.VERCEL_URL?.startsWith("http")
-        ? process.env.VERCEL_URL
-        : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "";
-
-    if (!siteUrl) {
+    if (!isValidEmail(email)) {
+      // Mostra o email sanitizado para facilitar debug (sem expor dados além do necessário)
       redirect(
-        `/admin/login?error=missing_site_url&next=${encodeURIComponent(next)}`
+        `/admin/login?error=${encodeURIComponent(
+          `invalid_email:${email}`
+        )}&next=${encodeURIComponent(next)}`
       );
+    }
+
+    const siteUrl = getSiteUrl();
+    if (!siteUrl) {
+      redirect(`/admin/login?error=missing_site_url&next=${encodeURIComponent(next)}`);
     }
 
     const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
+      options: { emailRedirectTo: redirectTo },
     });
 
     if (error) {
       redirect(
-        `/admin/login?error=${encodeURIComponent(
-          error.message
-        )}&next=${encodeURIComponent(next)}`
+        `/admin/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`
       );
     }
 
-    // Tela simples de confirmação (sem estado client)
     redirect(`/admin/login?next=${encodeURIComponent(next)}&error=sent`);
   }
 
@@ -76,9 +117,7 @@ export default async function AdminLoginPage(props: {
 
         {error ? (
           <div className="mt-4 rounded-lg border p-3 text-sm">
-            {error === "sent"
-              ? "Link enviado. Verifique seu e-mail."
-              : `Erro: ${error}`}
+            {error === "sent" ? "Link enviado. Verifique seu e-mail." : `Erro: ${error}`}
           </div>
         ) : null}
 
@@ -90,8 +129,11 @@ export default async function AdminLoginPage(props: {
               type="email"
               required
               className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder="seuemail@dominio.com"
+              placeholder="admin@auditavel.com"
               autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
             />
           </label>
 
