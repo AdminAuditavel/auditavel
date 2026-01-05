@@ -1,3 +1,5 @@
+//app/admin/logout/route.ts
+
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
 
