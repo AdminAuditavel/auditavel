@@ -1,8 +1,19 @@
+// app/api/admin/poll-visibility/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer para SSR
 
 export async function POST(req: NextRequest) {
   try {
+    // =========================
+    // AUTH (token OU sessão)
+    // =========================
+    const admin = await isAdminRequest();  // Garantindo que só admin pode acessar
+    if (!admin.ok) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    // Processando dados do corpo da requisição
     const body = await req.json();
     const { poll_id, show_partial_results } = body as {
       poll_id?: string;
