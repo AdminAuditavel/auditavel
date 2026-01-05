@@ -48,7 +48,15 @@ export default async function AdminLoginPage(props: {
       );
     }
 
-    redirect(next);
+    const adminToken = process.env.ADMIN_TOKEN;
+
+    if (!adminToken) {
+      redirect(`/admin/login?error=${encodeURIComponent("missing_admin_token")}&next=${encodeURIComponent(next)}`);
+    }
+    
+    // garante que o token vá junto mesmo se o next for /admin
+    const sep = next.includes("?") ? "&" : "?";
+    redirect(`${next}${sep}token=${encodeURIComponent(adminToken)}`);
   }
 
   const error = typeof searchParams?.error === "string" ? searchParams.error : "";
