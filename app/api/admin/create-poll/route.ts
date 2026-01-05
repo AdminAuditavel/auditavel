@@ -1,7 +1,5 @@
-// app/api/admin/create-poll/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando o supabaseServer para SSR
+import { supabaseServer } from "@/lib/supabase-server"; // Usando o supabaseServer para SSR
 import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
 
 /**
@@ -191,6 +189,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Inserção de pesquisa no banco
+    const supabase = supabaseServer(); // Usando o supabaseServer para SSR
+
     const { data, error } = await supabase
       .from("polls")
       .insert({
