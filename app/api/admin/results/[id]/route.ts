@@ -11,11 +11,9 @@ type Ctx = {
 export async function GET(req: NextRequest, context: Ctx) {
   try {
     // =========================
-    // AUTH (token OU sessão)
+    // AUTH (sessão)
     // =========================
-    const token = req.nextUrl.searchParams.get("token");
-
-    const admin = await isAdminRequest({ token });
+    const admin = await isAdminRequest();
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
