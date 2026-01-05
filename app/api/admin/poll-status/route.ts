@@ -1,6 +1,8 @@
+//app/api/admin/poll-status/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer configurado para SSR
-import { isAdminRequest } from "@/lib/admin-auth"; // Para validar se o usuário tem permissões de admin
+import { createServerSupabaseClient } from "@supabase/auth-helpers-nextjs"; // Garantir que estamos usando a função de criação correta
+import { isAdminRequest } from "@/lib/admin-auth"; // Função para validar se o usuário tem permissões de admin
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +13,9 @@ export async function POST(req: NextRequest) {
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
+
+    // Criando o cliente do Supabase
+    const supabase = createServerSupabaseClient({ req }); // Instanciando corretamente o cliente Supabase
 
     // Processando dados do corpo da requisição
     const body = await req.json();
@@ -29,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     // 1️⃣ Buscar status atual
     const { data: poll, error: fetchError } = await supabase
-      .from("polls")  // Alteração para usar supabaseServer
+      .from("polls")
       .select("status")
       .eq("id", poll_id)
       .single();
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // 2️⃣ Atualizar status
     const { error: updateError } = await supabase
-      .from("polls")  // Alteração para usar supabaseServer
+      .from("polls")
       .update({ status })
       .eq("id", poll_id);
 
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     // 3️⃣ Registrar auditoria
     await supabase
-      .from("admin_audit_logs")  // Alteração para usar supabaseServer
+      .from("admin_audit_logs")
       .insert({
         poll_id,
         action: "status_change",
