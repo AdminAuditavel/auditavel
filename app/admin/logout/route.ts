@@ -1,16 +1,13 @@
-// app/admin/logout/route.ts
+// app/api/admin/logout/route.ts
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase-server";  // Importando supabaseServer configurado para SSR
+import { supabaseServer } from "@/lib/supabase-server"; // Importando supabaseServer corretamente
 
-/**
- * Rota para realizar o logout do usuário.
- * - Encerra a sessão do usuário via supabaseServer.
- * - Redireciona o usuário para a página de login após o logout.
- */
 export async function POST() {
+  const supabase = supabaseServer(); // Instanciando o supabaseServer corretamente
+
   // Encerra a sessão do usuário usando o Supabase SSR
-  await supabaseServer.auth.signOut();
+  await supabase.auth.signOut();
 
   // Redireciona para a página de login
   return NextResponse.redirect(
