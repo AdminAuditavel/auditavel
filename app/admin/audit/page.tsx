@@ -58,7 +58,7 @@ export default async function AdminAuditPage(props: {
 
   const pollId = String(searchParams?.poll_id ?? "").trim();
 
-  const admin = await isAdminRequest({ token });
+  const admin = await isAdminRequest();
   if (!admin.ok) {
     redirect("/admin/login?next=/admin/audit");
   }
