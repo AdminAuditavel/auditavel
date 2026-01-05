@@ -37,35 +37,42 @@ export default function AuthCallbackClient() {
       }
 
       if (!access_token || !refresh_token) {
-        router.replace(`/admin/login?error=${encodeURIComponent("missing_tokens")}`);
+        router.replace(
+          `/admin/login?error=${encodeURIComponent("missing_tokens")}`
+        );
         return;
       }
 
-      // 1) manda tokens pro server gravar cookies
-     const res = await fetch("/auth/set-session", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ access_token, refresh_token }),
-    });
-    
-    const payload = await res.json().catch(() => null);
-    
-    if (!res.ok || !payload?.ok || !payload?.user?.email) {
-      const msg = payload?.error || "set_session_failed_or_no_user";
-      router.replace(`/admin/login?error=${encodeURIComponent(msg)}`);
-      return;
-    }
+      // 1) manda tokens pro server gravar cookies SSR
+      const res = await fetch("/auth/set-session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+        body: JSON.stringify({ access_token, refresh_token }),
+      });
 
-      // 2) limpa a URL (remove tokens do hash)
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok || !payload?.ok || !payload?.user?.email) {
+        const msg =
+          payload?.error ||
+          `set_session_failed_${String(res.status || "")}`.trim();
+        router.replace(`/admin/login?error=${encodeURIComponent(msg)}`);
+        return;
+      }
+
+      // 2) limpa hash (remove tokens da URL)
       window.history.replaceState(
         {},
         document.title,
         window.location.pathname + window.location.search
       );
 
-      // 3) agora o SSR vai enxergar os cookies
+      // 3) revalida e segue para destino final
+      const next = safeNext(sp.get("next"));
       router.refresh();
-      router.replace(safeNext(sp.get("next")));
+      router.replace(next);
     };
 
     run();
