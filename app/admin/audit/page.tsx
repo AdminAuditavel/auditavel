@@ -1,6 +1,4 @@
-// app/admin/audit/page.tsx
-
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase-server"; // Importação do cliente
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminResultsPanel from "./AdminResultsPanel";
@@ -8,9 +6,6 @@ import { isAdminRequest } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-/* =======================
-   TIPOS
-======================= */
 type AuditLog = {
   id: string;
   action: string;
@@ -22,9 +17,6 @@ type AuditLog = {
 
 type PollMap = Record<string, string>;
 
-/* =======================
-   HELPERS
-======================= */
 function getActionBadge(action: string) {
   switch (action) {
     case "status_change":
@@ -45,13 +37,10 @@ function getActionBadge(action: string) {
   }
 }
 
-/* =======================
-   PAGE
-======================= */
 export default async function AdminAuditPage(props: {
   searchParams: Promise<{ token?: string; poll_id?: string }>;
 }) {
-   const searchParams = await props.searchParams;
+  const searchParams = await props.searchParams;
 
   const token =
     typeof searchParams?.token === "string" ? searchParams.token : null;
@@ -63,9 +52,6 @@ export default async function AdminAuditPage(props: {
     redirect("/admin/login?next=/admin/audit");
   }
 
-  /* =======================
-     BUSCAR LOGS
-  ======================= */
   let query = supabase
     .from("admin_audit_logs")
     .select("id, action, old_value, new_value, created_at, poll_id")
@@ -86,9 +72,6 @@ export default async function AdminAuditPage(props: {
     );
   }
 
-  /* =======================
-     MAPEAR TÍTULOS DAS POLLS
-  ======================= */
   const pollIds = Array.from(new Set((logs ?? []).map((l) => l.poll_id).filter(Boolean))) as string[];
 
   let pollMap: PollMap = {};
@@ -103,12 +86,8 @@ export default async function AdminAuditPage(props: {
 
   const pageTitle = pollId ? "Auditoria da pesquisa" : "Admin — Auditoria";
 
-  /* =======================
-     RENDER
-  ======================= */
   return (
     <main className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* HEADER */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-emerald-700">{pageTitle}</h1>
 
@@ -123,12 +102,10 @@ export default async function AdminAuditPage(props: {
         </div>
       </div>
 
-      {/* NOVO: RESULTADOS DETALHADOS (somente quando vier poll_id) */}
       {pollId ? (
         <AdminResultsPanel token={String(token || "")} pollId={pollId} />
       ) : null}
 
-      {/* TABELA DE AUDITORIA */}
       <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 border-b">
@@ -156,9 +133,7 @@ export default async function AdminAuditPage(props: {
                     </td>
 
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${badge.className}`}
-                      >
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${badge.className}`}>
                         {badge.label}
                       </span>
                     </td>
