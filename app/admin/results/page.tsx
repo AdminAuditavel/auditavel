@@ -9,19 +9,19 @@ import { isAdminRequest } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 export default async function AdminResultsPage(props: {
-  searchParams: Promise<{ token?: string; poll_id?: string }>;
+  searchParams: Promise<{ poll_id?: string }>;
 }) {
   const sp = await props.searchParams;
-  const token = sp?.token;
   const pollId = (sp?.poll_id ?? "").trim();
 
-  const admin = await isAdminRequest({ token: typeof token === "string" ? token : null });
+  const admin = await isAdminRequest();
   if (!admin.ok) redirect("/admin/login?next=/admin/results");
+
   if (!pollId) {
     return (
       <main className="p-6 max-w-4xl mx-auto">
         <p className="text-red-600">poll_id ausente.</p>
-        <Link href={`/admin?token=${encodeURIComponent(token ?? "")}`} className="text-emerald-700 hover:underline">
+        <Link href="/admin" className="text-emerald-700 hover:underline">
           ← Voltar
         </Link>
       </main>
@@ -30,7 +30,9 @@ export default async function AdminResultsPage(props: {
 
   const { data: poll, error: pollError } = await supabase
     .from("polls")
-    .select("id, title, voting_type, allow_multiple, max_votes_per_user, status, show_partial_results")
+    .select(
+      "id, title, voting_type, allow_multiple, max_votes_per_user, status, show_partial_results"
+    )
     .eq("id", pollId)
     .maybeSingle();
 
@@ -42,10 +44,11 @@ export default async function AdminResultsPage(props: {
     );
   }
 
-  const adminBackHref = `/admin?token=${encodeURIComponent(token ?? "")}`;
+  const adminBackHref = "/admin";
 
   // Helpers
-  const pct = (n: number, base: number) => (base > 0 ? Math.round((n / base) * 100) : 0);
+  const pct = (n: number, base: number) =>
+    base > 0 ? Math.round((n / base) * 100) : 0;
 
   // Carrega opções
   const { data: options } = await supabase
@@ -60,7 +63,8 @@ export default async function AdminResultsPage(props: {
     .eq("poll_id", pollId);
 
   const totalSubmissions = votes?.length || 0;
-  const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id)).size;
+  const totalParticipants = new Set((votes ?? []).map((v) => v.participant_id))
+    .size;
 
   // ==== SINGLE ====
   if (poll.voting_type === "single") {
@@ -73,24 +77,27 @@ export default async function AdminResultsPage(props: {
     // denominador:
     // - se max_votes_per_user=1 => participantes
     // - senão => participações
-    const effectiveMaxVotes = poll.allow_multiple ? (poll.max_votes_per_user ?? 1) : 1;
+    const effectiveMaxVotes = poll.allow_multiple
+      ? poll.max_votes_per_user ?? 1
+      : 1;
     const base = effectiveMaxVotes === 1 ? totalParticipants : totalSubmissions;
 
-    const rows =
-      (options ?? [])
-        .map((o: any) => ({
-          id: o.id,
-          text: o.option_text,
-          n: count[o.id] || 0,
-          p: pct(count[o.id] || 0, base),
-        }))
-        .sort((a, b) => b.n - a.n);
+    const rows = (options ?? [])
+      .map((o: any) => ({
+        id: o.id,
+        text: o.option_text,
+        n: count[o.id] || 0,
+        p: pct(count[o.id] || 0, base),
+      }))
+      .sort((a, b) => b.n - a.n);
 
     return (
       <main className="p-6 max-w-5xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-emerald-700">Admin — Resultados</h1>
+            <h1 className="text-xl font-bold text-emerald-700">
+              Admin — Resultados
+            </h1>
             <p className="text-sm text-gray-600">{poll.title}</p>
             <p className="text-xs text-gray-500">ID: {pollId}</p>
           </div>
@@ -106,7 +113,8 @@ export default async function AdminResultsPage(props: {
             <span className="text-gray-400">·</span>{" "}
             <strong>Participações:</strong> {totalSubmissions}{" "}
             <span className="text-gray-400">·</span>{" "}
-            <strong>Base do %:</strong> {effectiveMaxVotes === 1 ? "Participantes" : "Participações"}
+            <strong>Base do %:</strong>{" "}
+            {effectiveMaxVotes === 1 ? "Participantes" : "Participações"}
           </div>
         </div>
 
@@ -138,13 +146,18 @@ export default async function AdminResultsPage(props: {
   if (poll.voting_type === "multiple") {
     const voteIds = (votes ?? []).map((v: any) => v.id);
     const { data: marks } = voteIds.length
-      ? await supabase.from("vote_options").select("vote_id, option_id").in("vote_id", voteIds)
+      ? await supabase
+          .from("vote_options")
+          .select("vote_id, option_id")
+          .in("vote_id", voteIds)
       : { data: [] as any[] };
 
     // Conta “marcas por participante” (único por participante por opção)
     // (como seu home já faz com Set(user_hash), aqui fazemos por participant_id)
     const participantByVoteId = new Map<string, string>();
-    (votes ?? []).forEach((v: any) => participantByVoteId.set(v.id, v.participant_id));
+    (votes ?? []).forEach((v: any) =>
+      participantByVoteId.set(v.id, v.participant_id)
+    );
 
     const setByOption = new Map<string, Set<string>>();
     (marks ?? []).forEach((m: any) => {
@@ -157,19 +170,20 @@ export default async function AdminResultsPage(props: {
     // Denominador: participantes (do jeito que você pediu)
     const base = totalParticipants;
 
-    const rows =
-      (options ?? [])
-        .map((o: any) => {
-          const n = setByOption.get(o.id)?.size || 0;
-          return { id: o.id, text: o.option_text, n, p: pct(n, base) };
-        })
-        .sort((a, b) => b.n - a.n);
+    const rows = (options ?? [])
+      .map((o: any) => {
+        const n = setByOption.get(o.id)?.size || 0;
+        return { id: o.id, text: o.option_text, n, p: pct(n, base) };
+      })
+      .sort((a, b) => b.n - a.n);
 
     return (
       <main className="p-6 max-w-5xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-emerald-700">Admin — Resultados</h1>
+            <h1 className="text-xl font-bold text-emerald-700">
+              Admin — Resultados
+            </h1>
             <p className="text-sm text-gray-600">{poll.title}</p>
             <p className="text-xs text-gray-500">ID: {pollId}</p>
           </div>
@@ -188,7 +202,8 @@ export default async function AdminResultsPage(props: {
             <strong>Base do %:</strong> Participantes
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Em “múltiplas opções”, o “Total” abaixo representa quantos participantes marcaram cada opção (únicos).
+            Em “múltiplas opções”, o “Total” abaixo representa quantos
+            participantes marcaram cada opção (únicos).
           </p>
         </div>
 
@@ -224,7 +239,9 @@ export default async function AdminResultsPage(props: {
     <main className="p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-emerald-700">Admin — Resultados</h1>
+          <h1 className="text-xl font-bold text-emerald-700">
+            Admin — Resultados
+          </h1>
           <p className="text-sm text-gray-600">{poll.title}</p>
           <p className="text-xs text-gray-500">ID: {pollId}</p>
         </div>
