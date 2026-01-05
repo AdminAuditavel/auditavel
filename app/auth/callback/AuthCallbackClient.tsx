@@ -3,7 +3,6 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 
 function safeNext(next: string | null) {
   if (!next) return "/admin";
@@ -19,7 +18,6 @@ export default function AuthCallbackClient() {
 
   useEffect(() => {
     const run = async () => {
-      // Tokens vêm no hash (#...) e não chegam no servidor
       const hash = window.location.hash.startsWith("#")
         ? window.location.hash.slice(1)
         : window.location.hash;
@@ -38,42 +36,35 @@ export default function AuthCallbackClient() {
         return;
       }
 
-      if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token,
-        });
-
-        if (error) {
-          router.replace(
-            `/admin/login?error=${encodeURIComponent(error.message)}`
-          );
-          return;
-        }
-
-        // (debug temporário) confirma user após setSession
-        // Remova quando estabilizar.
-        try {
-          const { data } = await supabase.auth.getUser();
-          // eslint-disable-next-line no-console
-          console.log("CALLBACK_user_after_setSession", data?.user?.email);
-        } catch {
-          // ignore
-        }
-
-        // Remove tokens da URL (segurança)
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname + window.location.search
-        );
-
-        // Força revalidação no App Router (ajuda SSR ler cookies)
-        router.refresh();
+      if (!access_token || !refresh_token) {
+        router.replace(`/admin/login?error=${encodeURIComponent("missing_tokens")}`);
+        return;
       }
 
-      const next = safeNext(sp.get("next"));
-      router.replace(next);
+      // 1) manda tokens pro server gravar cookies
+      const res = await fetch("/auth/set-session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ access_token, refresh_token }),
+      });
+
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        const msg = j?.error || "set_session_failed";
+        router.replace(`/admin/login?error=${encodeURIComponent(msg)}`);
+        return;
+      }
+
+      // 2) limpa a URL (remove tokens do hash)
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname + window.location.search
+      );
+
+      // 3) agora o SSR vai enxergar os cookies
+      router.refresh();
+      router.replace(safeNext(sp.get("next")));
     };
 
     run();
