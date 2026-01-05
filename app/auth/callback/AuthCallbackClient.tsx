@@ -42,18 +42,19 @@ export default function AuthCallbackClient() {
       }
 
       // 1) manda tokens pro server gravar cookies
-      const res = await fetch("/auth/set-session", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ access_token, refresh_token }),
-      });
-
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        const msg = j?.error || "set_session_failed";
-        router.replace(`/admin/login?error=${encodeURIComponent(msg)}`);
-        return;
-      }
+     const res = await fetch("/auth/set-session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ access_token, refresh_token }),
+    });
+    
+    const payload = await res.json().catch(() => null);
+    
+    if (!res.ok || !payload?.ok || !payload?.user?.email) {
+      const msg = payload?.error || "set_session_failed_or_no_user";
+      router.replace(`/admin/login?error=${encodeURIComponent(msg)}`);
+      return;
+    }
 
       // 2) limpa a URL (remove tokens do hash)
       window.history.replaceState(
