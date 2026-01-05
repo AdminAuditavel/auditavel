@@ -1,3 +1,5 @@
+//app/api/admin/poll-status/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 
