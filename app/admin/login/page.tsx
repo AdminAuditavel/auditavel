@@ -22,10 +22,8 @@ export default async function AdminLoginPage(props: {
   const searchParams = await props.searchParams;
   const next = safeNext(searchParams?.next, "/admin");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) redirect(next);
+  const { data: { user } } = await supabase.auth.getUser();
+// if (user) redirect(next); // desativado para evitar loop enquanto /admin exige token
 
   async function signIn(formData: FormData) {
     "use server";
