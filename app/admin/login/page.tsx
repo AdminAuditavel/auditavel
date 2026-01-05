@@ -64,6 +64,15 @@ export default async function AdminLoginPage(props: {
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-2xl border bg-white p-6 shadow-sm">
+        <Link href="/" className="flex justify-center mb-4">
+          <Image
+            src="/Logo_A-removebg-preview.png"
+            alt="Auditável"
+            width={120}
+            height={120}
+            priority
+          />
+        </Link>
         <h1 className="text-xl font-semibold">Acesso Admin</h1>
         <p className="mt-2 text-sm text-gray-600">
           Entre com e-mail e senha.
