@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { isAdminRequest } from "@/lib/admin-auth";
 
 type PollPayload = {
   id?: string;
@@ -159,7 +158,8 @@ export default function PollRegistrationClient() {
   const [formData, setFormData] = useState(initialForm);
 
   // Guarda uma cópia do formulário exatamente como veio do backend, para o Cancel
-  const [originalForm, setOriginalForm] = useState<typeof initialForm | null>(null);
+  const [originalForm, setOriginalForm] =
+    useState<typeof initialForm | null>(null);
 
   // Mantém o último valor válido para reverter quando o usuário sai do campo com valor inválido
   const [lastValidDates, setLastValidDates] = useState({
@@ -218,8 +218,8 @@ export default function PollRegistrationClient() {
 
       try {
         const res = await fetch(
-          `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
-          { method: "GET" }
+          `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}`,
+          { method: "GET", credentials: "include" }
         );
 
         let json: any = null;
@@ -234,8 +234,8 @@ export default function PollRegistrationClient() {
             json?.details
               ? `Falha ao carregar pesquisa: ${json.error} — ${json.details}`
               : json?.error
-                ? `Falha ao carregar pesquisa: ${json.error}`
-                : "Falha ao carregar pesquisa."
+              ? `Falha ao carregar pesquisa: ${json.error}`
+              : "Falha ao carregar pesquisa."
           );
         }
 
@@ -246,8 +246,8 @@ export default function PollRegistrationClient() {
           poll.voting_type === "ranking"
             ? "ranking"
             : poll.voting_type === "multiple"
-              ? "multiple"
-              : "single";
+            ? "multiple"
+            : "single";
 
         const nextForm = {
           title: poll.title ?? "",
@@ -262,7 +262,9 @@ export default function PollRegistrationClient() {
           closes_at: toDatetimeLocal(poll.closes_at),
 
           vote_cooldown_seconds:
-            typeof poll.vote_cooldown_seconds === "number" ? poll.vote_cooldown_seconds : 10,
+            typeof poll.vote_cooldown_seconds === "number"
+              ? poll.vote_cooldown_seconds
+              : 10,
 
           voting_type: vt,
           max_options_per_vote:
@@ -276,7 +278,9 @@ export default function PollRegistrationClient() {
           end_date: toDatetimeLocal(poll.end_date),
 
           show_partial_results:
-            typeof poll.show_partial_results === "boolean" ? poll.show_partial_results : true,
+            typeof poll.show_partial_results === "boolean"
+              ? poll.show_partial_results
+              : true,
 
           icon_name: poll.icon_name ?? "",
           icon_url: poll.icon_url ?? "",
@@ -312,7 +316,7 @@ export default function PollRegistrationClient() {
     };
 
     loadPoll();
-  }, [pollIdFromUrl, adminTokenQuery]);
+  }, [pollIdFromUrl]);
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -324,8 +328,8 @@ export default function PollRegistrationClient() {
 
       try {
         const res = await fetch(
-          `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options?${adminTokenQuery}`,
-          { method: "GET" }
+          `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options`,
+          { method: "GET", credentials: "include" }
         );
 
         let json: any = null;
@@ -352,7 +356,7 @@ export default function PollRegistrationClient() {
     };
 
     loadOptions();
-  }, [pollIdFromUrl, adminTokenQuery]);
+  }, [pollIdFromUrl]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -427,14 +431,18 @@ export default function PollRegistrationClient() {
     // aceita caminho relativo iniciando com "/" ou URL começando com http(s)://
     const ok = v.startsWith("/") || /^https?:\/\//i.test(v);
     if (!ok) {
-      setError('URL inválida. Use um caminho relativo começando com "/" ou uma URL absoluta (http(s)://...).');
+      setError(
+        'URL inválida. Use um caminho relativo começando com "/" ou uma URL absoluta (http(s)://...).'
+      );
     } else {
       setError("");
     }
   };
 
   // ===== Datas: valida no onBlur e reverte para último válido se necessário.
-  const validateAndCommitDatesOrRevert = (field: "start_date" | "end_date" | "closes_at") => {
+  const validateAndCommitDatesOrRevert = (
+    field: "start_date" | "end_date" | "closes_at"
+  ) => {
     const value = (formData as any)[field] as string;
 
     // end_date/closes_at são opcionais (permitir limpar)
@@ -457,8 +465,8 @@ export default function PollRegistrationClient() {
         field === "start_date"
           ? "Data de início inválida."
           : field === "end_date"
-            ? "Data de término inválida."
-            : "Data de encerramento inválida."
+          ? "Data de término inválida."
+          : "Data de encerramento inválida."
       );
       setFormData((prev) => ({ ...prev, [field]: (lastValidDates as any)[field] }));
       return;
@@ -561,9 +569,10 @@ export default function PollRegistrationClient() {
         bodyToSend.max_options_per_vote = null;
       }
 
-      const response = await fetch(`/api/admin/create-poll?${adminTokenQuery}`, {
+      const response = await fetch(`/api/admin/create-poll`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(bodyToSend),
       });
 
@@ -753,10 +762,11 @@ export default function PollRegistrationClient() {
       }
 
       const res = await fetch(
-        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}?${adminTokenQuery}`,
+        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(bodyToSend),
         }
       );
@@ -768,10 +778,10 @@ export default function PollRegistrationClient() {
           json?.details
             ? `Falha ao salvar: ${json.error} — ${json.details}`
             : json?.message
-              ? `Falha ao salvar: ${json.message}`
-              : json?.error
-                ? `Falha ao salvar: ${json.error}`
-                : "Falha ao salvar."
+            ? `Falha ao salvar: ${json.message}`
+            : json?.error
+            ? `Falha ao salvar: ${json.error}`
+            : "Falha ao salvar."
         );
       }
 
@@ -811,10 +821,11 @@ export default function PollRegistrationClient() {
       setOptionsLoading(true);
 
       const res = await fetch(
-        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options?${adminTokenQuery}`,
+        `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ option_text: text }),
         }
       );
@@ -863,10 +874,11 @@ export default function PollRegistrationClient() {
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options/${encodeURIComponent(
           editingOptionId
-        )}?${adminTokenQuery}`,
+        )}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ option_text: text }),
         }
       );
@@ -883,8 +895,8 @@ export default function PollRegistrationClient() {
           json?.details
             ? `Falha ao salvar opção: ${json.error} — ${json.details}`
             : json?.error
-              ? `Falha ao salvar opção: ${json.error}`
-              : "Falha ao salvar opção."
+            ? `Falha ao salvar opção: ${json.error}`
+            : "Falha ao salvar opção."
         );
       }
 
@@ -918,8 +930,8 @@ export default function PollRegistrationClient() {
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}/options/${encodeURIComponent(
           opt.id
-        )}?${adminTokenQuery}`,
-        { method: "DELETE" }
+        )}`,
+        { method: "DELETE", credentials: "include" }
       );
 
       const json = await res.json().catch(() => null);
@@ -929,8 +941,8 @@ export default function PollRegistrationClient() {
           json?.details
             ? `Falha ao remover opção: ${json.error} — ${json.details}`
             : json?.error
-              ? `Falha ao remover opção: ${json.error}`
-              : "Falha ao remover opção."
+            ? `Falha ao remover opção: ${json.error}`
+            : "Falha ao remover opção."
         );
       }
 
@@ -955,11 +967,14 @@ export default function PollRegistrationClient() {
 
   // computed disabled states for the two controls we want to gray-out / block clicks
   const disabledMaxVotes = !isEditing || isBusy || !formData.allow_multiple;
-  const disabledMaxOptions = !isEditing || isBusy || formData.voting_type !== "multiple";
+  const disabledMaxOptions =
+    !isEditing || isBusy || formData.voting_type !== "multiple";
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>{isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}</h1>
+      <h1 style={styles.title}>
+        {isEditMode ? "Editar Pesquisa" : "Cadastro de Pesquisas"}
+      </h1>
 
       {isEditMode && (
         <p style={styles.modeInfo}>
@@ -1285,9 +1300,7 @@ export default function PollRegistrationClient() {
 
           <button
             type="button"
-            onClick={() =>
-              router.push(tokenFromUrl ? `/admin?token=${encodeURIComponent(tokenFromUrl)}` : "/admin")
-            }
+            onClick={() => router.push("/admin")}
             style={styles.backButton}
             disabled={isBusy}
           >
