@@ -62,7 +62,7 @@ export default async function AdminPage(props: {
         <h1 className="text-2xl font-bold text-emerald-700">
           Admin — Pesquisas
         </h1>
-
+      
         <div className="flex items-center gap-4">
           {/* NOVO: criar pesquisa (mantém token) */}
           <Link
@@ -73,10 +73,20 @@ export default async function AdminPage(props: {
           >
             Nova pesquisa
           </Link>
-
+      
           <Link href="/" className="text-sm text-emerald-600 hover:underline">
             Voltar ao site
           </Link>
+      
+          {/* NOVO: sair */}
+          <form action="/admin/logout" method="post">
+            <button
+              type="submit"
+              className="text-sm text-red-600 hover:underline"
+            >
+              Sair
+            </button>
+          </form>
         </div>
       </div>
 
