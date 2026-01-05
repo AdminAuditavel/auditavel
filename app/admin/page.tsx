@@ -1,6 +1,6 @@
 // app/admin/page.tsx
 
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando o supabaseServer configurado para SSR
+import { supabaseServer } from "@/lib/supabase-server"; // Usando o supabaseServer configurado para SSR
 import Link from "next/link";
 import PollStatusSelect from "./PollStatusSelect";
 import PollVisibilityToggle from "./PollVisibilityToggle";
@@ -30,6 +30,9 @@ export default async function AdminPage(props: {
     return redirect("/admin/login");
   }
 
+  // Instanciando o cliente supabase
+  const supabase = supabaseServer(); // Agora instanciando o cliente corretamente
+  
   // Função para determinar a visibilidade pública da pesquisa
   function getPublicVisibility(
     status: "draft" | "open" | "paused" | "closed",
