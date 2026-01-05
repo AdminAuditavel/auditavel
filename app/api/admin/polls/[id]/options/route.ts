@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
 import { isAdminRequest } from "@/lib/admin-auth";
 
-async function isAdmin(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
-  const admin = await isAdminRequest({ token });
+async function isAdmin() {
+  const admin = await isAdminRequest();
   return admin.ok;
 }
 
@@ -13,7 +12,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!(await isAdmin(req))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -52,7 +51,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!(await isAdmin(req))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
