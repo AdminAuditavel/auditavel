@@ -1,11 +1,13 @@
 // app/admin/login/page.tsx
+
 import { redirect } from "next/navigation";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando o supabaseServer para autenticação via cookies
 import Link from "next/link";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
+// Função para garantir que o parâmetro "next" seja válido e seguro para redirecionamento
 type SearchParams = { next?: string; error?: string };
 
 function safeNext(raw: unknown, fallback = "/admin") {
@@ -24,9 +26,15 @@ export default async function AdminLoginPage(props: {
   const searchParams = await props.searchParams;
   const next = safeNext(searchParams?.next, "/admin");
 
+  // Checando se já existe um usuário autenticado via cookies
   const { data: { user } } = await supabase.auth.getUser();
-// if (user) redirect(next); // desativado para evitar loop enquanto /admin exige token
+  
+  // Se já estiver logado, redireciona diretamente para a página admin
+  if (user) {
+    return redirect(next);  // Redireciona para a página próxima ou /admin
+  }
 
+  // Função para realizar login
   async function signIn(formData: FormData) {
     "use server";
 
@@ -34,31 +42,27 @@ export default async function AdminLoginPage(props: {
     const password = String(formData.get("password") ?? "");
 
     if (!email || !password) {
+      // Se o email ou senha estiverem faltando, redireciona com um erro
       redirect(
         `/admin/login?error=${encodeURIComponent("missing_email_or_password")}&next=${encodeURIComponent(next)}`
       );
     }
 
+    // Realiza o login com o Supabase utilizando e-mail e senha
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
+      // Se houver erro no login, redireciona com a mensagem de erro
       redirect(
         `/admin/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`
       );
     }
 
-    const adminToken = process.env.ADMIN_TOKEN;
-
-    if (!adminToken) {
-      redirect(`/admin/login?error=${encodeURIComponent("missing_admin_token")}&next=${encodeURIComponent(next)}`);
-    }
-    
-    // garante que o token vá junto mesmo se o next for /admin
-    const sep = next.includes("?") ? "&" : "?";
-    redirect(`${next}${sep}token=${encodeURIComponent(adminToken)}`);
+    // Após o login bem-sucedido, redireciona para o próximo destino (página admin)
+    redirect(next);
   }
 
   const error = typeof searchParams?.error === "string" ? searchParams.error : "";
@@ -66,7 +70,7 @@ export default async function AdminLoginPage(props: {
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-2xl border bg-white p-6 shadow-sm">
-       <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Acesso Admin</h1>
         
           <Link href="/" aria-label="Voltar ao site">
@@ -89,6 +93,7 @@ export default async function AdminLoginPage(props: {
           </div>
         ) : null}
 
+        {/* Formulário de login */}
         <form action={signIn} className="mt-6 space-y-3">
           <label className="block text-sm font-medium">
             E-mail
