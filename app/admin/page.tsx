@@ -1,11 +1,11 @@
-//app/admin/page.tsx
+// app/admin/page.tsx
 
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando o supabaseServer configurado para SSR
 import Link from "next/link";
 import PollStatusSelect from "./PollStatusSelect";
 import PollVisibilityToggle from "./PollVisibilityToggle";
 import { redirect } from "next/navigation";
-import { isAdminRequest } from "@/lib/admin-auth";
+import { isAdminRequest } from "@/lib/admin-auth"; // Função para validar admin
 
 export const dynamic = "force-dynamic";
 
@@ -20,18 +20,17 @@ type Poll = {
 export default async function AdminPage(props: {
   searchParams: Promise<{ token?: string }>;
 }) {
+  // Removendo o uso de tokens na URL. Agora, validamos a sessão do usuário com cookies.
   const searchParams = await props.searchParams;
-
-  // NOVO: limpa token legado da URL (bookmark/histórico)
-  if (typeof searchParams?.token === "string" && searchParams.token.length > 0) {
-    redirect("/admin");
-  }
-
+  
+  // Validando se o usuário tem permissões de admin usando a função isAdminRequest
   const admin = await isAdminRequest();
   if (!admin.ok) {
-    redirect("/admin/login");
+    // Se o usuário não for admin, redireciona para o login
+    return redirect("/admin/login");
   }
 
+  // Função para determinar a visibilidade pública da pesquisa
   function getPublicVisibility(
     status: "draft" | "open" | "paused" | "closed",
     showPartial: boolean
@@ -45,6 +44,7 @@ export default async function AdminPage(props: {
     return { label: "Oculto", className: "bg-gray-200 text-gray-700" };
   }
 
+  // Buscando as pesquisas no banco de dados
   const { data: polls, error } = await supabase
     .from("polls")
     .select("id, title, status, show_partial_results, created_at")
@@ -67,7 +67,7 @@ export default async function AdminPage(props: {
         </h1>
 
         <div className="flex items-center gap-4">
-          {/* criar pesquisa (sem token) */}
+          {/* Criar pesquisa */}
           <Link
             href="/admin/poll-registration"
             className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
@@ -79,6 +79,7 @@ export default async function AdminPage(props: {
             Voltar ao site
           </Link>
 
+          {/* Formulário de logout */}
           <form action="/admin/logout" method="post">
             <button type="submit" className="text-sm text-red-600 hover:underline">
               Sair
