@@ -19,7 +19,7 @@ export async function isAdminRequest(params?: { token?: string | null }) {
     data: { user },
   } = await supabaseServer.auth.getUser();
 
-  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+  const adminEmail = (process.env.ADMIN_EMAIL || "auditavel@gmail.com").toLowerCase();
   const emailOk =
     !!adminEmail &&
     !!user?.email &&
