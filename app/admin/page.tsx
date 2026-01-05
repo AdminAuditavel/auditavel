@@ -21,11 +21,12 @@ export default async function AdminPage(props: {
   searchParams: Promise<{ token?: string }>;
 }) {
   const searchParams = await props.searchParams;
-    const token = typeof searchParams?.token === "string" ? searchParams.token : null;
+  const token = typeof searchParams?.token === "string" ? searchParams.token : null;
 
   const admin = await isAdminRequest({ token });
   if (!admin.ok) {
-    redirect("/admin/login?next=/admin");
+    // ALTERAÇÃO NECESSÁRIA: evita loop com next=/admin
+    redirect("/admin/login");
   }
 
   function getPublicVisibility(
@@ -165,7 +166,7 @@ export default async function AdminPage(props: {
                         Resultados
                       </Link>
                     </td>
-                    
+
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/audit?token=${encodeURIComponent(
