@@ -124,8 +124,6 @@ export default function PollRegistrationClient() {
   const pollIdFromUrl = searchParams.get("poll_id") ?? "";
   const isEditMode = Boolean(pollIdFromUrl);
 
-  const adminTokenQuery = `token=${encodeURIComponent(tokenFromUrl)}`;
-
   const initialForm = {
     title: "",
     description: "",
