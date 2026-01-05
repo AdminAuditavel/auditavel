@@ -74,7 +74,7 @@ export default async function AdminLoginPage(props: {
               src="/Logo_A-removebg-preview.png"
               alt="Auditável"
               width={28}
-              height={28}
+              height={36}
               priority
             />
           </Link>
