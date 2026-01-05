@@ -89,7 +89,10 @@ export default async function AdminLoginPage(props: {
       redirect(`/admin/login?error=missing_site_url&next=${encodeURIComponent(next)}`);
     }
 
-    const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
+    const redirectTo = "https://www.auditavel.com/auth/callback";
+
+    // log para confirmar no deploy (Vercel logs)
+    console.log("MAGICLINK_redirectTo =", redirectTo, "siteUrl =", siteUrl, "next =", next);
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
