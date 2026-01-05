@@ -1,6 +1,8 @@
 // app/admin/login/page.tsx
 import { redirect } from "next/navigation";
 import { supabaseServer as supabase } from "@/lib/supabase-server";
+import Link from "next/link";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
