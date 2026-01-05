@@ -1,19 +1,10 @@
-//app/api/admin/polls/[id]/route.ts
+// app/api/admin/polls/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
-import { isAdminRequest } from "@/lib/admin-auth";
+import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer para SSR
+import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
 
-async function isAdmin() {
-  const admin = await isAdminRequest();
-  return admin.ok;
-}
-
-/**
- * Campos alinhados com a sua tabela atual:
- * id,title,description,status,allow_multiple,max_votes_per_user,created_at,closes_at,
- * vote_cooldown_seconds,voting_type,start_date,end_date,show_partial_results,icon_name,icon_url,max_options_per_vote,category
- */
+// Campos da tabela de polls
 const POLL_SELECT_FIELDS = [
   "id",
   "title",
@@ -34,7 +25,7 @@ const POLL_SELECT_FIELDS = [
   "category",
 ].join(", ");
 
-/** "" / null / undefined -> null ; string -> trim */
+// Função que normaliza valores de data
 function emptyToNull(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   if (typeof v !== "string") return null;
@@ -42,13 +33,10 @@ function emptyToNull(v: unknown): string | null {
   return t ? t : null;
 }
 
-/** datetime-local sem timezone -> ISO UTC ; ISO com timezone -> mantém */
 function toISOOrNull(value: unknown): string | null {
   const s = emptyToNull(value);
   if (!s) return null;
-
   if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) return s;
-
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
@@ -57,7 +45,6 @@ function toISOOrNull(value: unknown): string | null {
 function parseDateOrNull(value: unknown, fieldName: string): Date | null {
   const s = emptyToNull(value);
   if (!s) return null;
-
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) {
     throw new Error(`invalid_date:${fieldName}`);
@@ -69,16 +56,14 @@ function isValidVotingType(v: any): v is "single" | "ranking" | "multiple" {
   return v === "single" || v === "ranking" || v === "multiple";
 }
 
-/**
- * IMPORTANTÍSSIMO: manter a assinatura do seu projeto:
- * context: { params: Promise<{ id: string }> }
- */
+// Função GET para buscar detalhes da pesquisa
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!(await isAdmin())) {
+    // Verifica se o usuário é admin
+    if (!(await isAdminRequest())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -88,13 +73,13 @@ export async function GET(
       return NextResponse.json({ error: "missing_id" }, { status: 400 });
     }
 
+    // Busca a pesquisa no banco de dados
     const { data: poll, error } = await supabase
       .from("polls")
       .select(POLL_SELECT_FIELDS)
       .eq("id", id)
       .single();
 
-    // Erro de DB é 500 com details (não mascarar como poll_not_found)
     if (error) {
       console.error("poll GET db error:", error);
       return NextResponse.json(
@@ -114,12 +99,14 @@ export async function GET(
   }
 }
 
+// Função PUT para atualizar a pesquisa
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!(await isAdmin())) {
+    // Verifica se o usuário é admin
+    if (!(await isAdminRequest())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -159,7 +146,6 @@ export async function PUT(
     }
 
     // ===== validações básicas =====
-
     if ("title" in update) {
       const t = String(update.title ?? "").trim();
       if (!t) return NextResponse.json({ error: "missing_title" }, { status: 400 });
