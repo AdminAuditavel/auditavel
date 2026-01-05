@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 type PollPayload = {
   id?: string;
@@ -120,7 +121,6 @@ export default function PollRegistrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const tokenFromUrl = searchParams.get("token") ?? "";
   const pollIdFromUrl = searchParams.get("poll_id") ?? "";
   const isEditMode = Boolean(pollIdFromUrl);
 
