@@ -1,7 +1,8 @@
-//app/api/admin/polls/[id]/options/[optionId]/route.ts
+// app/api/admin/polls/[id]/options/[optionId]/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
-import { isAdminRequest } from "@/lib/admin-auth";
+import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer para SSR
+import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
 
 async function isAdmin() {
   const admin = await isAdminRequest();
@@ -13,19 +14,22 @@ export async function PUT(
   context: { params: Promise<{ id: string; optionId: string }> }
 ) {
   try {
-   if (!(await isAdmin())) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+    // Verifica se o usuário é admin
+    if (!(await isAdmin())) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
 
     const { id: pollId, optionId } = await context.params;
 
     const body = await req.json().catch(() => null);
     const option_text = String(body?.option_text ?? "").trim();
 
+    // Validações básicas
     if (!pollId) return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
     if (!optionId) return NextResponse.json({ error: "missing_option_id" }, { status: 400 });
     if (!option_text) return NextResponse.json({ error: "missing_option_text" }, { status: 400 });
 
+    // Atualiza a opção no banco de dados
     const { data: option, error } = await supabase
       .from("poll_options")
       .update({ option_text })
@@ -53,15 +57,18 @@ export async function DELETE(
   context: { params: Promise<{ id: string; optionId: string }> }
 ) {
   try {
+    // Verifica se o usuário é admin
     if (!(await isAdmin())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
     const { id: pollId, optionId } = await context.params;
 
+    // Validações básicas
     if (!pollId) return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
     if (!optionId) return NextResponse.json({ error: "missing_option_id" }, { status: 400 });
 
+    // Deleta a opção no banco de dados
     const { error } = await supabase
       .from("poll_options")
       .delete()
