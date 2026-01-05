@@ -1,13 +1,12 @@
 // app/admin/login/page.tsx
 
 import { redirect } from "next/navigation";
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando o supabaseServer para autenticação via cookies
+import { supabaseServer } from "@/lib/supabase-server"; // Usando o supabaseServer para autenticação via cookies
 import Link from "next/link";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
-// Função para garantir que o parâmetro "next" seja válido e seguro para redirecionamento
 type SearchParams = { next?: string; error?: string };
 
 function safeNext(raw: unknown, fallback = "/admin") {
@@ -25,6 +24,9 @@ export default async function AdminLoginPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const next = safeNext(searchParams?.next, "/admin");
+
+  // Instanciando o supabaseServer corretamente
+  const supabase = supabaseServer();
 
   // Checando se já existe um usuário autenticado via cookies
   const { data: { user } } = await supabase.auth.getUser();
