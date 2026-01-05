@@ -13,7 +13,7 @@ export async function PUT(
   context: { params: Promise<{ id: string; optionId: string }> }
 ) {
   try {
-   if (!(await isAdmin(req))) {
+   if (!(await isAdmin())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
