@@ -58,9 +58,8 @@ export async function POST(req: NextRequest) {
     // =========================
     // AUTH (token OU sessão)
     // =========================
-    const token = req.nextUrl.searchParams.get("token");
-    
-    const admin = await isAdminRequest({ token });
+        
+    const admin = await isAdminRequest();
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
