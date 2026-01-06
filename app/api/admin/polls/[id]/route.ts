@@ -1,10 +1,9 @@
 // app/api/admin/polls/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer para SSR
-import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { isAdminRequest } from "@/lib/admin-auth";
 
-// Campos da tabela de polls
 const POLL_SELECT_FIELDS = [
   "id",
   "title",
@@ -25,7 +24,6 @@ const POLL_SELECT_FIELDS = [
   "category",
 ].join(", ");
 
-// Função que normaliza valores de data
 function emptyToNull(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   if (typeof v !== "string") return null;
@@ -56,14 +54,13 @@ function isValidVotingType(v: any): v is "single" | "ranking" | "multiple" {
   return v === "single" || v === "ranking" || v === "multiple";
 }
 
-// Função GET para buscar detalhes da pesquisa
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Verifica se o usuário é admin
-    if (!(await isAdminRequest())) {
+    const admin = await isAdminRequest();
+    if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -73,7 +70,6 @@ export async function GET(
       return NextResponse.json({ error: "missing_id" }, { status: 400 });
     }
 
-    // Busca a pesquisa no banco de dados
     const { data: poll, error } = await supabase
       .from("polls")
       .select(POLL_SELECT_FIELDS)
@@ -99,14 +95,13 @@ export async function GET(
   }
 }
 
-// Função PUT para atualizar a pesquisa
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Verifica se o usuário é admin
-    if (!(await isAdminRequest())) {
+    const admin = await isAdminRequest();
+    if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
@@ -121,7 +116,6 @@ export async function PUT(
       return NextResponse.json({ error: "invalid_body" }, { status: 400 });
     }
 
-    // Somente campos existentes no schema atual
     const allowedKeys = [
       "title",
       "description",
@@ -162,10 +156,7 @@ export async function PUT(
     if ("vote_cooldown_seconds" in update && update.vote_cooldown_seconds != null) {
       const n = Number(update.vote_cooldown_seconds);
       if (!Number.isFinite(n) || n < 0) {
-        return NextResponse.json(
-          { error: "invalid_vote_cooldown_seconds" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "invalid_vote_cooldown_seconds" }, { status: 400 });
       }
       update.vote_cooldown_seconds = n;
     }
@@ -179,7 +170,6 @@ export async function PUT(
       }
     }
 
-    // max_votes_per_user / allow_multiple
     if ("max_votes_per_user" in update && update.max_votes_per_user != null) {
       const n = Number(update.max_votes_per_user);
       if (!Number.isFinite(n) || n < 1) {
@@ -211,7 +201,6 @@ export async function PUT(
       }
     }
 
-    // Se max_options_per_vote vier vazio, vira null
     if ("max_options_per_vote" in update) {
       if (update.max_options_per_vote == null || update.max_options_per_vote === "") {
         update.max_options_per_vote = null;
@@ -219,10 +208,7 @@ export async function PUT(
         const n = Number(update.max_options_per_vote);
         if (!Number.isFinite(n) || n < 1) {
           return NextResponse.json(
-            {
-              error: "invalid_max_options_per_vote",
-              message: "max_options_per_vote deve ser >= 1",
-            },
+            { error: "invalid_max_options_per_vote", message: "max_options_per_vote deve ser >= 1" },
             { status: 400 }
           );
         }
@@ -230,12 +216,10 @@ export async function PUT(
       }
     }
 
-    // Normaliza category (string vazia -> null)
     if ("category" in update) {
       update.category = emptyToNull(update.category);
     }
 
-    // Snapshot atual (para validar datas + coerência com voting_type)
     const { data: current, error: currentError } = await supabase
       .from("polls")
       .select("created_at, start_date, end_date, closes_at, voting_type, max_options_per_vote")
@@ -257,7 +241,6 @@ export async function PUT(
     const nextVotingType: "single" | "ranking" | "multiple" =
       (("voting_type" in update ? update.voting_type : current.voting_type) as any) ?? "single";
 
-    // Regra: só multiple usa max_options_per_vote
     if (nextVotingType !== "multiple") {
       update.max_options_per_vote = null;
     } else {
@@ -277,9 +260,7 @@ export async function PUT(
       update.max_options_per_vote = n;
     }
 
-    /* =========================
-       DATAS (mesma lógica auditável)
-    ========================= */
+    // Datas
     if ("start_date" in update) update.start_date = emptyToNull(update.start_date);
     if ("end_date" in update) update.end_date = emptyToNull(update.end_date);
     if ("closes_at" in update) update.closes_at = emptyToNull(update.closes_at);
@@ -341,10 +322,7 @@ export async function PUT(
 
     if (nextStart.getTime() < createdAt.getTime()) {
       return NextResponse.json(
-        {
-          error: "invalid_start_date_before_created_at",
-          message: "start_date não pode ser menor que created_at.",
-        },
+        { error: "invalid_start_date_before_created_at", message: "start_date não pode ser menor que created_at." },
         { status: 400 }
       );
     }
