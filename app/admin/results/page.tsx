@@ -30,7 +30,7 @@ export default async function AdminResultsPage(props: {
   }
 
   // Garantir que o cliente Supabase seja instanciado corretamente
-  const supabase = supabaseServer(); // instanciando o cliente corretamente
+  const supabase = await supabaseServer(); // <--- correção mínima: await aqui
 
   const { data: poll, error: pollError } = await supabase
     .from("polls")
