@@ -1261,7 +1261,7 @@ export default function PollRegistrationClient() {
           </div>
         </div>
 
-        {/* Premiação: permitir e campo prêmio */}
+        {/* Premiação: permitir (checkbox) */}
         <div style={styles.inlineFieldGroup}>
           <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>
@@ -1276,28 +1276,29 @@ export default function PollRegistrationClient() {
               />
             </label>
           </div>
+        </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
-            <label style={styles.label}>Prêmio (se aplicável):</label>
-            <input
-              type="text"
-              name="premio"
-              value={formData.premio}
-              onChange={handleInputChange}
-              style={{
-                ...styles.input,
-                backgroundColor: formData.tem_premiacao ? "#fff" : "#f3f4f6",
-                cursor: formData.tem_premiacao ? "text" : "not-allowed",
-                pointerEvents: formData.tem_premiacao ? "auto" : "none",
-                color: formData.tem_premiacao ? undefined : "#6b7280",
-              }}
-              placeholder="Descrição do prêmio"
-              disabled={!isEditing || isBusy || !formData.tem_premiacao}
-            />
-            <small style={{ color: "#6b7280", marginTop: 6 }}>
-              Marque "Permitir premiação" para informar o texto do prêmio.
-            </small>
-          </div>
+        {/* Prêmio ocupa largura total do formulário (como Nome do Ícone) */}
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Prêmio (se aplicável):</label>
+          <input
+            type="text"
+            name="premio"
+            value={formData.premio}
+            onChange={handleInputChange}
+            style={{
+              ...styles.input,
+              backgroundColor: formData.tem_premiacao ? "#fff" : "#f3f4f6",
+              cursor: formData.tem_premiacao ? "text" : "not-allowed",
+              pointerEvents: formData.tem_premiacao ? "auto" : "none",
+              color: formData.tem_premiacao ? undefined : "#6b7280",
+            }}
+            placeholder="Descrição do prêmio"
+            disabled={!isEditing || isBusy || !formData.tem_premiacao}
+          />
+          <small style={{ color: "#6b7280", marginTop: 6 }}>
+            Marque "Permitir premiação" para informar o texto do prêmio.
+          </small>
         </div>
 
         <div style={styles.fieldGroup}>
