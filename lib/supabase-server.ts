@@ -1,25 +1,15 @@
 //lib/supabase-server.ts
 
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function supabaseServer() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
+/**
+ * Retorna um SupabaseClient para uso em Server Components e Server Actions.
+ * - NÃO modifica cookies durante SSR.
+ * - Em Server Actions / Route Handlers, chamadas que escrevem cookies (ex.: setSession)
+ *   poderão executar corretamente porque essas rotas/ações permitem modificação de cookies.
+ */
+export async function supabaseServer(): Promise<SupabaseClient<any>> {
+  return createServerComponentClient({ cookies });
 }
