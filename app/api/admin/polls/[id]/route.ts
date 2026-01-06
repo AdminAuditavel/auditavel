@@ -22,6 +22,8 @@ const POLL_SELECT_FIELDS = [
   "icon_name",
   "icon_url",
   "category",
+  "tem_premiacao",
+  "premio",
 ].join(", ");
 
 function emptyToNull(v: unknown): string | null {
@@ -132,11 +134,25 @@ export async function PUT(
       "icon_name",
       "icon_url",
       "category",
+      "tem_premiacao",
+      "premio",
     ] as const;
 
     const update: Record<string, any> = {};
     for (const k of allowedKeys) {
       if (k in body) update[k] = (body as any)[k];
+    }
+
+    // ===== validações dos novos campos =====
+    if ("tem_premiacao" in update) {
+      update.tem_premiacao = Boolean(update.tem_premiacao);
+      if (update.tem_premiacao && !(update.premio ?? "").trim()) {
+        return NextResponse.json(
+          { error: "missing_prize", message: "Informe o prêmio quando 'Permitir premiação' estiver marcado." },
+          { status: 400 }
+        );
+      }
+      update.premio = update.tem_premiacao ? (emptyToNull(update.premio) ?? null) : null;
     }
 
     // ===== validações básicas =====
