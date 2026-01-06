@@ -14,8 +14,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing_tokens" }, { status: 400 });
     }
 
-    // supabaseServer é função -> instanciar
-    const supabase = supabaseServer();
+    // supabaseServer é função async -> instanciar com await
+    const supabase = await supabaseServer();
 
     // setSession grava os cookies SSR corretamente
     const { error: setErr } = await supabase.auth.setSession({
@@ -44,7 +44,8 @@ export async function POST(req: Request) {
       },
       { status: 200, headers: { "cache-control": "no-store" } }
     );
-  } catch {
+  } catch (e) {
+    console.error("set-session error:", e);
     return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
   }
 }
