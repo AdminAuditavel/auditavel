@@ -29,6 +29,10 @@ type PollPayload = {
   icon_url?: string | null;
 
   category?: string | null;
+
+  // novos campos
+  tem_premiacao?: boolean | null;
+  premio?: string | null;
 };
 
 type PollOption = {
@@ -153,6 +157,10 @@ export default function PollRegistrationClient() {
 
     // novo campo
     category: "",
+
+    // novos campos de premiação
+    tem_premiacao: false,
+    premio: "",
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -199,6 +207,8 @@ export default function PollRegistrationClient() {
       voting_type: "single",
       max_options_per_vote: 2,
       category: "",
+      tem_premiacao: false,
+      premio: "",
     }));
 
     setOriginalForm(null);
@@ -286,6 +296,10 @@ export default function PollRegistrationClient() {
           icon_url: poll.icon_url ?? "",
 
           category: poll.category ?? "",
+
+          // novos campos do backend
+          tem_premiacao: Boolean(poll.tem_premiacao ?? false),
+          premio: poll.premio ?? "",
         };
 
         // Regra: se allow_multiple for false, forçar max_votes_per_user=1
@@ -546,6 +560,11 @@ export default function PollRegistrationClient() {
       const payload1 = validateVotesConfigOrThrow(formData);
       const payload2 = validateMaxOptionsOrThrow(payload1);
 
+      // Se marcou tem_premiacao, exige nome do prêmio
+      if (payload2.tem_premiacao && !(payload2.premio ?? "").trim()) {
+        throw new Error("Informe o prêmio quando 'Permitir premiação' estiver marcado.");
+      }
+
       const startISO = datetimeLocalToISOOrNull(payload2.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
 
@@ -568,6 +587,10 @@ export default function PollRegistrationClient() {
       } else {
         bodyToSend.max_options_per_vote = null;
       }
+
+      // novos campos: tem_premiacao (boolean) e premio (texto ou null)
+      bodyToSend.tem_premiacao = Boolean(payload2.tem_premiacao);
+      bodyToSend.premio = payload2.tem_premiacao ? (payload2.premio ?? "").trim() || null : null;
 
       const response = await fetch(`/api/admin/create-poll`, {
         method: "POST",
@@ -609,6 +632,9 @@ export default function PollRegistrationClient() {
         icon_url: "",
 
         category: "",
+
+        tem_premiacao: false,
+        premio: "",
       });
 
       setOriginalForm(null);
@@ -690,6 +716,9 @@ export default function PollRegistrationClient() {
       icon_url: "",
 
       category: "",
+
+      tem_premiacao: false,
+      premio: "",
     });
 
     setOriginalForm(null);
@@ -739,6 +768,11 @@ export default function PollRegistrationClient() {
       const payload1 = validateVotesConfigOrThrow(formData);
       const payload2 = validateMaxOptionsOrThrow(payload1);
 
+      // Se marcou tem_premiacao, exige nome do prêmio
+      if (payload2.tem_premiacao && !(payload2.premio ?? "").trim()) {
+        throw new Error("Informe o prêmio quando 'Permitir premiação' estiver marcado.");
+      }
+
       const startISO = datetimeLocalToISOOrNull(payload2.start_date);
       if (!startISO) throw new Error("Data de início inválida.");
 
@@ -760,6 +794,10 @@ export default function PollRegistrationClient() {
       } else {
         bodyToSend.max_options_per_vote = null;
       }
+
+      // novos campos: tem_premiacao e premio
+      bodyToSend.tem_premiacao = Boolean(payload2.tem_premiacao);
+      bodyToSend.premio = payload2.tem_premiacao ? (payload2.premio ?? "").trim() || null : null;
 
       const res = await fetch(
         `/api/admin/polls/${encodeURIComponent(pollIdFromUrl)}`,
@@ -1220,6 +1258,45 @@ export default function PollRegistrationClient() {
               <option value="crypto">Crypto</option>
               <option value="ciencia">Ciência</option>
             </select>
+          </div>
+        </div>
+
+        {/* Premiação: permitir e campo prêmio */}
+        <div style={styles.inlineFieldGroup}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+            <label style={styles.label}>
+              Permitir premiação:
+              <input
+                type="checkbox"
+                name="tem_premiacao"
+                checked={Boolean(formData.tem_premiacao)}
+                onChange={handleInputChange}
+                style={styles.checkbox}
+                disabled={!isEditing || isBusy}
+              />
+            </label>
+          </div>
+
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+            <label style={styles.label}>Prêmio (se aplicável):</label>
+            <input
+              type="text"
+              name="premio"
+              value={formData.premio}
+              onChange={handleInputChange}
+              style={{
+                ...styles.input,
+                backgroundColor: formData.tem_premiacao ? "#fff" : "#f3f4f6",
+                cursor: formData.tem_premiacao ? "text" : "not-allowed",
+                pointerEvents: formData.tem_premiacao ? "auto" : "none",
+                color: formData.tem_premiacao ? undefined : "#6b7280",
+              }}
+              placeholder="Descrição do prêmio"
+              disabled={!isEditing || isBusy || !formData.tem_premiacao}
+            />
+            <small style={{ color: "#6b7280", marginTop: 6 }}>
+              Marque "Permitir premiação" para informar o texto do prêmio.
+            </small>
           </div>
         </div>
 
