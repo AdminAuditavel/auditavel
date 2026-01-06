@@ -52,8 +52,8 @@ export default async function AdminAuditPage(props: {
     redirect("/admin/login?next=/admin/audit");
   }
 
-  // Instanciando o cliente supabase corretamente
-  const supabase = supabaseServer();
+  // Instanciando o cliente supabase corretamente (IMPORTANTE: await)
+  const supabase = await supabaseServer();
 
   let query = supabase
     .from("admin_audit_logs")
