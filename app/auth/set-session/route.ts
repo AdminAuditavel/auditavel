@@ -1,7 +1,8 @@
 // app/auth/set-session/route.ts
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase-server";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
@@ -14,10 +15,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing_tokens" }, { status: 400 });
     }
 
-    // supabaseServer é função async -> instanciar com await
-    const supabase = await supabaseServer();
+    // Cria o client dentro do Route Handler para permitir gravação de cookies
+    const supabase = createRouteHandlerClient({ cookies });
 
-    // setSession grava os cookies SSR corretamente
+    // setSession grava os cookies corretamente porque estamos no contexto de Route Handler
     const { error: setErr } = await supabase.auth.setSession({
       access_token,
       refresh_token,
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: setErr.message }, { status: 400 });
     }
 
-    // Confirma que o SSR enxerga o usuário
+    // Confirma que o SSR/route consegue ler o usuário (opcional, útil para checagem)
     const { data, error: userErr } = await supabase.auth.getUser();
 
     if (userErr || !data?.user) {
