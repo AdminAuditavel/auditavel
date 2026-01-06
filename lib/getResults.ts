@@ -17,8 +17,8 @@ export type ResultRow = {
 export async function getResults(pollId: string): Promise<{ result: ResultRow[] }> {
   if (!pollId) return { result: [] };
 
-  // ✅ supabaseServer agora é função: instanciar o client
-  const supabase = supabaseServer();
+  // Instanciar o client SSR (IMPORTANTE: await)
+  const supabase = await supabaseServer();
 
   // 1) buscar opções
   const { data: optionsData, error: optionsError } = await supabase
@@ -61,8 +61,8 @@ export async function getResults(pollId: string): Promise<{ result: ResultRow[] 
       );
     } else if (Array.isArray(votesData) && votesData.length > 0) {
       // verificar se pelo menos um registro tem option_ids como array
-      for (const v of votesData) {
-        if (Array.isArray((v as any)?.option_ids) && (v as any).option_ids.length > 0) {
+      for (const v of votesData as any[]) {
+        if (Array.isArray(v?.option_ids) && v.option_ids.length > 0) {
           foundAny = true;
           break;
         }
