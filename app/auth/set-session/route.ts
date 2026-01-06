@@ -15,8 +15,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing_tokens" }, { status: 400 });
     }
 
-    // cookie store do Next (RequestCookies)
-    const cookieStore = cookies();
+    // Aguardamos o cookie store corretamente (antes estava sem await, causando erro de tipo)
+    const cookieStore = await cookies();
 
     // Cria o client no contexto do Route Handler e fornece um adapter de cookies
     const supabase = createServerClient(
@@ -35,7 +35,6 @@ export async function POST(req: Request) {
           setAll(cookiesToSet: Array<any>) {
             try {
               for (const c of cookiesToSet) {
-                // Alguns campos podem estar ausentes — mapeamos com segurança
                 const opts: Record<string, any> = {};
                 if (c.path !== undefined) opts.path = c.path;
                 if (c.domain !== undefined) opts.domain = c.domain;
@@ -44,11 +43,10 @@ export async function POST(req: Request) {
                 if (c.sameSite !== undefined) opts.sameSite = c.sameSite;
                 if (c.maxAge !== undefined) opts.maxAge = c.maxAge;
                 if (c.expires !== undefined) {
-                  // cookieStore.set aceita Date | string
-                  opts.expires = typeof c.expires === "string" ? new Date(c.expires) : c.expires;
+                  opts.expires =
+                    typeof c.expires === "string" ? new Date(c.expires) : c.expires;
                 }
 
-                // next/headers cookies().set aceita objeto com name/value/options
                 cookieStore.set({
                   name: c.name,
                   value: c.value,
@@ -56,9 +54,6 @@ export async function POST(req: Request) {
                 });
               }
             } catch (e) {
-              // Não falhar por uma escrita de cookie; log apenas para debug
-              // (Vercel logs exibirão console.error)
-              // eslint-disable-next-line no-console
               console.error("Error setting cookies in route adapter:", e);
             }
           },
@@ -94,7 +89,6 @@ export async function POST(req: Request) {
       { status: 200, headers: { "cache-control": "no-store" } }
     );
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.error("set-session error:", e);
     return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
   }
