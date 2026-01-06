@@ -1,34 +1,27 @@
 // app/api/admin/poll-visibility/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer para SSR
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
   try {
-    // =========================
-    // AUTH (token OU sessão)
-    // =========================
-    const admin = await isAdminRequest();  // Garantindo que só admin pode acessar
+    const admin = await isAdminRequest();
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    // Processando dados do corpo da requisição
-    const body = await req.json();
-    const { poll_id, show_partial_results } = body as {
+    const body = await req.json().catch(() => null);
+    const { poll_id, show_partial_results } = (body ?? {}) as {
       poll_id?: string;
       show_partial_results?: boolean;
     };
 
-    // 🔒 Validações básicas
     if (!poll_id || typeof show_partial_results !== "boolean") {
-      return NextResponse.json(
-        { error: "missing_data" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "missing_data" }, { status: 400 });
     }
 
-    // 1️⃣ Buscar valor atual
+    // 1) Buscar valor atual
     const { data: poll, error: fetchError } = await supabase
       .from("polls")
       .select("show_partial_results")
@@ -36,15 +29,12 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (fetchError || !poll) {
-      return NextResponse.json(
-        { error: "poll_not_found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "poll_not_found" }, { status: 404 });
     }
 
     const oldValue = poll.show_partial_results;
 
-    // 2️⃣ Atualizar visibilidade
+    // 2) Atualizar visibilidade
     const { error: updateError } = await supabase
       .from("polls")
       .update({ show_partial_results })
@@ -57,23 +47,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3️⃣ Registrar auditoria
-    await supabase
-      .from("admin_audit_logs")
-      .insert({
-        poll_id,
-        action: "visibility_change",
-        old_value: String(oldValue),
-        new_value: String(show_partial_results),
-      });
+    // 3) Auditoria (não quebrar a request se falhar)
+    const { error: auditError } = await supabase.from("admin_audit_logs").insert({
+      poll_id,
+      action: "visibility_change",
+      old_value: String(oldValue),
+      new_value: String(show_partial_results),
+    });
+
+    if (auditError) {
+      console.error("admin_audit_logs insert error:", auditError);
+    }
 
     return NextResponse.json({ success: true });
-
   } catch (err) {
     console.error("Erro inesperado:", err);
-    return NextResponse.json(
-      { error: "internal_error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
