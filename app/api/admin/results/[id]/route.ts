@@ -1,7 +1,7 @@
 // app/api/admin/results/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { isAdminRequest } from "@/lib/admin-auth";
 
 type Ctx = {
