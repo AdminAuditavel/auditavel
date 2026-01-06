@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase-server";
 import { getResults } from "@/lib/getResults";
 import AttributesGateClient from "./AttributesGateClient";
 
@@ -31,6 +31,9 @@ export default async function ResultsPage({
   const fromVoteRaw = searchParams?.from_vote;
   const fromVote = Array.isArray(fromVoteRaw) ? fromVoteRaw[0] : fromVoteRaw;
   const showParticipantProfile = fromVote === "1";
+
+  // ✅ supabaseServer agora é função: instanciar o client
+  const supabase = supabaseServer();
 
   /* =======================
      POLL
@@ -127,7 +130,7 @@ export default async function ResultsPage({
         : isPartial
         ? "Resultados parciais"
         : "";
-  
+
     return (
       <div className="flex justify-between text-xs text-[color:var(--foreground-muted)]">
         <div className="text-left">
@@ -193,7 +196,9 @@ export default async function ResultsPage({
                 <div key={o.id} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-foreground">{o.option_text}</span>
-                    <span className="text-[color:var(--foreground-muted)]">{pct}%</span>
+                    <span className="text-[color:var(--foreground-muted)]">
+                      {pct}%
+                    </span>
                   </div>
                   <div className="h-2 bg-surface2 rounded">
                     <div
@@ -338,7 +343,6 @@ export default async function ResultsPage({
   const scores = (json?.result ?? []).map((r: any) => Number(r.score) || 0);
   const maxScore = Math.max(...scores, 1);
 
-  // para mostrar participantes/participações também no ranking, buscamos votes
   const { data: rankingVotes } = await supabase
     .from("votes")
     .select("id, participant_id")
