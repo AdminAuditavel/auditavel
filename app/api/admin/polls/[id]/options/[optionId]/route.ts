@@ -1,35 +1,39 @@
 // app/api/admin/polls/[id]/options/[optionId]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer para SSR
-import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { isAdminRequest } from "@/lib/admin-auth";
 
-async function isAdmin() {
-  const admin = await isAdminRequest();
-  return admin.ok;
-}
+type Ctx = {
+  params: Promise<{ id: string; optionId: string }> | { id: string; optionId: string };
+};
 
-export async function PUT(
-  req: NextRequest,
-  context: { params: Promise<{ id: string; optionId: string }> }
-) {
+export async function PUT(req: NextRequest, context: Ctx) {
   try {
-    // Verifica se o usuário é admin
-    if (!(await isAdmin())) {
+    const admin = await isAdminRequest();
+    if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const { id: pollId, optionId } = await context.params;
+    const resolvedParams =
+      context?.params && typeof (context.params as any).then === "function"
+        ? await (context.params as Promise<{ id: string; optionId: string }>)
+        : (context.params as { id: string; optionId: string });
+
+    const pollId = String(resolvedParams?.id ?? "").trim();
+    const optionId = String(resolvedParams?.optionId ?? "").trim();
+
+    if (!pollId || !optionId) {
+      return NextResponse.json({ error: "missing_params" }, { status: 400 });
+    }
 
     const body = await req.json().catch(() => null);
-    const option_text = String(body?.option_text ?? "").trim();
+    const option_text = String((body as any)?.option_text ?? "").trim();
 
-    // Validações básicas
-    if (!pollId) return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
-    if (!optionId) return NextResponse.json({ error: "missing_option_id" }, { status: 400 });
-    if (!option_text) return NextResponse.json({ error: "missing_option_text" }, { status: 400 });
+    if (!option_text) {
+      return NextResponse.json({ error: "missing_option_text" }, { status: 400 });
+    }
 
-    // Atualiza a opção no banco de dados
     const { data: option, error } = await supabase
       .from("poll_options")
       .update({ option_text })
@@ -38,37 +42,57 @@ export async function PUT(
       .select("id, poll_id, option_text")
       .single();
 
-    if (error || !option) {
+    if (error) {
+      console.error("poll_options PUT error:", error);
       return NextResponse.json(
-        { error: "db_error", details: error?.message ?? "update_failed" },
+        { error: "db_error", details: error.message },
         { status: 500 }
       );
     }
 
+    // auditoria (opcional)
+    const { error: auditError } = await supabase.from("admin_audit_logs").insert({
+      poll_id: pollId,
+      action: "option_update",
+      old_value: null,
+      new_value: option_text,
+    });
+    if (auditError) console.error("admin_audit_logs insert error:", auditError);
+
     return NextResponse.json({ success: true, option }, { status: 200 });
   } catch (err) {
-    console.error("Erro inesperado (PUT option):", err);
+    console.error("Erro inesperado (options PUT):", err);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  context: { params: Promise<{ id: string; optionId: string }> }
-) {
+export async function DELETE(req: NextRequest, context: Ctx) {
   try {
-    // Verifica se o usuário é admin
-    if (!(await isAdmin())) {
+    const admin = await isAdminRequest();
+    if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const { id: pollId, optionId } = await context.params;
+    const resolvedParams =
+      context?.params && typeof (context.params as any).then === "function"
+        ? await (context.params as Promise<{ id: string; optionId: string }>)
+        : (context.params as { id: string; optionId: string });
 
-    // Validações básicas
-    if (!pollId) return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
-    if (!optionId) return NextResponse.json({ error: "missing_option_id" }, { status: 400 });
+    const pollId = String(resolvedParams?.id ?? "").trim();
+    const optionId = String(resolvedParams?.optionId ?? "").trim();
 
-    // Deleta a opção no banco de dados
+    if (!pollId || !optionId) {
+      return NextResponse.json({ error: "missing_params" }, { status: 400 });
+    }
+
+    // (opcional) pegar texto antes de deletar p/ auditoria
+    const { data: existing } = await supabase
+      .from("poll_options")
+      .select("option_text")
+      .eq("id", optionId)
+      .eq("poll_id", pollId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("poll_options")
       .delete()
@@ -76,12 +100,24 @@ export async function DELETE(
       .eq("poll_id", pollId);
 
     if (error) {
-      return NextResponse.json({ error: "db_error", details: error.message }, { status: 500 });
+      console.error("poll_options DELETE error:", error);
+      return NextResponse.json(
+        { error: "db_error", details: error.message },
+        { status: 500 }
+      );
     }
+
+    const { error: auditError } = await supabase.from("admin_audit_logs").insert({
+      poll_id: pollId,
+      action: "option_delete",
+      old_value: existing?.option_text ?? null,
+      new_value: null,
+    });
+    if (auditError) console.error("admin_audit_logs insert error:", auditError);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error("Erro inesperado (DELETE option):", err);
+    console.error("Erro inesperado (options DELETE):", err);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }
