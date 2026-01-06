@@ -10,17 +10,11 @@ type Ctx = {
 
 export async function GET(req: NextRequest, context: Ctx) {
   try {
-    // =========================
-    // AUTH (sessão)
-    // =========================
     const admin = await isAdminRequest();
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    // =========================
-    // PARAMS (compat: Promise | plain)
-    // =========================
     const resolvedParams =
       context?.params && typeof (context.params as any).then === "function"
         ? await (context.params as Promise<{ id: string }>)
@@ -31,9 +25,6 @@ export async function GET(req: NextRequest, context: Ctx) {
       return NextResponse.json({ error: "invalid_poll_id" }, { status: 400 });
     }
 
-    // =========================
-    // POLL
-    // =========================
     const { data: poll, error: pollError } = await supabase
       .from("polls")
       .select(
@@ -51,9 +42,6 @@ export async function GET(req: NextRequest, context: Ctx) {
       | "multiple"
       | "ranking";
 
-    // =========================
-    // OPTIONS
-    // =========================
     const { data: options, error: optError } = await supabase
       .from("poll_options")
       .select("id, option_text")
@@ -66,9 +54,6 @@ export async function GET(req: NextRequest, context: Ctx) {
       );
     }
 
-    // =========================
-    // VOTES (pai)
-    // =========================
     const { data: votes, error: votesError } = await supabase
       .from("votes")
       .select("id, option_id, participant_id")
@@ -86,15 +71,11 @@ export async function GET(req: NextRequest, context: Ctx) {
       (votes ?? []).map((v: any) => v.participant_id)
     ).size;
 
-    // vote_id -> participant_id
     const participantByVoteId = new Map<string, string>();
     for (const v of votes ?? []) {
       if (v?.id && v?.participant_id) participantByVoteId.set(v.id, v.participant_id);
     }
 
-    // =========================
-    // SINGLE (admin detalhado)
-    // =========================
     if (votingType === "single") {
       const count: Record<string, number> = {};
       const uniqueByOption = new Map<string, Set<string>>();
@@ -132,9 +113,6 @@ export async function GET(req: NextRequest, context: Ctx) {
       });
     }
 
-    // =========================
-    // MULTIPLE (admin detalhado)
-    // =========================
     if (votingType === "multiple") {
       const voteIds = (votes ?? []).map((v: any) => v.id).filter(Boolean);
 
@@ -194,9 +172,6 @@ export async function GET(req: NextRequest, context: Ctx) {
       });
     }
 
-    // =========================
-    // RANKING (admin detalhado)
-    // =========================
     const voteIds = (votes ?? []).map((v: any) => v.id).filter(Boolean);
 
     const { data: rankings, error: rankError } = voteIds.length
@@ -248,7 +223,6 @@ export async function GET(req: NextRequest, context: Ctx) {
             avg_rank: avgRank !== null ? Number(avgRank.toFixed(2)) : null,
           };
         })
-        // melhor ranking primeiro: menor avg_rank; desempate por mais votos únicos
         .sort((a: any, b: any) => {
           if (a.avg_rank === null) return 1;
           if (b.avg_rank === null) return -1;
