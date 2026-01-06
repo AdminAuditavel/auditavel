@@ -1,20 +1,24 @@
 //lib/supabase-server.ts
 
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/auth-helpers-nextjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Supabase client para Server Components / SSR.
- * - Não modifica cookies durante renderização (setAll é noop).
- * - Retorna o client de forma síncrona para manter compatibilidade com chamadas existentes.
+ * - NÃO modifica cookies durante a renderização (setAll é noop).
+ * - Retorna uma Promise<SupabaseClient> (função async).
  *
- * Nota: operações que precisam ESCREVER cookies (setSession, signOut, signInWithPassword)
- * devem usar createRouteHandlerClient({ cookies }) ou criar o client dentro de um
- * Route Handler / Server Action (contexto onde a escrita de cookies é permitida).
+ * Observação importante:
+ * - Como esta função é async, os chamadores devem usar `await supabaseServer()`.
+ *   Se houver chamadas sem `await` no seu código, o TypeScript apontará que
+ *   `supabase` é uma Promise e acessos como `supabase.auth` falharão.
+ * - Operações que precisam ESCREVER cookies (setSession, signOut, signInWithPassword)
+ *   devem criar um client no contexto da Route Handler / Server Action usando
+ *   createServerClient(...) (ou createRouteHandlerClient se migrar para auth-helpers).
  */
-export function supabaseServer(): SupabaseClient<any> {
-  const cookieStore = cookies(); // use synchronous cookie store
+export async function supabaseServer(): Promise<SupabaseClient<any>> {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,9 +28,9 @@ export function supabaseServer(): SupabaseClient<any> {
         getAll() {
           return cookieStore.getAll();
         },
-        // NOOP durante SSR para evitar a exceção do Next.js
+        // NOOP durante SSR para evitar o erro do Next: "Cookies can only be modified..."
         setAll() {
-          /* intentionally no-op in SSR */
+          /* noop intencional: não gravar cookies durante SSR */
         },
       },
     }
