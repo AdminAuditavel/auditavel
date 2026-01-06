@@ -1053,7 +1053,7 @@ export default function PollRegistrationClient() {
 
         {/* Status + allow_multiple + max_votes_per_user (todos na mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flexBasis: "30%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 60 }}>
             <label style={styles.label}>Status:</label>
             <select
               name="status"
@@ -1069,7 +1069,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "40%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 170 }}>
             <label style={styles.label}>Permitir múltiplos votos?</label>
             <select
               value={formData.allow_multiple ? "yes" : "no"}
@@ -1082,7 +1082,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "30%" }}>
+          <div style={{ ...styles.fieldGroup, width: 170, minWidth: 70 }}>
             <label style={styles.label}>Máximo Permitido:</label>
             <input
               type="number"
@@ -1104,7 +1104,7 @@ export default function PollRegistrationClient() {
 
         {/* Criado em + Encerramento */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Criado em:</label>
             <input
               type="datetime-local"
@@ -1116,7 +1116,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Data de Encerramento:</label>
             <input
               type="datetime-local"
@@ -1132,7 +1132,7 @@ export default function PollRegistrationClient() {
 
         {/* Tempo de espera + Tipo de Voto + Máx. opções por voto (mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flexBasis: "25%" }}>
+          <div style={{ ...styles.fieldGroup, width: 170, minWidth: 170 }}>
             <label style={styles.label}>Tempo de espera (seg):</label>
             <input
               type="number"
@@ -1145,7 +1145,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "50%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 70 }}>
             <label style={styles.label}>Opções tipo:</label>
             <select
               name="voting_type"
@@ -1171,7 +1171,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "25%" }}>
+          <div style={{ ...styles.fieldGroup, width: 150, minWidth: 70 }}>
             <label style={styles.label}>Máx. opções marcar:</label>
             <input
               type="number"
@@ -1194,7 +1194,7 @@ export default function PollRegistrationClient() {
 
         {/* Início + Término */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Data de Início:</label>
             <input
               type="datetime-local"
@@ -1209,7 +1209,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Data de Término:</label>
             <input
               type="datetime-local"
@@ -1225,7 +1225,7 @@ export default function PollRegistrationClient() {
 
         {/* Mostrar resultados parciais + Categoria (mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>
               Mostrar Resultados Parciais:
               <input
@@ -1239,7 +1239,7 @@ export default function PollRegistrationClient() {
             </label>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Categoria:</label>
             <select
               name="category"
@@ -1263,7 +1263,7 @@ export default function PollRegistrationClient() {
 
         {/* Premiação: permitir e campo prêmio */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>
               Permitir premiação:
               <input
@@ -1277,7 +1277,7 @@ export default function PollRegistrationClient() {
             </label>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
+          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
             <label style={styles.label}>Prêmio (se aplicável):</label>
             <input
               type="text"
@@ -1513,30 +1513,30 @@ export default function PollRegistrationClient() {
 
 const styles = {
   container: {
-    maxWidth: "980px", // aumentado para dar mais espaço
+    maxWidth: "600px",
     margin: "0 auto",
-    padding: "28px",
+    padding: "20px",
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    backgroundColor: "#f8fafc",
-    border: "1px solid #e6eef6",
-    borderRadius: "12px",
-    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
+    backgroundColor: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "10px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
   },
   title: {
-    fontSize: "28px", // maior
-    fontWeight: "700",
-    marginBottom: "12px",
+    fontSize: "24px",
+    fontWeight: "bold",
+    marginBottom: "10px",
     textAlign: "center" as const,
-    color: "#064e3b",
+    color: "#1f2937",
   },
   modeInfo: {
-    fontSize: "14px",
+    fontSize: "13px",
     color: "#374151",
     marginBottom: "8px",
     textAlign: "center" as const,
   },
   info: {
-    fontSize: "15px",
+    fontSize: "14px",
     color: "#374151",
     textAlign: "center" as const,
     marginBottom: "10px",
@@ -1544,7 +1544,7 @@ const styles = {
   form: {
     display: "flex",
     flexDirection: "column" as const,
-    gap: "18px",
+    gap: "15px",
   },
   fieldGroup: {
     display: "flex",
@@ -1554,102 +1554,98 @@ const styles = {
   inlineFieldGroup: {
     display: "flex",
     justifyContent: "space-between",
-    gap: "20px", // mais espaçamento
+    gap: "14px",
     alignItems: "flex-end",
     flexWrap: "wrap" as const,
   },
   label: {
     fontSize: "14px",
-    fontWeight: 600,
-    color: "#0f172a",
-    marginBottom: "8px",
+    fontWeight: "bold",
+    color: "#374151",
+    marginBottom: "5px",
   },
   input: {
-    width: "100%", // força largura completa do campo
-    padding: "12px 14px",
-    fontSize: "15px",
+    padding: "10px",
+    fontSize: "14px",
     border: "1px solid #d1d5db",
-    borderRadius: "8px",
+    borderRadius: "5px",
     backgroundColor: "#fff",
   },
   // Campo título um pouco maior
   titleInput: {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: "17px",
-    border: "1px solid #cbd5e1",
-    borderRadius: "10px",
+    padding: "12px",
+    fontSize: "16px",
+    border: "1px solid #d1d5db",
+    borderRadius: "6px",
     backgroundColor: "#fff",
   },
   textarea: {
-    width: "100%",
-    padding: "12px 14px",
-    fontSize: "15px",
+    padding: "10px",
+    fontSize: "14px",
     border: "1px solid #d1d5db",
-    borderRadius: "8px",
+    borderRadius: "5px",
     backgroundColor: "#fff",
-    minHeight: "110px",
-    resize: "vertical" as const,
+    minHeight: "80px",
+    resize: "none" as const,
   },
   select: {
-    width: "100%",
-    padding: "12px 14px",
-    fontSize: "15px",
+    padding: "10px",
+    fontSize: "14px",
     border: "1px solid #d1d5db",
-    borderRadius: "8px",
+    borderRadius: "5px",
     backgroundColor: "#fff",
   },
-  checkbox: { marginLeft: "10px", transform: "translateY(2px)" },
-  buttonGroup: { display: "flex", gap: "12px", flexWrap: "wrap" as const },
+  checkbox: { marginLeft: "10px" },
+  buttonGroup: { display: "flex", gap: "10px", flexWrap: "wrap" as const },
   button: {
-    padding: "10px 14px",
-    fontSize: "15px",
+    padding: "10px",
+    fontSize: "14px",
     color: "#fff",
-    backgroundColor: "#2563eb",
+    backgroundColor: "#3b82f6",
     border: "none",
-    borderRadius: "8px",
-    fontWeight: 600,
+    borderRadius: "5px",
+    fontWeight: "bold",
     cursor: "pointer",
   },
   primaryButton: {
-    padding: "10px 16px",
-    fontSize: "15px",
+    padding: "10px",
+    fontSize: "14px",
     color: "#fff",
-    backgroundColor: "#059669",
+    backgroundColor: "#16a34a",
     border: "none",
-    borderRadius: "8px",
-    fontWeight: 600,
+    borderRadius: "5px",
+    fontWeight: "bold",
     cursor: "pointer",
   },
   clearButton: {
-    padding: "10px 14px",
-    fontSize: "15px",
+    padding: "10px",
+    fontSize: "14px",
     color: "#fff",
-    backgroundColor: "#ef4444",
+    backgroundColor: "#f43f5e",
     border: "none",
-    borderRadius: "8px",
-    fontWeight: 600,
+    borderRadius: "5px",
+    fontWeight: "bold",
     cursor: "pointer",
   },
   // botão secundário (Cancelar)
   secondaryButton: {
-    padding: "10px 14px",
-    fontSize: "15px",
-    color: "#0f172a",
-    backgroundColor: "#f3f4f6",
+    padding: "10px",
+    fontSize: "14px",
+    color: "#111827",
+    backgroundColor: "#e5e7eb",
     border: "none",
-    borderRadius: "8px",
-    fontWeight: 600,
+    borderRadius: "5px",
+    fontWeight: "bold",
     cursor: "pointer",
   },
   backButton: {
-    padding: "10px 14px",
-    fontSize: "15px",
+    padding: "10px",
+    fontSize: "14px",
     color: "#fff",
     backgroundColor: "#6b7280",
     border: "none",
-    borderRadius: "8px",
-    fontWeight: 600,
+    borderRadius: "5px",
+    fontWeight: "bold",
     cursor: "pointer",
     whiteSpace: "nowrap" as const,
   },
@@ -1661,14 +1657,14 @@ const styles = {
     justifyContent: "space-between",
     gap: "12px",
     flexWrap: "wrap" as const,
-    marginTop: "6px",
+    marginTop: "4px",
   },
 
   iconButton: {
-    width: "44px",
-    height: "44px",
-    borderRadius: "10px",
-    border: "1px solid #e6eef6",
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #d1d5db",
     backgroundColor: "#fff",
     cursor: "pointer",
     fontSize: "18px",
@@ -1677,10 +1673,10 @@ const styles = {
     justifyContent: "center",
   },
   iconSuccessButton: {
-    width: "44px",
-    height: "44px",
-    borderRadius: "10px",
-    border: "1px solid #10b981",
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #16a34a",
     backgroundColor: "#dcfce7",
     cursor: "pointer",
     fontSize: "18px",
@@ -1689,10 +1685,10 @@ const styles = {
     justifyContent: "center",
   },
   iconDangerButton: {
-    width: "44px",
-    height: "44px",
-    borderRadius: "10px",
-    border: "1px solid #ef4444",
+    width: "38px",
+    height: "38px",
+    borderRadius: "8px",
+    border: "1px solid #f43f5e",
     backgroundColor: "#ffe4e6",
     cursor: "pointer",
     fontSize: "18px",
@@ -1701,15 +1697,15 @@ const styles = {
     justifyContent: "center",
   },
 
-  success: { color: "green", fontSize: "15px", textAlign: "center" as const },
-  error: { color: "red", fontSize: "15px", textAlign: "center" as const },
+  success: { color: "green", fontSize: "14px", textAlign: "center" as const },
+  error: { color: "red", fontSize: "14px", textAlign: "center" as const },
 
-  divider: { height: 1, backgroundColor: "#e6eef6", margin: "28px 0" },
-  sectionTitle: { fontSize: "20px", fontWeight: 700, color: "#0f172a" },
-  sectionHint: { fontSize: "15px", color: "#4b5563", marginBottom: "14px" },
+  divider: { height: 1, backgroundColor: "#e5e7eb", margin: "24px 0" },
+  sectionTitle: { fontSize: "18px", fontWeight: "bold", color: "#111827" },
+  sectionHint: { fontSize: "14px", color: "#4b5563", marginBottom: "14px" },
   inlineOptionForm: {
     display: "flex",
-    gap: "12px",
+    gap: "10px",
     alignItems: "flex-end",
     flexWrap: "wrap" as const,
     marginBottom: "10px",
@@ -1717,29 +1713,29 @@ const styles = {
   optionsTableWrapper: {
     marginTop: "10px",
     backgroundColor: "#fff",
-    border: "1px solid #e6eef6",
-    borderRadius: "10px",
-    padding: "14px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    padding: "12px",
   },
   subTitle: {
     margin: "0 0 10px 0",
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#0f172a",
+    fontSize: "14px",
+    fontWeight: "bold",
+    color: "#374151",
   },
   table: { width: "100%", borderCollapse: "collapse" as const },
   th: {
     textAlign: "left" as const,
-    fontSize: "14px",
-    padding: "10px",
-    borderBottom: "1px solid #e6eef6",
+    fontSize: "13px",
+    padding: "8px",
+    borderBottom: "1px solid #e5e7eb",
     color: "#374151",
   },
   td: {
-    fontSize: "14px",
-    padding: "10px",
+    fontSize: "13px",
+    padding: "8px",
     borderBottom: "1px solid #f3f4f6",
-    color: "#0f172a",
+    color: "#111827",
     wordBreak: "break-word" as const,
   },
 } as const;
