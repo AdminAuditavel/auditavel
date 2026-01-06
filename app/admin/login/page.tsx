@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase-server";
 import Link from "next/link";
 import Image from "next/image";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -47,11 +49,46 @@ export default async function AdminLoginPage(props: {
       );
     }
 
-    // IMPORTANTE: criar o client dentro da Server Action
-    // (garante leitura/gravação correta dos cookies da sessão)
-    const supabase = await supabaseServer();
+    // Criar o client DENTRO da Server Action com adapter de cookies que grava cookies
+    const cookieStore = await cookies();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const supabaseAction = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll().map((c) => ({
+              name: c.name,
+              value: c.value,
+            }));
+          },
+          setAll(cookiesToSet: Array<any>) {
+            for (const c of cookiesToSet) {
+              const opts: Record<string, any> = {};
+              if (c.path !== undefined) opts.path = c.path;
+              if (c.domain !== undefined) opts.domain = c.domain;
+              if (c.httpOnly !== undefined) opts.httpOnly = c.httpOnly;
+              if (c.secure !== undefined) opts.secure = c.secure;
+              if (c.sameSite !== undefined) opts.sameSite = c.sameSite;
+              if (c.maxAge !== undefined) opts.maxAge = c.maxAge;
+              if (c.expires !== undefined) {
+                opts.expires =
+                  typeof c.expires === "string" ? new Date(c.expires) : c.expires;
+              }
+
+              cookieStore.set({
+                name: c.name,
+                value: c.value,
+                ...opts,
+              });
+            }
+          },
+        },
+      }
+    );
+
+    const { error } = await supabaseAction.auth.signInWithPassword({
       email,
       password,
     });
