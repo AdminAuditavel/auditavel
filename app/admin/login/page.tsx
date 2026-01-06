@@ -1,7 +1,7 @@
 // app/admin/login/page.tsx
 
 import { redirect } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase-server"; // Usando o supabaseServer para autenticação via cookies
+import { supabaseServer } from "@/lib/supabase-server";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -25,18 +25,14 @@ export default async function AdminLoginPage(props: {
   const searchParams = await props.searchParams;
   const next = safeNext(searchParams?.next, "/admin");
 
-  // Instanciando o supabaseServer corretamente
+  // SSR: checa sessão via cookies
   const supabase = supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Checando se já existe um usuário autenticado via cookies
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // Se já estiver logado, redireciona diretamente para a página admin
-  if (user) {
-    return redirect(next);  // Redireciona para a página próxima ou /admin
-  }
+  if (user) redirect(next);
 
-  // Função para realizar login
   async function signIn(formData: FormData) {
     "use server";
 
@@ -44,26 +40,30 @@ export default async function AdminLoginPage(props: {
     const password = String(formData.get("password") ?? "");
 
     if (!email || !password) {
-      // Se o email ou senha estiverem faltando, redireciona com um erro
       redirect(
-        `/admin/login?error=${encodeURIComponent("missing_email_or_password")}&next=${encodeURIComponent(next)}`
+        `/admin/login?error=${encodeURIComponent(
+          "missing_email_or_password"
+        )}&next=${encodeURIComponent(next)}`
       );
     }
 
-    // Realiza o login com o Supabase utilizando e-mail e senha
+    // IMPORTANTE: criar o client dentro da Server Action
+    // (garante leitura/gravação correta dos cookies da sessão)
+    const supabase = supabaseServer();
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      // Se houver erro no login, redireciona com a mensagem de erro
       redirect(
-        `/admin/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`
+        `/admin/login?error=${encodeURIComponent(
+          error.message
+        )}&next=${encodeURIComponent(next)}`
       );
     }
 
-    // Após o login bem-sucedido, redireciona para o próximo destino (página admin)
     redirect(next);
   }
 
@@ -74,7 +74,7 @@ export default async function AdminLoginPage(props: {
       <div className="w-full max-w-sm rounded-2xl border bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Acesso Admin</h1>
-        
+
           <Link href="/" aria-label="Voltar ao site">
             <Image
               src="/Logo_A-removebg-preview.png"
@@ -85,17 +85,13 @@ export default async function AdminLoginPage(props: {
             />
           </Link>
         </div>
-        <p className="mt-2 text-sm text-gray-600">
-          Entre com e-mail e senha.
-        </p>
+
+        <p className="mt-2 text-sm text-gray-600">Entre com e-mail e senha.</p>
 
         {error ? (
-          <div className="mt-4 rounded-lg border p-3 text-sm">
-            {`Erro: ${error}`}
-          </div>
+          <div className="mt-4 rounded-lg border p-3 text-sm">{`Erro: ${error}`}</div>
         ) : null}
 
-        {/* Formulário de login */}
         <form action={signIn} className="mt-6 space-y-3">
           <label className="block text-sm font-medium">
             E-mail
