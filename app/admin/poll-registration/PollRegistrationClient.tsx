@@ -1053,7 +1053,7 @@ export default function PollRegistrationClient() {
 
         {/* Status + allow_multiple + max_votes_per_user (todos na mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 60 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "30%" }}>
             <label style={styles.label}>Status:</label>
             <select
               name="status"
@@ -1069,7 +1069,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 170 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "40%" }}>
             <label style={styles.label}>Permitir múltiplos votos?</label>
             <select
               value={formData.allow_multiple ? "yes" : "no"}
@@ -1082,7 +1082,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, width: 170, minWidth: 70 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "30%" }}>
             <label style={styles.label}>Máximo Permitido:</label>
             <input
               type="number"
@@ -1104,7 +1104,7 @@ export default function PollRegistrationClient() {
 
         {/* Criado em + Encerramento */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>Criado em:</label>
             <input
               type="datetime-local"
@@ -1116,7 +1116,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>Data de Encerramento:</label>
             <input
               type="datetime-local"
@@ -1132,7 +1132,7 @@ export default function PollRegistrationClient() {
 
         {/* Tempo de espera + Tipo de Voto + Máx. opções por voto (mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, width: 170, minWidth: 170 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "25%" }}>
             <label style={styles.label}>Tempo de espera (seg):</label>
             <input
               type="number"
@@ -1145,7 +1145,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 70 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "50%" }}>
             <label style={styles.label}>Opções tipo:</label>
             <select
               name="voting_type"
@@ -1171,7 +1171,7 @@ export default function PollRegistrationClient() {
             </select>
           </div>
 
-          <div style={{ ...styles.fieldGroup, width: 150, minWidth: 70 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "25%" }}>
             <label style={styles.label}>Máx. opções marcar:</label>
             <input
               type="number"
@@ -1194,7 +1194,7 @@ export default function PollRegistrationClient() {
 
         {/* Início + Término */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>Data de Início:</label>
             <input
               type="datetime-local"
@@ -1209,7 +1209,7 @@ export default function PollRegistrationClient() {
             />
           </div>
 
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>Data de Término:</label>
             <input
               type="datetime-local"
@@ -1225,7 +1225,7 @@ export default function PollRegistrationClient() {
 
         {/* Mostrar resultados parciais + Categoria (mesma linha) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>
               Mostrar Resultados Parciais:
               <input
@@ -1239,7 +1239,7 @@ export default function PollRegistrationClient() {
             </label>
           </div>
 
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>Categoria:</label>
             <select
               name="category"
@@ -1261,9 +1261,9 @@ export default function PollRegistrationClient() {
           </div>
         </div>
 
-        {/* Premiação: permitir e campo prêmio */}
+        {/* Premiação: permitir (checkbox) */}
         <div style={styles.inlineFieldGroup}>
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
+          <div style={{ ...styles.fieldGroup, flexBasis: "48%" }}>
             <label style={styles.label}>
               Permitir premiação:
               <input
@@ -1276,28 +1276,29 @@ export default function PollRegistrationClient() {
               />
             </label>
           </div>
+        </div>
 
-          <div style={{ ...styles.fieldGroup, flex: 1, minWidth: 220 }}>
-            <label style={styles.label}>Prêmio (se aplicável):</label>
-            <input
-              type="text"
-              name="premio"
-              value={formData.premio}
-              onChange={handleInputChange}
-              style={{
-                ...styles.input,
-                backgroundColor: formData.tem_premiacao ? "#fff" : "#f3f4f6",
-                cursor: formData.tem_premiacao ? "text" : "not-allowed",
-                pointerEvents: formData.tem_premiacao ? "auto" : "none",
-                color: formData.tem_premiacao ? undefined : "#6b7280",
-              }}
-              placeholder="Descrição do prêmio"
-              disabled={!isEditing || isBusy || !formData.tem_premiacao}
-            />
-            <small style={{ color: "#6b7280", marginTop: 6 }}>
-              Marque "Permitir premiação" para informar o texto do prêmio.
-            </small>
-          </div>
+        {/* Prêmio ocupa largura total do formulário (como Nome do Ícone) */}
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Prêmio (se aplicável):</label>
+          <input
+            type="text"
+            name="premio"
+            value={formData.premio}
+            onChange={handleInputChange}
+            style={{
+              ...styles.input,
+              backgroundColor: formData.tem_premiacao ? "#fff" : "#f3f4f6",
+              cursor: formData.tem_premiacao ? "text" : "not-allowed",
+              pointerEvents: formData.tem_premiacao ? "auto" : "none",
+              color: formData.tem_premiacao ? undefined : "#6b7280",
+            }}
+            placeholder="Descrição do prêmio"
+            disabled={!isEditing || isBusy || !formData.tem_premiacao}
+          />
+          <small style={{ color: "#6b7280", marginTop: 6 }}>
+            Marque "Permitir premiação" para informar o texto do prêmio.
+          </small>
         </div>
 
         <div style={styles.fieldGroup}>
@@ -1513,30 +1514,30 @@ export default function PollRegistrationClient() {
 
 const styles = {
   container: {
-    maxWidth: "600px",
+    maxWidth: "980px", // aumentado para dar mais espaço
     margin: "0 auto",
-    padding: "20px",
+    padding: "28px",
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    backgroundColor: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    borderRadius: "10px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    backgroundColor: "#f8fafc",
+    border: "1px solid #e6eef6",
+    borderRadius: "12px",
+    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
   },
   title: {
-    fontSize: "24px",
-    fontWeight: "bold",
-    marginBottom: "10px",
+    fontSize: "28px", // maior
+    fontWeight: "700",
+    marginBottom: "12px",
     textAlign: "center" as const,
-    color: "#1f2937",
+    color: "#064e3b",
   },
   modeInfo: {
-    fontSize: "13px",
+    fontSize: "14px",
     color: "#374151",
     marginBottom: "8px",
     textAlign: "center" as const,
   },
   info: {
-    fontSize: "14px",
+    fontSize: "15px",
     color: "#374151",
     textAlign: "center" as const,
     marginBottom: "10px",
@@ -1544,7 +1545,7 @@ const styles = {
   form: {
     display: "flex",
     flexDirection: "column" as const,
-    gap: "15px",
+    gap: "18px",
   },
   fieldGroup: {
     display: "flex",
@@ -1554,98 +1555,102 @@ const styles = {
   inlineFieldGroup: {
     display: "flex",
     justifyContent: "space-between",
-    gap: "14px",
+    gap: "20px", // mais espaçamento
     alignItems: "flex-end",
     flexWrap: "wrap" as const,
   },
   label: {
     fontSize: "14px",
-    fontWeight: "bold",
-    color: "#374151",
-    marginBottom: "5px",
+    fontWeight: 600,
+    color: "#0f172a",
+    marginBottom: "8px",
   },
   input: {
-    padding: "10px",
-    fontSize: "14px",
+    width: "100%", // força largura completa do campo
+    padding: "12px 14px",
+    fontSize: "15px",
     border: "1px solid #d1d5db",
-    borderRadius: "5px",
+    borderRadius: "8px",
     backgroundColor: "#fff",
   },
   // Campo título um pouco maior
   titleInput: {
-    padding: "12px",
-    fontSize: "16px",
-    border: "1px solid #d1d5db",
-    borderRadius: "6px",
+    width: "100%",
+    padding: "14px 16px",
+    fontSize: "17px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
     backgroundColor: "#fff",
   },
   textarea: {
-    padding: "10px",
-    fontSize: "14px",
+    width: "100%",
+    padding: "12px 14px",
+    fontSize: "15px",
     border: "1px solid #d1d5db",
-    borderRadius: "5px",
+    borderRadius: "8px",
     backgroundColor: "#fff",
-    minHeight: "80px",
-    resize: "none" as const,
+    minHeight: "110px",
+    resize: "vertical" as const,
   },
   select: {
-    padding: "10px",
-    fontSize: "14px",
+    width: "100%",
+    padding: "12px 14px",
+    fontSize: "15px",
     border: "1px solid #d1d5db",
-    borderRadius: "5px",
+    borderRadius: "8px",
     backgroundColor: "#fff",
   },
-  checkbox: { marginLeft: "10px" },
-  buttonGroup: { display: "flex", gap: "10px", flexWrap: "wrap" as const },
+  checkbox: { marginLeft: "10px", transform: "translateY(2px)" },
+  buttonGroup: { display: "flex", gap: "12px", flexWrap: "wrap" as const },
   button: {
-    padding: "10px",
-    fontSize: "14px",
+    padding: "10px 14px",
+    fontSize: "15px",
     color: "#fff",
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#2563eb",
     border: "none",
-    borderRadius: "5px",
-    fontWeight: "bold",
+    borderRadius: "8px",
+    fontWeight: 600,
     cursor: "pointer",
   },
   primaryButton: {
-    padding: "10px",
-    fontSize: "14px",
+    padding: "10px 16px",
+    fontSize: "15px",
     color: "#fff",
-    backgroundColor: "#16a34a",
+    backgroundColor: "#059669",
     border: "none",
-    borderRadius: "5px",
-    fontWeight: "bold",
+    borderRadius: "8px",
+    fontWeight: 600,
     cursor: "pointer",
   },
   clearButton: {
-    padding: "10px",
-    fontSize: "14px",
+    padding: "10px 14px",
+    fontSize: "15px",
     color: "#fff",
-    backgroundColor: "#f43f5e",
+    backgroundColor: "#ef4444",
     border: "none",
-    borderRadius: "5px",
-    fontWeight: "bold",
+    borderRadius: "8px",
+    fontWeight: 600,
     cursor: "pointer",
   },
   // botão secundário (Cancelar)
   secondaryButton: {
-    padding: "10px",
-    fontSize: "14px",
-    color: "#111827",
-    backgroundColor: "#e5e7eb",
+    padding: "10px 14px",
+    fontSize: "15px",
+    color: "#0f172a",
+    backgroundColor: "#f3f4f6",
     border: "none",
-    borderRadius: "5px",
-    fontWeight: "bold",
+    borderRadius: "8px",
+    fontWeight: 600,
     cursor: "pointer",
   },
   backButton: {
-    padding: "10px",
-    fontSize: "14px",
+    padding: "10px 14px",
+    fontSize: "15px",
     color: "#fff",
     backgroundColor: "#6b7280",
     border: "none",
-    borderRadius: "5px",
-    fontWeight: "bold",
+    borderRadius: "8px",
+    fontWeight: 600,
     cursor: "pointer",
     whiteSpace: "nowrap" as const,
   },
@@ -1657,14 +1662,14 @@ const styles = {
     justifyContent: "space-between",
     gap: "12px",
     flexWrap: "wrap" as const,
-    marginTop: "4px",
+    marginTop: "6px",
   },
 
   iconButton: {
-    width: "38px",
-    height: "38px",
-    borderRadius: "8px",
-    border: "1px solid #d1d5db",
+    width: "44px",
+    height: "44px",
+    borderRadius: "10px",
+    border: "1px solid #e6eef6",
     backgroundColor: "#fff",
     cursor: "pointer",
     fontSize: "18px",
@@ -1673,10 +1678,10 @@ const styles = {
     justifyContent: "center",
   },
   iconSuccessButton: {
-    width: "38px",
-    height: "38px",
-    borderRadius: "8px",
-    border: "1px solid #16a34a",
+    width: "44px",
+    height: "44px",
+    borderRadius: "10px",
+    border: "1px solid #10b981",
     backgroundColor: "#dcfce7",
     cursor: "pointer",
     fontSize: "18px",
@@ -1685,10 +1690,10 @@ const styles = {
     justifyContent: "center",
   },
   iconDangerButton: {
-    width: "38px",
-    height: "38px",
-    borderRadius: "8px",
-    border: "1px solid #f43f5e",
+    width: "44px",
+    height: "44px",
+    borderRadius: "10px",
+    border: "1px solid #ef4444",
     backgroundColor: "#ffe4e6",
     cursor: "pointer",
     fontSize: "18px",
@@ -1697,15 +1702,15 @@ const styles = {
     justifyContent: "center",
   },
 
-  success: { color: "green", fontSize: "14px", textAlign: "center" as const },
-  error: { color: "red", fontSize: "14px", textAlign: "center" as const },
+  success: { color: "green", fontSize: "15px", textAlign: "center" as const },
+  error: { color: "red", fontSize: "15px", textAlign: "center" as const },
 
-  divider: { height: 1, backgroundColor: "#e5e7eb", margin: "24px 0" },
-  sectionTitle: { fontSize: "18px", fontWeight: "bold", color: "#111827" },
-  sectionHint: { fontSize: "14px", color: "#4b5563", marginBottom: "14px" },
+  divider: { height: 1, backgroundColor: "#e6eef6", margin: "28px 0" },
+  sectionTitle: { fontSize: "20px", fontWeight: 700, color: "#0f172a" },
+  sectionHint: { fontSize: "15px", color: "#4b5563", marginBottom: "14px" },
   inlineOptionForm: {
     display: "flex",
-    gap: "10px",
+    gap: "12px",
     alignItems: "flex-end",
     flexWrap: "wrap" as const,
     marginBottom: "10px",
@@ -1713,29 +1718,29 @@ const styles = {
   optionsTableWrapper: {
     marginTop: "10px",
     backgroundColor: "#fff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "8px",
-    padding: "12px",
+    border: "1px solid #e6eef6",
+    borderRadius: "10px",
+    padding: "14px",
   },
   subTitle: {
     margin: "0 0 10px 0",
-    fontSize: "14px",
-    fontWeight: "bold",
-    color: "#374151",
+    fontSize: "15px",
+    fontWeight: 700,
+    color: "#0f172a",
   },
   table: { width: "100%", borderCollapse: "collapse" as const },
   th: {
     textAlign: "left" as const,
-    fontSize: "13px",
-    padding: "8px",
-    borderBottom: "1px solid #e5e7eb",
+    fontSize: "14px",
+    padding: "10px",
+    borderBottom: "1px solid #e6eef6",
     color: "#374151",
   },
   td: {
-    fontSize: "13px",
-    padding: "8px",
+    fontSize: "14px",
+    padding: "10px",
     borderBottom: "1px solid #f3f4f6",
-    color: "#111827",
+    color: "#0f172a",
     wordBreak: "break-word" as const,
   },
 } as const;
