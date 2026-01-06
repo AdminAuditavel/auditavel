@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { isAdminRequest } from "@/lib/admin-auth";
 
+// Função auxiliar para tratar valores vazios como null
 function emptyToNull(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   if (typeof v !== "string") return null;
@@ -11,6 +12,7 @@ function emptyToNull(v: unknown): string | null {
   return t ? t : null;
 }
 
+// Função para converter string para ISO 8601, ou retornar null se inválido
 function toISOOrNull(value: unknown): string | null {
   const s = emptyToNull(value);
   if (!s) return null;
@@ -22,6 +24,7 @@ function toISOOrNull(value: unknown): string | null {
   return d.toISOString();
 }
 
+// Função para parsear e validar datas
 function parseDateOrNull(value: unknown, fieldName: string): Date | null {
   const s = emptyToNull(value);
   if (!s) return null;
@@ -35,23 +38,45 @@ function parseDateOrNull(value: unknown, fieldName: string): Date | null {
 
 export async function POST(req: NextRequest) {
   try {
+    // Verificação de autenticação do admin
     const admin = await isAdminRequest();
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
+    // Parse do corpo da requisição
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "invalid_body" }, { status: 400 });
     }
 
-    const allowMultiple = Boolean((body as any).allow_multiple);
+    // Desestruturação dos campos
+    const {
+      title,
+      description,
+      status,
+      allow_multiple,
+      max_votes_per_user,
+      vote_cooldown_seconds,
+      voting_type,
+      max_options_per_vote,
+      start_date,
+      end_date,
+      closes_at,
+      show_partial_results,
+      icon_name,
+      icon_url,
+      category,
+      tem_premiacao,
+      premio,
+    } = body as any;
 
+    // Verificação de múltiplos votos
     let maxVotesPerUser = 1;
-    if (!allowMultiple) {
+    if (!allow_multiple) {
       maxVotesPerUser = 1;
     } else {
-      const n = Number((body as any).max_votes_per_user);
+      const n = Number(max_votes_per_user);
       if (!Number.isFinite(n) || n < 2) {
         return NextResponse.json(
           {
@@ -64,14 +89,15 @@ export async function POST(req: NextRequest) {
       maxVotesPerUser = n;
     }
 
+    // Validação das datas
     let startDate: Date | null = null;
     let endDate: Date | null = null;
     let closesAt: Date | null = null;
 
     try {
-      startDate = parseDateOrNull((body as any).start_date, "start_date");
-      endDate = parseDateOrNull((body as any).end_date, "end_date");
-      closesAt = parseDateOrNull((body as any).closes_at, "closes_at");
+      startDate = parseDateOrNull(start_date, "start_date");
+      endDate = parseDateOrNull(end_date, "end_date");
+      closesAt = parseDateOrNull(closes_at, "closes_at");
     } catch (e: any) {
       const msg = String(e?.message ?? "");
       if (msg.startsWith("invalid_date:")) {
@@ -88,6 +114,7 @@ export async function POST(req: NextRequest) {
       throw e;
     }
 
+    // Validação de obrigatoriedade da data de início
     if (!startDate) {
       return NextResponse.json(
         { error: "missing_start_date", message: "start_date é obrigatório." },
@@ -95,6 +122,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Tolerância de 60 segundos para não permitir que o início seja no passado
     const toleranceMs = 60 * 1000;
     if (startDate.getTime() < Date.now() - toleranceMs) {
       return NextResponse.json(
@@ -107,6 +135,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validação das relações entre as datas
     if (endDate && endDate.getTime() < startDate.getTime()) {
       return NextResponse.json(
         {
@@ -137,9 +166,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const startDateISO = toISOOrNull((body as any).start_date);
-    const endDateISO = toISOOrNull((body as any).end_date);
-    const closesAtISO = toISOOrNull((body as any).closes_at);
+    // Convertendo as datas para ISO
+    const startDateISO = toISOOrNull(start_date);
+    const endDateISO = toISOOrNull(end_date);
+    const closesAtISO = toISOOrNull(closes_at);
 
     if (!startDateISO) {
       return NextResponse.json(
@@ -152,32 +182,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Inserção dos dados na tabela 'polls' no banco
     const { data, error } = await supabase
       .from("polls")
       .insert({
-        title: (body as any).title,
-        description: (body as any).description,
-        type: (body as any).type,
-        status: (body as any).status,
-        allow_multiple: allowMultiple,
+        title,
+        description,
+        status,
+        allow_multiple: Boolean(allow_multiple),
         max_votes_per_user: maxVotesPerUser,
-        allow_custom_option: (body as any).allow_custom_option,
-
+        vote_cooldown_seconds,
+        voting_type,
+        max_options_per_vote,
         start_date: startDateISO,
         end_date: endDateISO,
         closes_at: closesAtISO,
+        show_partial_results: Boolean(show_partial_results),
+        icon_name: emptyToNull(icon_name),
+        icon_url: emptyToNull(icon_url),
+        category: emptyToNull(category),
 
-        vote_cooldown_seconds: (body as any).vote_cooldown_seconds,
-        voting_type: (body as any).voting_type,
-        show_partial_results: (body as any).show_partial_results,
-        icon_name: (body as any).icon_name || null,
-        icon_url: (body as any).icon_url || null,
+        // Novos campos de premiação
+        tem_premiacao: Boolean(tem_premiacao),
+        premio: tem_premiacao ? emptyToNull(premio) : null,
       })
       .select("id")
       .single();
 
     if (error) {
-      console.error("create-poll db error:", error);
+      console.error("Erro ao salvar pesquisa:", error);
       return NextResponse.json(
         {
           error: "Erro ao salvar a pesquisa. Por favor, tente novamente.",
@@ -187,6 +220,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Retorno de sucesso
     return NextResponse.json(
       { message: "Pesquisa cadastrada com sucesso!", data },
       { status: 201 }
