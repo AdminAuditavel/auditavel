@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3) Auditoria (não quebrar a request se falhar)
+    // 3) Auditoria (não falhar a request se log der erro)
     const { error: auditError } = await supabase.from("admin_audit_logs").insert({
       poll_id,
       action: "visibility_change",
@@ -55,9 +55,7 @@ export async function POST(req: NextRequest) {
       new_value: String(show_partial_results),
     });
 
-    if (auditError) {
-      console.error("admin_audit_logs insert error:", auditError);
-    }
+    if (auditError) console.error("admin_audit_logs insert error:", auditError);
 
     return NextResponse.json({ success: true });
   } catch (err) {
