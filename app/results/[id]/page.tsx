@@ -32,8 +32,8 @@ export default async function ResultsPage({
   const fromVote = Array.isArray(fromVoteRaw) ? fromVoteRaw[0] : fromVoteRaw;
   const showParticipantProfile = fromVote === "1";
 
-  // ✅ supabaseServer agora é função: instanciar o client
-  const supabase = supabaseServer();
+  // ✅ supabaseServer agora é função async: instanciar o client com await
+  const supabase = await supabaseServer();
 
   /* =======================
      POLL
@@ -116,7 +116,6 @@ export default async function ResultsPage({
     </div>
   );
 
-  // Footer compartilhado: exibir "Resultados parciais" / "Resultado Final"
   const ResultsFooter = ({
     isPartial,
     status,
@@ -136,7 +135,6 @@ export default async function ResultsPage({
         <div className="text-left">
           {leftLabel ? <span>{leftLabel}</span> : null}
         </div>
-        {/* removido: Participantes/Participações */}
         <div />
       </div>
     );
@@ -196,9 +194,7 @@ export default async function ResultsPage({
                 <div key={o.id} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-foreground">{o.option_text}</span>
-                    <span className="text-[color:var(--foreground-muted)]">
-                      {pct}%
-                    </span>
+                    <span className="text-[color:var(--foreground-muted)]">{pct}%</span>
                   </div>
                   <div className="h-2 bg-surface2 rounded">
                     <div
