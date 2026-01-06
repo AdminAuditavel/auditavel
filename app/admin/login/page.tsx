@@ -26,7 +26,7 @@ export default async function AdminLoginPage(props: {
   const next = safeNext(searchParams?.next, "/admin");
 
   // SSR: checa sessão via cookies
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -49,7 +49,7 @@ export default async function AdminLoginPage(props: {
 
     // IMPORTANTE: criar o client dentro da Server Action
     // (garante leitura/gravação correta dos cookies da sessão)
-    const supabase = supabaseServer();
+    const supabase = await supabaseServer();
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
