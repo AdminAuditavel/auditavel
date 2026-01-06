@@ -1,18 +1,15 @@
 //lib/supabase-server.ts
 
-import { createServerClient } from '@supabase/ssr';  // Importação do Supabase SSR
-import { cookies } from 'next/headers';  // Para acessar os cookies da requisição
+import { createServerClient } from '@supabase/auth-helpers-nextjs'; // Usando a função correta
 
-/**
- * Função para configurar o Supabase SSR no backend, que lê os cookies de autenticação
- * do usuário para garantir que a sessão seja validada corretamente no servidor.
- */
-export function supabaseServer() {
-  const cookieStore = cookies();  // Acessando os cookies da requisição para usar no servidor
-  
-  // Retornando a instância do cliente Supabase configurada para SSR com autenticação via cookies
+export const supabaseServer = () => {
+  console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL); // Verifique se a URL está correta
+  console.log('Supabase Anon Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); // Verifique se a chave está correta
+
+  // Retornando o cliente Supabase configurado corretamente
   return createServerClient({
-    req: cookieStore,  // Lê os cookies da requisição
-    res: {},  // Não precisa configurar a resposta aqui para este caso específico
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   });
-}
+};
+
