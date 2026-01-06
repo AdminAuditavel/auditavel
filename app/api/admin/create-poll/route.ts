@@ -1,13 +1,9 @@
 //app/api/admin/create-poll/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
 import { isAdminRequest } from "@/lib/admin-auth";
 
-/**
- * Normaliza valores vindos do form (datetime-local):
- * - "" / undefined / null -> null
- * - string -> string (trim)
- */
 function emptyToNull(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   if (typeof v !== "string") return null;
@@ -15,32 +11,17 @@ function emptyToNull(v: unknown): string | null {
   return t ? t : null;
 }
 
-/**
- * Converte valores de data recebidos do front para um formato consistente (ISO UTC),
- * evitando problemas de fuso horário entre client (datetime-local) e servidor.
- *
- * - "" -> null
- * - "YYYY-MM-DDTHH:mm" (datetime-local) -> Date(local) -> toISOString() (UTC)
- * - ISO com timezone (Z ou +hh:mm) -> mantém
- */
 function toISOOrNull(value: unknown): string | null {
   const s = emptyToNull(value);
   if (!s) return null;
 
-  // Se já tem timezone explícito, mantém
   if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) return s;
 
-  // datetime-local (sem timezone): interpreta como horário local
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
 }
 
-/**
- * Faz o parse de data para validação.
- * Retorna null se vier vazio.
- * Dispara erro (throw) se vier string não vazia porém inválida.
- */
 function parseDateOrNull(value: unknown, fieldName: string): Date | null {
   const s = emptyToNull(value);
   if (!s) return null;
@@ -54,11 +35,6 @@ function parseDateOrNull(value: unknown, fieldName: string): Date | null {
 
 export async function POST(req: NextRequest) {
   try {
-    // =========================
-    // AUTH (token OU sessão)
-    // =========================
-        
-    // Verificando se o usuário tem permissões de admin via cookies
     const admin = await isAdminRequest();
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -71,11 +47,7 @@ export async function POST(req: NextRequest) {
 
     const allowMultiple = Boolean((body as any).allow_multiple);
 
-    // Regras:
-    // - allow_multiple=false => max_votes_per_user=1
-    // - allow_multiple=true  => max_votes_per_user obrigatório e >=2
     let maxVotesPerUser = 1;
-
     if (!allowMultiple) {
       maxVotesPerUser = 1;
     } else {
@@ -92,13 +64,6 @@ export async function POST(req: NextRequest) {
       maxVotesPerUser = n;
     }
 
-    /* =========================
-       DATAS (REFINO V2)
-       - start_date obrigatório no cadastro
-       - start_date não pode ser menor que agora (com tolerância)
-       - end_date e closes_at opcionais
-       - valida coerência entre datas
-    ========================= */
     let startDate: Date | null = null;
     let endDate: Date | null = null;
     let closesAt: Date | null = null;
@@ -130,7 +95,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // tolerância de 60s para evitar falso negativo (admin demora a clicar em salvar)
     const toleranceMs = 60 * 1000;
     if (startDate.getTime() < Date.now() - toleranceMs) {
       return NextResponse.json(
@@ -173,7 +137,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Normaliza datas para ISO UTC antes de salvar (evita problema de fuso)
     const startDateISO = toISOOrNull((body as any).start_date);
     const endDateISO = toISOOrNull((body as any).end_date);
     const closesAtISO = toISOOrNull((body as any).closes_at);
@@ -189,9 +152,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Inserção de pesquisa no banco
-    const supabase = supabaseServer(); // Usando o supabaseServer para SSR
-
     const { data, error } = await supabase
       .from("polls")
       .insert({
@@ -203,7 +163,6 @@ export async function POST(req: NextRequest) {
         max_votes_per_user: maxVotesPerUser,
         allow_custom_option: (body as any).allow_custom_option,
 
-        // Datas: start_date obrigatório, end_date/closes_at opcionais
         start_date: startDateISO,
         end_date: endDateISO,
         closes_at: closesAtISO,
@@ -222,7 +181,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "Erro ao salvar a pesquisa. Por favor, tente novamente.",
-          details: error.message, // <-- importante p/ debug
+          details: error.message,
         },
         { status: 500 }
       );
