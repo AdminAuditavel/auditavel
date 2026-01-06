@@ -1,15 +1,34 @@
 //lib/supabase-server.ts
 
 import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Retorna um SupabaseClient para uso em Server Components e Server Actions.
- * - NÃO modifica cookies durante a renderização (evita o erro de "Cookies can only be modified...").
- * - Retornado de forma síncrona para evitar a necessidade de `await` em chamadas já existentes.
+ * Supabase client para uso em Server Components / SSR.
+ * - NÃO grava cookies durante a renderização (setAll é noop).
+ * - Retorna o client de forma síncrona para evitar necessidade de `await` em chamadas existentes.
+ *
+ * Observação: rotas/Server Actions que precisem gravar sessão (setSession) devem usar
+ * createRouteHandlerClient ou criar o client dentro do handler/Server Action.
  */
 export function supabaseServer(): SupabaseClient<any> {
-  // createServerComponentClient é síncrono e usa os cookies da requisição (next/headers)
-  return createServerComponentClient({ cookies });
+  const cookieStore = cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        // apenas leitura dos cookies atuais
+        getAll() {
+          return cookieStore.getAll();
+        },
+        // NOOP: não gravar cookies durante SSR (evita erro do Next)
+        setAll() {
+          /* intentionally empty */
+        },
+      },
+    }
+  );
 }
