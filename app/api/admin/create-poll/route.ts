@@ -1,7 +1,7 @@
 //app/api/admin/create-poll/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { isAdminRequest } from "@/lib/admin-auth";
 
 // Função auxiliar para tratar valores vazios como null
@@ -43,6 +43,9 @@ export async function POST(req: NextRequest) {
     if (!admin.ok) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
+
+    // Cria o client ADMIN somente em runtime (evita erro em build)
+    const supabase = getSupabaseAdmin();
 
     // Parse do corpo da requisição
     const body = await req.json().catch(() => null);
