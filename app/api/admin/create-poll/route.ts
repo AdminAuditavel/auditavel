@@ -1,6 +1,7 @@
+//app/api/admin/create-poll/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase-server"; // Usando o supabaseServer para SSR
-import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 /**
  * Normaliza valores vindos do form (datetime-local):
