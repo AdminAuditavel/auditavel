@@ -1,8 +1,8 @@
 // app/api/admin/polls/[id]/options/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer as supabase } from "@/lib/supabase-server"; // Usando supabaseServer para SSR
-import { isAdminRequest } from "@/lib/admin-auth"; // Função de validação de admin
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { isAdminRequest } from "@/lib/admin-auth";
 
 async function isAdmin() {
   const admin = await isAdminRequest();
@@ -14,7 +14,6 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Verifica se o usuário é admin
     if (!(await isAdmin())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
@@ -25,7 +24,6 @@ export async function GET(
       return NextResponse.json({ error: "missing_poll_id" }, { status: 400 });
     }
 
-    // Busca as opções da pesquisa no banco de dados
     const { data, error } = await supabase
       .from("poll_options")
       .select("id, poll_id, option_text")
@@ -40,10 +38,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(
-      { success: true, options: data ?? [] },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, options: data ?? [] }, { status: 200 });
   } catch (err) {
     console.error("Erro inesperado (options GET):", err);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
@@ -55,7 +50,6 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Verifica se o usuário é admin
     if (!(await isAdmin())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
@@ -73,7 +67,6 @@ export async function POST(
       return NextResponse.json({ error: "missing_option_text" }, { status: 400 });
     }
 
-    // Insere a nova opção na pesquisa
     const { data, error } = await supabase
       .from("poll_options")
       .insert({ poll_id: id, option_text })
