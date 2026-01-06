@@ -1,4 +1,4 @@
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase-server";
 
 export type ResultRow = {
   option_id: string;
@@ -16,6 +16,9 @@ export type ResultRow = {
  */
 export async function getResults(pollId: string): Promise<{ result: ResultRow[] }> {
   if (!pollId) return { result: [] };
+
+  // ✅ supabaseServer agora é função: instanciar o client
+  const supabase = supabaseServer();
 
   // 1) buscar opções
   const { data: optionsData, error: optionsError } = await supabase
@@ -52,11 +55,14 @@ export async function getResults(pollId: string): Promise<{ result: ResultRow[] 
 
     if (votesError) {
       // a coluna pode não existir; logamos e seguimos para vote_rankings
-      console.info("getResults — coluna option_ids ausente ou erro ao buscar votes:", votesError);
+      console.info(
+        "getResults — coluna option_ids ausente ou erro ao buscar votes:",
+        votesError
+      );
     } else if (Array.isArray(votesData) && votesData.length > 0) {
       // verificar se pelo menos um registro tem option_ids como array
       for (const v of votesData) {
-        if (Array.isArray(v?.option_ids) && v.option_ids.length > 0) {
+        if (Array.isArray((v as any)?.option_ids) && (v as any).option_ids.length > 0) {
           foundAny = true;
           break;
         }
@@ -65,7 +71,7 @@ export async function getResults(pollId: string): Promise<{ result: ResultRow[] 
       if (foundAny) {
         // aplicar pontuação Borda usando option_ids arrays
         let counted = 0;
-        for (const v of votesData) {
+        for (const v of votesData as any[]) {
           const ordered: string[] = v.option_ids ?? [];
           if (!Array.isArray(ordered) || ordered.length === 0) continue;
           counted++;
@@ -81,7 +87,10 @@ export async function getResults(pollId: string): Promise<{ result: ResultRow[] 
       }
     }
   } catch (e) {
-    console.info("getResults — exceção ao tentar ler votes.option_ids (esperado se coluna não existir):", String(e));
+    console.info(
+      "getResults — exceção ao tentar ler votes.option_ids (esperado se coluna não existir):",
+      String(e)
+    );
   }
 
   // 3) se não encontramos votos via option_ids, usar vote_rankings normalizado
@@ -107,16 +116,24 @@ export async function getResults(pollId: string): Promise<{ result: ResultRow[] 
           .order("ranking", { ascending: true });
 
         if (vrRowsError) {
-          console.error("getResults — erro ao buscar vote_rankings por vote_ids:", vrRowsError);
+          console.error(
+            "getResults — erro ao buscar vote_rankings por vote_ids:",
+            vrRowsError
+          );
         } else if (Array.isArray(vrRows) && vrRows.length > 0) {
           console.info("getResults — linhas em vote_rankings encontradas:", vrRows.length);
+
           // agrupar por vote_id
           const grouped: Record<string, { option_id: string; ranking: number }[]> = {};
-          for (const row of vrRows) {
+          for (const row of vrRows as any[]) {
             const vid = row.vote_id;
             grouped[vid] = grouped[vid] || [];
-            grouped[vid].push({ option_id: row.option_id, ranking: Number(row.ranking) });
+            grouped[vid].push({
+              option_id: row.option_id,
+              ranking: Number(row.ranking),
+            });
           }
+
           // para cada voto (group), ordenar por ranking asc (1 = top) e pontuar
           let votesCounted = 0;
           for (const vid of Object.keys(grouped)) {
@@ -124,8 +141,10 @@ export async function getResults(pollId: string): Promise<{ result: ResultRow[] 
               .slice()
               .sort((a, b) => a.ranking - b.ranking)
               .map((r) => r.option_id);
+
             if (ordered.length === 0) continue;
             votesCounted++;
+
             for (let i = 0; i < ordered.length; i++) {
               const optId = ordered[i];
               const pts = Math.max(n - i, 0);
@@ -134,7 +153,11 @@ export async function getResults(pollId: string): Promise<{ result: ResultRow[] 
               }
             }
           }
-          console.info("getResults — votos contabilizados via vote_rankings (grupos):", votesCounted);
+
+          console.info(
+            "getResults — votos contabilizados via vote_rankings (grupos):",
+            votesCounted
+          );
           foundAny = votesCounted > 0;
         } else {
           console.info("getResults — nenhuma linha em vote_rankings para esses vote_ids");
