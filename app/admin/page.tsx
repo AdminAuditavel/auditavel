@@ -31,7 +31,7 @@ export default async function AdminPage(props: {
   }
 
   // Instanciando o cliente supabase
-  const supabase = supabaseServer(); // Agora instanciando o cliente corretamente
+  const supabase = await supabaseServer(); // Aguarda a factory async para obter o client real
   
   // Função para determinar a visibilidade pública da pesquisa
   function getPublicVisibility(
