@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabaseServer as supabase } from "@/lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase-server";
 
 // Opcional no .env: ACCESS_LOG_IP_SALT="um_valor_longo_e_aleatorio"
 const IP_SALT = process.env.ACCESS_LOG_IP_SALT ?? "";
@@ -41,6 +41,8 @@ type Body = {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await supabaseServer();
+
     const body = (await req.json().catch(() => ({}))) as Body;
 
     const rawEventType = String(body.event_type ?? "").trim();
