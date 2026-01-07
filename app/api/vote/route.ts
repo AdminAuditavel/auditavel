@@ -2,6 +2,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+import crypto from "crypto";
 
 /* ======================================================
    Helpers
@@ -26,6 +28,26 @@ async function syncParticipant(participant_id: string) {
   } catch (e) {
     console.error("syncParticipant error:", e);
   }
+}
+
+function getClientIp(req: NextRequest) {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  return "";
+}
+
+function sha256(input: string) {
+  return crypto.createHash("sha256").update(input).digest("hex");
+}
+
+function truncateTrim(v?: string | null, max = 256) {
+  if (!v) return null;
+  const s = String(v).trim();
+  return s.length > max ? s.slice(0, max) : s;
 }
 
 type CastVoteResult = {
@@ -110,6 +132,44 @@ export async function POST(req: NextRequest) {
 
     // Sucesso: só agora fazemos syncParticipant (evita writes quando bloqueado)
     await syncParticipant(participant_id);
+
+    // --- Fire-and-forget: registrar vote_submit em access_logs via service role
+    (async () => {
+      try {
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+          console.warn("SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL not set; skipping server-side access_log insert.");
+          return;
+        }
+
+        const svc = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+
+        const IP_SALT = process.env.ACCESS_LOG_IP_SALT ?? "";
+        const ip = getClientIp(req);
+        const ip_hash = ip && IP_SALT ? sha256(`${ip}::${IP_SALT}`) : ip ? sha256(ip) : null;
+
+        const payload = {
+          event_type: "vote_submit",
+          source: truncateTrim(body.source ?? "site", 128) || "site",
+          medium: truncateTrim(body.medium ?? null, 64),
+          campaign: truncateTrim(body.campaign ?? null, 128),
+          poll_id: truncateTrim(poll_id ?? null, 64),
+          participant_id: truncateTrim(participant_id ?? null, 128),
+          user_agent: truncateTrim(body.user_agent ?? req.headers.get("user-agent") ?? null, 512),
+          referrer: truncateTrim(body.referrer ?? req.headers.get("referer") ?? null, 512),
+          ip_hash,
+        };
+
+        const { error: logError } = await svc.from("access_logs").insert(payload);
+        if (logError) {
+          console.error("Failed to insert access_log for vote_submit:", logError);
+        }
+      } catch (e) {
+        console.error("Unexpected error when inserting access_log for vote_submit:", e);
+      }
+    })();
 
     // Compat com retorno antigo: updated boolean
     const updated = r.message === "Voto atualizado";
