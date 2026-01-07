@@ -1,5 +1,7 @@
 //app/layout.tsx
 
+'use client';  // Diretiva que marca este componente como Client Component
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
