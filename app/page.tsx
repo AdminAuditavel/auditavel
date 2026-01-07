@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import PollImage from "@/app/components/PollImage";
+import AccessLogger from "@/app/components/AccessLogger"; // Importando AccessLogger
 
 const DEFAULT_POLL_ICON = "/polls/Enquete_Copa2026.png";
 
@@ -159,6 +160,14 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
       ? rawCategory[0]
       : "todas";
 
+  // featured param (plain string or first of array) - used by AccessLogger and to select featured poll
+  const featuredPollId =
+    typeof resolvedSearchParams?.featured === "string"
+      ? resolvedSearchParams.featured.trim()
+      : Array.isArray(resolvedSearchParams?.featured) && typeof resolvedSearchParams.featured[0] === "string"
+      ? resolvedSearchParams.featured[0].trim()
+      : undefined;
+
   /* =======================
      POLLS (com fallback se coluna category não existir)
   ======================= */
@@ -272,6 +281,9 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
   if (!visiblePolls.length) {
     return (
       <>
+        {/* Se veio featured na URL, registra o acesso */}
+        {featuredPollId && <AccessLogger pollId={featuredPollId} />}
+
         {/* TOP BAR */}
         <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center">
@@ -372,16 +384,7 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
   // --- restante (featured / agrupamentos / render) ---
   // select featured poll from filtered visiblePolls
   const featuredFromUrl =
-    (() => {
-      const rawFeatured = resolvedSearchParams?.featured;
-      const featuredId =
-        typeof rawFeatured === "string"
-          ? rawFeatured.trim()
-          : Array.isArray(rawFeatured) && typeof rawFeatured[0] === "string"
-          ? rawFeatured[0].trim()
-          : undefined;
-      return featuredId ? visiblePolls.find((x) => x.id === featuredId) : undefined;
-    })() || undefined;
+    (featuredPollId ? visiblePolls.find((x) => x.id === featuredPollId) : undefined) || undefined;
 
   const featuredFromAuto = visiblePolls.find((x) => x.is_featured === true) || undefined;
 
@@ -569,6 +572,9 @@ export default async function Home({ searchParams }: { searchParams?: any }) {
   ======================= */
   return (
     <>
+      {/* Se veio featured na URL, registra o acesso */}
+      {featuredPollId && <AccessLogger pollId={featuredPollId} />}
+
       {/* TOP BAR */}
       <header className="p-4 md:p-6 max-w-6xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center">
