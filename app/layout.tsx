@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ReactDndProvider from "../components/ReactDndProvider";
+import AccessLogger from "@/app/components/AccessLogger"; // Importando o AccessLogger
+import { usePathname } from "next/navigation"; // Hook para pegar o pathname
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,6 +27,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+
+  // Verificar se estamos na página de uma pesquisa (por exemplo, /poll/[id])
+  const pollId = pathname.includes("/poll/") ? pathname.split("/poll/")[1] : null;
+
   return (
     <html lang="pt-BR">
       <body
@@ -32,6 +39,8 @@ export default function RootLayout({
       >
         {/* O provedor ReactDndProvider ajuda com o gerenciamento de arrastos e ordenações */}
         <ReactDndProvider>
+          {/* Incluindo o AccessLogger no layout se a página for uma pesquisa */}
+          {pollId && <AccessLogger pollId={pollId} />}
           {children}
         </ReactDndProvider>
       </body>
