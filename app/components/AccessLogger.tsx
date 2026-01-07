@@ -1,3 +1,4 @@
+//app/components/AccessLogger.tsx
 "use client";
 
 import { useEffect } from "react";
