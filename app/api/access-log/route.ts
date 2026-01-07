@@ -77,4 +77,33 @@ export async function POST(req: Request) {
       ip && IP_SALT ? sha256(`${ip}::${IP_SALT}`) : (ip ? sha256(ip) : null);
 
     const { data, error } = await supabase
-      .from("access_logs_
+      .from("access_logs")
+      .insert({
+        event_type,
+        source,
+        medium,
+        campaign,
+        poll_id,
+        participant_id,
+        user_agent,
+        referrer,
+        ip_hash,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ ok: true, access_id: data.id }, { status: 201 });
+  } catch (e: any) {
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "unknown_error" },
+      { status: 500 }
+    );
+  }
+}
