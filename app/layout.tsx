@@ -1,6 +1,7 @@
 //app/layout.tsx
 
-'use client';  // Diretiva que marca este componente como Client Component
+// app/layout.tsx
+'use client';
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -8,6 +9,7 @@ import "./globals.css";
 import ReactDndProvider from "../components/ReactDndProvider";
 import AccessLogger from "@/app/components/AccessLogger"; // Importando o AccessLogger
 import { usePathname } from "next/navigation"; // Hook para pegar o pathname
+import { metadata } from './metadata'; // Importando a metadata
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,11 +20,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-export const metadata: Metadata = {
-  title: "Auditável — Pesquisa e Votação",
-  description: "Sistema de pesquisa e votação com resultados ao vivo.",
-};
 
 export default function RootLayout({
   children,
@@ -36,6 +33,11 @@ export default function RootLayout({
 
   return (
     <html lang="pt-BR">
+      <head>
+        {/* A metadata está sendo aplicada agora */}
+        <title>{metadata.title}</title>
+        <meta name="description" content={metadata.description} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
