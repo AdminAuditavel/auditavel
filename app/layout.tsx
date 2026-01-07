@@ -32,11 +32,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
-        {/* Garantindo valores padrão para título e descrição */}
-        <title>{metadata.title || "Auditável — Pesquisa e Votação"}</title>
+        {/* Garantindo valores padrão para título e descrição e forçando como string */}
+        <title>{String(metadata.title || "Auditável — Pesquisa e Votação")}</title>
         <meta
           name="description"
-          content={metadata.description || "Sistema de pesquisa e votação com resultados ao vivo."}
+          content={String(metadata.description || "Sistema de pesquisa e votação com resultados ao vivo.")}
         />
       </head>
       <body
