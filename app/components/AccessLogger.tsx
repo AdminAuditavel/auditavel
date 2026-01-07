@@ -1,4 +1,5 @@
 //app/components/AccessLogger.tsx
+
 "use client";
 
 import { useEffect } from "react";
@@ -46,18 +47,23 @@ export default function AccessLogger(props: { pollId?: string | null }) {
           body: JSON.stringify(payload),
         });
 
-        // mesmo se falhar, marcamos como "tentado" para não spammar requests
-        localStorage.setItem(loggedKey, "1");
+        if (res.ok) {
+          // marcar somente em caso de sucesso para não mascarar falhas
+          localStorage.setItem(loggedKey, "1");
 
-        if (!res.ok) return;
-
-        const json = await res.json().catch(() => null);
-        const accessId = json?.access_id;
-        if (accessId) {
-          localStorage.setItem("auditavel_access_id", String(accessId));
+          const json = await res.json().catch(() => null);
+          const accessId = json?.access_id;
+          if (accessId) {
+            localStorage.setItem("auditavel_access_id", String(accessId));
+          }
+        } else {
+          // loga o erro para ajudar no debug (não marca como "tentado")
+          const txt = await res.text().catch(() => "");
+          console.error("AccessLogger: request failed", res.status, txt);
         }
-      } catch {
-        localStorage.setItem(loggedKey, "1");
+      } catch (err) {
+        // loga o erro para debug (não marca como "tentado")
+        console.error("AccessLogger: fetch error", err);
       }
     })();
   }, [pathname, searchParams, props.pollId]);
