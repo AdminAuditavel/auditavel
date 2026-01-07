@@ -1,5 +1,3 @@
-//app/layout.tsx
-
 // app/layout.tsx
 'use client';
 
@@ -34,9 +32,12 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
-        {/* A metadata está sendo aplicada agora */}
-        <title>{metadata.title}</title>
-        <meta name="description" content={metadata.description} />
+        {/* Garantindo valores padrão para título e descrição */}
+        <title>{metadata.title || "Auditável — Pesquisa e Votação"}</title>
+        <meta
+          name="description"
+          content={metadata.description || "Sistema de pesquisa e votação com resultados ao vivo."}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
